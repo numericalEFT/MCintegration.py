@@ -1,11 +1,37 @@
 import normflows as nf
 import torch
+from warnings import warn
+from scipy.stats import kstest
+import time
+def calculate_correlation(x):
+    x_centered = x[1:] - x.mean()
+    y_centered = x[:-1] - x.mean()
+    cov = torch.sum(x_centered * y_centered) / (len(x) - 1)
+    return torch.abs(cov / torch.var(x))
 
 class MCFlow(nf.NormalizingFlow):
 
     def __init__(self, q0, flows, p=None):
         super().__init__(q0, flows, p)
-    
+    def forward(self, z, rev=False):
+        """Transforms latent variable z to the flow variable x
+
+        Args:
+          z: Batch in the latent space
+
+        Returns:
+          Batch in the space of the target distribution
+        """
+        if rev:
+            log_q = torch.zeros(len(z), device=z.device)
+            for i in range(len(self.flows) - 1, -1, -1):
+                z, log_det = self.flows[i].inverse(z)
+                log_q += log_det
+            return z, log_q
+        else:
+            for flow in self.flows:
+                z, _ = flow(z)
+            return z
     def IS_chi2(self, num_samples=1):
         z, log_q_ = self.q0(num_samples)
         log_q = torch.zeros_like(log_q_)
@@ -23,7 +49,7 @@ class MCFlow(nf.NormalizingFlow):
         # utils.set_requires_grad(self, True)
         return torch.mean(torch.square(prob.detach() - q) / q / q.detach())
 
-    def IS_forward_kld(self, num_samples=1, beta=1.0):
+    def IS_forward_kld(self, num_samples=None):
         """Estimates forward KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
 
         Args:
@@ -32,6 +58,8 @@ class MCFlow(nf.NormalizingFlow):
         Returns:
           Estimate of forward KL divergence averaged over batch
         """
+        if num_samples is None:
+            num_samples = self.p.batchsize
         nf.utils.set_requires_grad(self, False)
         z, _ = self.q0(num_samples)
         for flow in self.flows:
@@ -50,6 +78,7 @@ class MCFlow(nf.NormalizingFlow):
         # utils.set_requires_grad(self, True)
         return torch.mean(ISratio.detach() * (logp.detach() - log_q))
 
+    
     def IS_forward_kld_direct(self,  z):
         """Estimates forward KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
 
@@ -83,56 +112,85 @@ class MCFlow(nf.NormalizingFlow):
         return torch.mean(torch.exp(2 * log_p + 2 * log_J))
 
     @torch.no_grad()
+    def integrate(self):
+        """Importance sampling integration with flow-based approximate distribution
+
+        Args:
+          num_samples: Number of samples to draw
+
+        Returns:
+          mean, variance
+        """
+        num_samples = self.p.batchsize
+        z, log_q = self.sample(num_samples)
+        q = torch.exp(log_q)
+        func = self.p.prob(z)
+        return torch.mean(func / q, dim=0)
+    
+    @torch.no_grad()
     def integrate_block(
         self, num_blocks, bins=25, hist_range=(0.0, 1.0), correlation_threshold=0.2
     ):
         print("Estimating integral from trained network")
 
+        device = self.p.samples.device
         num_samples = self.p.batchsize
-        num_vars = self.p.ndims
+        means_t = torch.zeros(num_blocks, device=device)
+        means_abs = torch.empty_like(means_t)
         # Pre-allocate tensor for storing means and histograms
-        means_t = torch.zeros(num_blocks)
-        with torch.device("cpu"):
-            if isinstance(bins, int):
-                histr = torch.zeros(bins, num_vars)
-                histr_weight = torch.zeros(bins, num_vars)
-            else:
-                histr = torch.zeros(bins.shape[0], num_vars)
-                histr_weight = torch.zeros(bins.shape[0], num_vars)
+        # num_vars = self.p.ndims
+        # with torch.device("cpu"):
+        #     if isinstance(bins, int):
+        #         histr = torch.zeros(bins, num_vars)
+        #         histr_weight = torch.zeros(bins, num_vars)
+        #     else:
+        #         histr = torch.zeros(bins.shape[0], num_vars)
+        #         histr_weight = torch.zeros(bins.shape[0], num_vars)
 
-        partition_z = torch.tensor(0.0, device=self.p.samples.device)
+        partition_z = torch.tensor(0.0, device=device)
         for i in range(num_blocks):
-            self.p.samples, self.p.log_q = self.q0(num_samples)
+            self.p.samples[:], self.p.log_q[:] = self.q0(num_samples)
             for flow in self.flows:
-                self.p.samples, self.p.log_det = flow(self.p.samples)
-                self.p.log_q -= self.p.log_det
-            self.p.val = self.p.prob(self.p.samples)
+                self.p.samples[:], log_det = flow(self.p.samples)
+                self.p.log_q -= log_det
+            self.p.val[:] = self.p.prob(self.p.samples)
             q = torch.exp(self.p.log_q)
             res = self.p.val / q
             means_t[i] = torch.mean(res, dim=0)
+            means_abs[i] = torch.mean(res.abs(), dim=0)
 
             partition_z += torch.mean(torch.abs(self.p.val) / q, dim=0)
             # log_p = torch.log(torch.clamp(prob_abs, min=1e-16))
             # loss += prob_abs / q / z * (log_p - self.p.log_q - torch.log(z))
 
-            z = self.p.samples.detach().cpu()
-            weights = (res / res.abs()).detach().cpu()
-            for d in range(num_vars):
-                hist, bin_edges = torch.histogram(
-                    z[:, d], bins=bins, range=hist_range, density=True
-                )
-                histr[:, d] += hist
-                hist, bin_edges = torch.histogram(
-                    z[:, d],
-                    bins=bins,
-                    range=hist_range,
-                    weight=weights,
-                    density=True,
-                )
-                histr_weight[:, d] += hist
+            # z = self.p.samples.detach().cpu()
+            # weights = (res / res.abs()).detach().cpu()
+            # for d in range(num_vars):
+            #     hist, bin_edges = torch.histogram(
+            #         z[:, d], bins=bins, range=hist_range, density=True
+            #     )
+            #     histr[:, d] += hist
+            #     hist, bin_edges = torch.histogram(
+            #         z[:, d],
+            #         bins=bins,
+            #         range=hist_range,
+            #         weight=weights,
+            #         density=True,
+            #     )
+            #     histr_weight[:, d] += hist
+        partition_z /= num_blocks
 
-        print("correlation of values: ", calculate_correlation(means_t))
-        while calculate_correlation(means_t) > correlation_threshold:
+        print("Start statistical analysis...")
+        start_time = time.time()
+        # while calculate_correlation(means_t) > correlation_threshold:
+        while (
+            kstest(
+                means_t.cpu(),
+                "norm",
+                args=(means_t.mean().item(), means_t.std().item()),
+            )[1]
+            < 0.05
+        ):
             print("correlation too high, merge blocks")
             if num_blocks <= 64:
                 warn(
@@ -141,20 +199,44 @@ class MCFlow(nf.NormalizingFlow):
                 )
                 break
             num_blocks //= 2
-            k = 0
-            for j in range(0, num_blocks):
-                means_t[j] = (means_t[k] + means_t[k + 1]) / 2.0
-                k += 2
-        mean_combined = torch.mean(means_t[:num_blocks])
-        std_combined = torch.std(means_t[:num_blocks]) / num_blocks**0.5
+            means_t = (
+                means_t[torch.arange(0, num_blocks * 2, 2, device=device)]
+                + means_t[torch.arange(1, num_blocks * 2, 2, device=device)]
+            ) / 2.0
+            means_abs = (
+                means_abs[torch.arange(0, num_blocks * 2, 2, device=device)]
+                + means_abs[torch.arange(1, num_blocks * 2, 2, device=device)]
+            ) / 2.0
+        print("new block number: ", num_blocks)
 
+        statistic, p_value = kstest(
+            means_t.cpu(), "norm", args=(means_t.mean().item(), means_t.std().item())
+        )
+        print(f"K-S test: statistic {statistic}, p-value {p_value}.")
+
+        mean_combined = torch.mean(means_t)
+        error_combined = torch.std(means_t) / num_blocks**0.5
+
+        mean_abs = means_abs.mean().item()
+        std_abs = means_abs.std().item()
+        statistic, p_value = kstest(
+            means_abs.cpu(),
+            "norm",
+            args=(mean_abs, std_abs),
+        )
+        print(
+            f"K-S test for absolute values: statistic {statistic}, p-value {p_value}."
+        )
+        print(f"Integrated |f|: Mean: {mean_abs}, std: {std_abs/num_blocks**0.5}.")
+
+        print(f"Statistical analysis time: {time.time() - start_time} s")
         return (
             mean_combined,
-            std_combined,
-            bin_edges,
-            histr / num_blocks,
-            histr_weight / num_blocks,
-            partition_z / num_blocks,
+            error_combined,
+            # bin_edges,
+            # histr / num_blocks,
+            # histr_weight / num_blocks,
+            partition_z,
         )
 
     @torch.no_grad()
@@ -162,11 +244,11 @@ class MCFlow(nf.NormalizingFlow):
         num_samples = self.p.batchsize
 
         loss = torch.tensor(0.0, device=self.p.samples.device)
-        for i in range(num_blocks):
+        for _ in range(num_blocks):
             self.p.samples, self.p.log_q = self.q0(num_samples)
             for flow in self.flows:
-                self.p.samples, self.p.log_det = flow(self.p.samples)
-                self.p.log_q -= self.p.log_det
+                self.p.samples, log_det = flow(self.p.samples)
+                self.p.log_q -= log_det
             self.p.val = self.p.prob(self.p.samples)
 
             prob_abs = torch.abs(self.p.val)
@@ -178,6 +260,7 @@ class MCFlow(nf.NormalizingFlow):
                 * (log_p - self.p.log_q - torch.log(partition_z))
             )
         return loss / num_blocks
+
 
     @torch.no_grad()
     def histogram(self, extvar_dim, bins, range=(0.0, 1.0), has_weight=True):
@@ -208,60 +291,63 @@ class MCFlow(nf.NormalizingFlow):
         return histr, bins
 
     @torch.no_grad()
-    def mcmc_sample(self, steps=1, init=False):
+    def mcmc_sample(self, steps=1, init=False, alpha=0.1):
         batch_size = self.p.batchsize
         device = self.p.samples.device
         vars_shape = self.p.samples.shape
+        epsilon = 1e-16  # Small value to ensure numerical stability
+
+        proposed_samples = torch.empty(vars_shape, device=device)
+        proposed_log_q = torch.empty(batch_size, device=device)
         if init:  # Initialize chains
             self.p.samples[:], self.p.log_q[:] = self.q0(batch_size)
             for flow in self.flows:
-                self.p.samples[:], self.p.log_det[:] = flow(self.p.samples)
-                self.p.log_q -= self.p.log_det
+                self.p.samples, log_det = flow(self.p.samples)
+                self.p.log_q -= log_det
 
-        proposed_samples = torch.empty(vars_shape, device=device)
-        proposed_log_det = torch.empty(batch_size, device=device)
-        proposed_log_q = torch.empty(batch_size, device=device)
-
-        current_prob = torch.abs(self.p.prob(self.p.samples))
-        new_prob = torch.empty(batch_size, device=device)
+        current_weight = alpha * torch.exp(self.p.log_q) + (1 - alpha) * torch.abs(
+            self.p.prob(self.p.samples)
+        )
+        new_weight = torch.empty(batch_size, device=device)
+        acceptance_probs = torch.empty(batch_size, device=device)
+        accept = torch.empty(batch_size, device=device, dtype=torch.bool)
 
         for _ in range(steps):
             # Propose new samples using the normalizing flow
             proposed_samples[:], proposed_log_q[:] = self.q0(batch_size)
             for flow in self.flows:
-                proposed_samples[:], proposed_log_det[:] = flow(proposed_samples)
+                proposed_samples, proposed_log_det = flow(proposed_samples)
                 proposed_log_q -= proposed_log_det
 
-            new_prob[:] = torch.abs(self.p.prob(proposed_samples))
-
-            # Compute acceptance probabilities
-            acceptance_probs = torch.clamp(
-                new_prob
-                / current_prob  # Pi(x') / Pi(x)
-                * torch.exp(
-                    self.p.log_q - proposed_log_q  # q(x) / q(x')
-                ),
-                max=1,
+            new_weight[:] = alpha * torch.exp(proposed_log_q) + (1 - alpha) * torch.abs(
+                self.p.prob(proposed_samples)
             )
+            current_weight[:] = torch.clamp(current_weight, min=epsilon)
+            new_weight[:] = torch.clamp(new_weight, min=epsilon)
+            # Compute acceptance probabilities
+            acceptance_probs[:] = (
+                new_weight / current_weight * torch.exp(self.p.log_q - proposed_log_q)
+            )  # Pi(x') / Pi(x) * q(x) / q(x')
 
             # Accept or reject the proposals
-            accept = torch.rand(batch_size, device=device) <= acceptance_probs
+            accept[:] = torch.rand(batch_size, device=device) <= acceptance_probs
             self.p.samples = torch.where(
                 accept.unsqueeze(1), proposed_samples, self.p.samples
             )
-            current_prob = torch.where(accept, new_prob, current_prob)
+            current_weight = torch.where(accept, new_weight, current_weight)
             self.p.log_q = torch.where(accept, proposed_log_q, self.p.log_q)
         return self.p.samples
-
     @torch.no_grad()
     def mcmc_integration(
         self,
-        num_blocks=100,
         len_chain=1000,
         burn_in=None,
         thinning=1,
-        alpha=1.0,
-        correlation_threshold=0.2,
+        alpha=0.1,
+        step_size=0.2,  # uniform random walk step size
+        mix_rate=0.0,  # mix global random sampling with random walk
+        adaptive=False,
+        adapt_acc_rate=0.4,
     ):
         """
         Perform MCMC integration using batch processing. Using the Metropolis-Hastings algorithm to sample the distribution:
@@ -269,151 +355,282 @@ class MCFlow(nf.NormalizingFlow):
         where q(x) is the learned distribution by the normalizing flow, and p(x) is the target distribution.
 
         Args:
-            num_blocks: Number of blocks to divide the batch into.
             len_chain: Number of samples to draw.
             burn_in: Number of initial samples to discard.
             thinning: Interval to thin the chain.
             alpha: Annealing parameter.
+            step_size: random walk step size.
 
         Returns:
             mean, error: Mean and standard variance of the integrated samples.
         """
-        # epsilon = 1e-10  # Small value to ensure numerical stability
+        epsilon = 1e-16  # Small value to ensure numerical stability
         batch_size = self.p.batchsize
         device = self.p.samples.device
         vars_shape = self.p.samples.shape
         if burn_in is None:
-            burn_in = len_chain // 5
+            burn_in = len_chain // 4
 
         # Initialize chains
-        self.p.samples[:], self.p.log_q[:] = self.q0(batch_size)
-        for flow in self.flows:
-            self.p.samples[:], self.p.log_det[:] = flow(self.p.samples)
-            self.p.log_q -= self.p.log_det
+        start_time = time.time()
+        proposed_z = torch.empty(vars_shape, device=device)
         proposed_samples = torch.empty(vars_shape, device=device)
-        proposed_log_det = torch.empty(batch_size, device=device)
         proposed_log_q = torch.empty(batch_size, device=device)
 
-        current_prob = alpha * torch.exp(self.p.log_q) + (1 - alpha) * torch.abs(
+        current_z, self.p.log_q[:] = self.q0(batch_size)
+        self.p.samples[:] = current_z
+        for flow in self.flows:
+            self.p.samples[:], log_det = flow(self.p.samples)
+            self.p.log_q -= log_det
+
+        current_weight = alpha * torch.exp(self.p.log_q) + (1 - alpha) * torch.abs(
             self.p.prob(self.p.samples)
         )  # Pi(x) = alpha * q(x) + (1 - alpha) * p(x)
-        new_prob = torch.empty(batch_size, device=device)
+        torch.clamp(current_weight, min=epsilon, out=current_weight)
+        new_weight = torch.empty(batch_size, device=device)
+        acceptance_probs = torch.empty(batch_size, device=device)
+        accept = torch.empty(batch_size, device=device, dtype=torch.bool)
 
-        for _ in range(burn_in):
+        bool_mask = torch.zeros(batch_size, device=device, dtype=torch.bool)
+        print(f"Initialization time: {time.time() - start_time} s")
+
+        # burn-in
+        start_time = time.time()
+        for i in range(burn_in):
             # Propose new samples using the normalizing flow
-            proposed_samples[:], proposed_log_q[:] = self.q0(batch_size)
+            bool_mask[:] = torch.rand(batch_size, device=device) > mix_rate
+            proposed_z[:], proposed_log_q[:] = self.q0(batch_size)
+            proposed_z[bool_mask, :] = (
+                current_z[bool_mask, :] + (proposed_z[bool_mask, :] - 0.5) * step_size
+            ) % 1.0
+            # proposed_z[bool_mask, :] = (
+            #     current_z
+            #     + torch.normal(mu, step_size, size=vars_shape, device=device)
+            # ) % 1.0
+            proposed_samples[:] = proposed_z
             for flow in self.flows:
-                proposed_samples[:], proposed_log_det[:] = flow(proposed_samples)
+                proposed_samples[:], proposed_log_det = flow(proposed_samples)
                 proposed_log_q -= proposed_log_det
 
-            new_prob[:] = alpha * torch.exp(proposed_log_q) + (1 - alpha) * torch.abs(
+            new_weight[:] = alpha * torch.exp(proposed_log_q) + (1 - alpha) * torch.abs(
                 self.p.prob(proposed_samples)
             )
-
+            torch.clamp(new_weight, min=epsilon, out=new_weight)
             # Compute acceptance probabilities
-            acceptance_probs = torch.clamp(
-                new_prob
-                / current_prob  # Pi(x') / Pi(x)
-                * torch.exp(
-                    self.p.log_q - proposed_log_q  # q(x) / q(x')
-                ),
-                max=1,
-            )
+            acceptance_probs[:] = (
+                new_weight / current_weight * torch.exp(self.p.log_q - proposed_log_q)
+            )  # Pi(x') / Pi(x) * q(x) / q(x')
 
             # Accept or reject the proposals
-            accept = torch.rand(batch_size, device=device) <= acceptance_probs
+            accept[:] = torch.rand(batch_size, device=device) <= acceptance_probs
             self.p.samples = torch.where(
                 accept.unsqueeze(1), proposed_samples, self.p.samples
             )
-            current_prob = torch.where(accept, new_prob, current_prob)
+            current_z = torch.where(accept.unsqueeze(1), proposed_z, current_z)
+            current_weight = torch.where(accept, new_weight, current_weight)
             self.p.log_q = torch.where(accept, proposed_log_q, self.p.log_q)
             # self.p.log_q[accept] = proposed_log_q[accept]
 
-        ref_values = torch.zeros(num_blocks, device=device)
-        values = torch.zeros(num_blocks, device=device)
-        abs_values = torch.zeros(num_blocks, device=device)
-        block_size = batch_size // num_blocks
+            if adaptive and i % 100 == 0 and i > 0:
+                accept_rate = accept.sum().item() / batch_size
+                if accept_rate < adapt_acc_rate:
+                    step_size *= 0.9
+                else:
+                    step_size *= 1.1
+        print("Adjusted step size: ", step_size)
+        print(f"Burn-in time: {time.time() - start_time} s")
+
+        self.p.val[:] = self.p.prob(self.p.samples)
+        new_prob = torch.empty_like(self.p.val)
+
+        ref_values = torch.zeros(batch_size, device=device)
+        values = torch.zeros(batch_size, device=device)
+        abs_values = torch.zeros(batch_size, device=device)
+        var_p = torch.zeros(batch_size, device=device)
+        var_q = torch.zeros(batch_size, device=device)
+        cov_pq = torch.zeros(batch_size, device=device)
         num_measure = 0
+
+        start_time = time.time()
         for i in range(len_chain):
             # Propose new samples using the normalizing flow
-            proposed_samples[:], proposed_log_q[:] = self.q0(batch_size)
+            bool_mask[:] = torch.rand(batch_size, device=device) > mix_rate
+            proposed_z[:], proposed_log_q[:] = self.q0(batch_size)
+            proposed_z[bool_mask, :] = (
+                current_z[bool_mask, :] + (proposed_z[bool_mask, :] - 0.5) * step_size
+            ) % 1.0
+            # proposed_z[bool_mask, :] = (
+            #     current_z[bool_mask, :]
+            #     + torch.normal(mu, step_size, size=vars_shape, device=device)
+            # ) % 1.0
+            proposed_samples[:] = proposed_z
             for flow in self.flows:
-                proposed_samples[:], proposed_log_det[:] = flow(proposed_samples)
+                proposed_samples[:], proposed_log_det = flow(proposed_samples)
                 proposed_log_q -= proposed_log_det
 
-            new_prob[:] = alpha * torch.exp(proposed_log_q) + (1 - alpha) * torch.abs(
-                self.p.prob(proposed_samples)
-            )
-
-            # Compute acceptance probabilities
-            acceptance_probs = torch.clamp(
+            new_prob[:] = self.p.prob(proposed_samples)
+            new_weight[:] = alpha * torch.exp(proposed_log_q) + (1 - alpha) * torch.abs(
                 new_prob
-                / current_prob  # Pi(x') / Pi(x)
-                * torch.exp(
-                    self.p.log_q - proposed_log_q  # q(x) / q(x')
-                ),
-                max=1,
             )
+            torch.clamp(new_weight, min=epsilon, out=new_weight)
+            # Compute acceptance probabilities
+            acceptance_probs[:] = (
+                new_weight / current_weight * torch.exp(self.p.log_q - proposed_log_q)
+            )  # Pi(x') / Pi(x) * q(x) / q(x')
+
             # Accept or reject the proposals
             accept = torch.rand(batch_size, device=device) <= acceptance_probs
-            self.p.samples = torch.where(
-                accept.unsqueeze(1), proposed_samples, self.p.samples
-            )
-            current_prob = torch.where(accept, new_prob, current_prob)
+            if i % 400 == 0:
+                print("acceptance rate: ", accept.sum().item() / batch_size)
+
+            current_z = torch.where(accept.unsqueeze(1), proposed_z, current_z)
+            self.p.val = torch.where(accept, new_prob, self.p.val)
+            current_weight = torch.where(accept, new_weight, current_weight)
             self.p.log_q = torch.where(accept, proposed_log_q, self.p.log_q)
             # self.p.log_q[accept] = proposed_log_q[accept]
 
             # Measurement
             if i % thinning == 0:
                 num_measure += 1
-                self.p.val = self.p.prob(self.p.samples) / current_prob
 
-                for j in range(num_blocks):
-                    start = j * block_size
-                    end = (j + 1) * block_size
-                    values[j] += torch.mean(self.p.val[start:end])
-                    ref_values[j] += torch.mean(
-                        torch.exp(self.p.log_q[start:end]) / current_prob[start:end]
-                    )
-                    abs_values[j] += torch.mean(torch.abs(self.p.val[start:end]))
+                values += self.p.val / current_weight
+                ref_values += torch.exp(self.p.log_q) / current_weight
+                abs_values += torch.abs(self.p.val / current_weight)
 
-        print("correlation of values: ", calculate_correlation(values))
-        print("correlation of ref_values: ", calculate_correlation(ref_values))
+                var_p += (self.p.val / current_weight) ** 2
+                var_q += (torch.exp(self.p.log_q) / current_weight) ** 2
+                cov_pq += self.p.val * torch.exp(self.p.log_q) / current_weight**2
+        values /= num_measure
+        ref_values /= num_measure
+        abs_values /= num_measure
+        var_p /= num_measure
+        var_q /= num_measure
+        cov_pq /= num_measure
+        print(f"MCMC with measurement time: {time.time() - start_time} s")
+
+        # Statistical analysis
+        print("Start statistical analysis...")
+        start_time = time.time()
+        total_num_measure = num_measure * batch_size
         while (
-            calculate_correlation(values) > correlation_threshold
-            or calculate_correlation(abs_values) > correlation_threshold
+            kstest(
+                values.cpu(), "norm", args=(values.mean().item(), values.std().item())
+            )[1]
+            < 0.05
+            or kstest(
+                ref_values.cpu(),
+                "norm",
+                args=(ref_values.mean().item(), ref_values.std().item()),
+            )[1]
+            < 0.05
         ):
             print("correlation too high, merge blocks")
-            if num_blocks <= 64:
+            if batch_size <= 64:
                 warn(
                     "blocks too small, increase burn-in or reduce thinning",
                     category=UserWarning,
                 )
                 break
-            num_blocks //= 2
-            k = 0
-            for j in range(0, num_blocks):
-                values[j] = (values[k] + values[k + 1]) / 2.0
-                abs_values[j] = (abs_values[k] + abs_values[k + 1]) / 2.0
-                ref_values[j] = (ref_values[k] + ref_values[k + 1]) / 2.0
-                k += 2
-        values = values[:num_blocks]
-        abs_values = abs_values[:num_blocks]
-        ref_values = ref_values[:num_blocks]
+            batch_size //= 2
+            even_idx = torch.arange(0, batch_size * 2, 2, device=device)
+            odd_idx = torch.arange(1, batch_size * 2, 2, device=device)
+            values = (values[even_idx] + values[odd_idx]) / 2.0
+            abs_values = (abs_values[even_idx] + abs_values[odd_idx]) / 2.0
+            ref_values = (ref_values[even_idx] + ref_values[odd_idx]) / 2.0
+            var_p = (var_p[even_idx] + var_p[odd_idx]) / 2.0
+            var_q = (var_q[even_idx] + var_q[odd_idx]) / 2.0
+            cov_pq = (cov_pq[even_idx] + cov_pq[odd_idx]) / 2.0
+        print("new block number: ", batch_size)
 
-        mean = torch.mean(values) / torch.mean(ref_values)
+        statistic, p_value = kstest(
+            values.cpu(), "norm", args=(values.mean().item(), values.std().item())
+        )
+        print(f"K-S test of values: statistic {statistic}, p-value {p_value}")
+
+        statistic, p_value = kstest(
+            ref_values.cpu(),
+            "norm",
+            args=(ref_values.mean().item(), ref_values.std().item()),
+        )
+        print(f"K-S test of ref_values: statistic {statistic}, p-value {p_value}")
+
+        ratio_mean = torch.mean(values) / torch.mean(ref_values)
         abs_val_mean = torch.mean(abs_values) / torch.mean(ref_values)
 
+        cov_matrix = torch.cov(torch.stack((values, ref_values)))
+        print("covariance matrix: ", cov_matrix)
+        ratio_var = (
+            cov_matrix[0, 0]
+            - 2 * ratio_mean * cov_matrix[0, 1]
+            + ratio_mean**2 * cov_matrix[1, 1]
+        ) / torch.mean(ref_values) ** 2
+        ratio_err = (ratio_var / batch_size) ** 0.5
+
         values /= ref_values
-        print("correlation of combined values: ", calculate_correlation(values))
-        error = torch.norm(values - mean) / num_blocks
+        # print("correlation of combined values: ", calculate_correlation(values))
+        _mean = torch.mean(values)
+        _std = torch.std(values)
+        error = _std / batch_size**0.5
+
+        print("old result: {:.5e} +- {:.5e}".format(_mean.item(), error.item()))
+
+        statistic, p_value = kstest(
+            values.cpu(), "norm", args=(_mean.item(), _std.item())
+        )
+        print(f"K-S test of ratio values: statistic {statistic}, p-value {p_value}")
 
         abs_values /= ref_values
-        err_absval = torch.norm(abs_values - abs_val_mean) / num_blocks
+        err_absval = torch.std(abs_values) / batch_size**0.5
         print(
-            "|f(x)| Integration results: {:.5e} +/- {:.5e}",
-            abs_val_mean,
-            err_absval,
+            "|f(x)| Integration results: {:.5e} +/- {:.5e}".format(
+                abs_val_mean.item(), err_absval.item()
+            )
         )
 
-        return mean, error
+        err_var_p = torch.std(var_p) / batch_size**0.5
+        err_var_q = torch.std(var_q) / batch_size**0.5
+        err_cov_pq = torch.std(cov_pq) / batch_size**0.5
+        print(
+            "variance of p: {:.5e} +/- {:.5e}".format(
+                var_p.mean().item(), err_var_p.item()
+            )
+        )
+        print(
+            "variance of q: {:.5e} +/- {:.5e}".format(
+                var_q.mean().item(), err_var_q.item()
+            )
+        )
+        print(
+            "covariance of pq: {:.5e} +/- {:.5e}".format(
+                cov_pq.mean().item(), err_cov_pq.item()
+            )
+        )
+
+        I_alpha = alpha + (1 - alpha) * abs_val_mean.item()
+        print("I_alpha: ", I_alpha)
+
+        var_pq_mean = I_alpha**2 * (
+            var_p.mean() + var_q.mean() * ratio_mean**2 - 2 * ratio_mean * cov_pq.mean()
+        )
+        var_pq = (alpha + (1 - alpha) * abs_values) ** 2 * (
+            var_p + var_q * values**2 - 2 * values * cov_pq
+        )
+        var_pq_err = torch.std(var_pq) / batch_size**0.5
+        print(
+            "Composite variance: {:.5e} +/- {:.5e}  ".format(
+                var_pq_mean.item(), var_pq_err.item()
+            ),
+            var_pq.mean(),
+        )
+        print(
+            "theoretical estimated error : {:.5e}".format(
+                (var_pq_mean / total_num_measure).item() ** 0.5
+            )
+        )
+
+        print(f"Statistical analysis time: {time.time() - start_time} s")
+
+        if adaptive:
+            return ratio_mean, ratio_err, step_size
+        else:
+            return ratio_mean, ratio_err

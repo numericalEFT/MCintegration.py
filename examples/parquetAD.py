@@ -4,7 +4,16 @@ import numpy as np
 import torch
 import re
 import normflows as nf
-from nsf_integrator import generate_model, train_model, train_model_annealing
+import mpmath
+from mpmath import polylog, gamma, findroot
+
+# from nsf_integrator import generate_model, train_model
+from nsf_annealing import (
+    generate_model,
+    train_model,
+    train_model_annealing,
+    retrain_model,
+)
 from functools import partial
 from nsf_multigpu import *
 from funcs_sigma import *
@@ -22,29 +31,42 @@ num_loops = [2, 6, 15, 39, 111, 448]
 num_roots = [1, 2, 3, 4, 5, 6]
 traced_batchsize = [1000, 10000, 20000, 50000, 100000]
 order = 1
-beta = 32.0
-batch_size = 10000
-hidden_layers = 2
-num_hidden_channels = 32
+beta = 1.0
+batch_size = 2000
+num_blocks = 1
+num_hidden_channels = 16
 num_bins = 8
-accum_iter = 10
+accum_iter = 1
 
 init_lr = 8e-3
-Nepochs = 200
-Nblocks = 100
+Nepochs = 100
+Nblocks = 400
 
-is_save = True
+# is_save = True
+is_save = False
+# is_annealing = True
 is_annealing = False
-has_proposal_nfm = False
+# has_init_model = True
+has_init_model = False
 # has_proposal_nfm = True
+has_proposal_nfm = False
 multi_gpu = False
 
-model_state_dict_path = "nfm_o{0}_beta{1}_l1c32b8_state.pt".format(order, beta)
+if is_annealing:
+    init_beta = 0.5
+if has_init_model:
+    init_beta = 8.278869401953296
+    init_state_dict_path = "nfm_o{0}_beta{1}_checkpoint.pth".format(order, init_beta)
+    # init_state_dict_path = "nfm_beta{0}_checkpoint.pth".format(init_beta)
+if has_proposal_nfm:
+    sample_interval = 5
+    pmodel_state_dict_path = "nfm_o{0}_beta{1}_l{2}c32b8_state1.pt".format(
+        order, beta, num_blocks
+    )
 
-print("beta:", beta, "order:", order, "batchsize:", batch_size)
 print(
-    "hidden_layers:",
-    hidden_layers,
+    "num_blocks:",
+    num_blocks,
     "num_hidden_channels:",
     num_hidden_channels,
     "num_bins:",
@@ -57,36 +79,23 @@ def _StringtoIntVector(s):
     return [int(match) for match in re.findall(pattern, s)]
 
 
-def chemical_potential(beta):
-    if beta == 0.1:
-        _mu = -37.301528674058275
-    elif beta == 1.0:
-        _mu = -0.021460754987022185
-    elif beta == 2.0:
-        _mu = 0.7431120842589388
-    elif beta == 4.0:
-        _mu = 0.9426157552012961
-    elif beta == 8.0:
-        _mu = 0.986801399943294
-    elif beta == 10.0:
-        _mu = 0.9916412363704453
-    elif beta == 16.0:
-        _mu = 0.9967680535828609
-    elif beta == 32.0:
-        _mu = 0.9991956396090637
-    elif beta == 64.0:
-        _mu = 0.9997991296749593
-    elif beta == 128.0:
-        _mu = 0.9999497960580543
-    else:
-        _mu = 1.0
-    return _mu
+def chemical_potential(beta, dim=3):
+    def g(mu):
+        return float(
+            mpmath.re(polylog(dim / 2, -mpmath.exp(beta * mu)))
+            + 1 / gamma(1 + dim / 2) * beta ** (dim / 2)
+        )
+
+    return float(findroot(g, 0))
 
 
 class FeynmanDiagram(nf.distributions.Target):
     @torch.no_grad()
     def __init__(self, order, beta, loopBasis, leafstates, leafvalues, batchsize):
         super().__init__(prop_scale=torch.tensor(1.0), prop_shift=torch.tensor(0.0))
+
+        print("beta:", beta, "order:", order, "batchsize:", batchsize)
+
         # Unpack leafstates for clarity
         lftype, lforders, leaf_tau_i, leaf_tau_o, leafMomIdx = leafstates
 
@@ -338,61 +347,107 @@ def load_leaf_info(root_dir, name, key_str):
 def retrain(argv):
     del argv
 
-    nfm_name = "nfm_o{0}_beta{1}".format(order, beta)
+    partition = [(order, 0, 0)]
+    name = "sigma"
+    df = pd.read_csv(os.path.join(root_dir, f"loopBasis_{name}_maxOrder6.csv"))
+    with torch.no_grad():
+        loopBasis = torch.Tensor(
+            df.iloc[: order + 1, : num_loops[order - 1]].to_numpy()
+        )
+    leafstates = []
+    leafvalues = []
 
-    print("Loading normalizing-flow model: ", nfm_name)
-    nfm = torch.load(nfm_name + ".pt")
-    nfm.eval()
-    nfm = nfm.to(torch.device("cuda" if torch.cuda.is_available() else "cpu"))
+    for key in partition:
+        key_str = "".join(map(str, key))
+        state, values = load_leaf_info(root_dir, name, key_str)
+        leafstates.append(state)
+        leafvalues.append(values)
+
+    diagram = FeynmanDiagram(
+        order, beta, loopBasis, leafstates[0], leafvalues[0], batch_size
+    )
+
+    nfm = generate_model(
+        diagram,
+        num_blocks=num_blocks,
+        num_hidden_channels=num_hidden_channels,
+        num_bins=num_bins,
+    )
 
     epochs = Nepochs
     blocks = Nblocks
 
     start_time = time.time()
-    with torch.no_grad():
-        mean, err, partition_z = nfm.integrate_block(blocks)
-    print("Initial integration time: {:.3f}s".format(time.time() - start_time))
-    loss = nfm.loss_block(20, partition_z)
-    print("Initial loss: ", loss)
-    print(
-        "Result with {:d} is {:.5e} +/- {:.5e}. \n Target result:{:.5e}".format(
-            blocks * nfm.p.batchsize, mean, err, nfm.p.targetval
+    if has_proposal_nfm:
+        proposal_model = generate_model(
+            diagram,
+            num_blocks=num_blocks,
+            num_hidden_channels=num_hidden_channels,
+            num_bins=num_bins,
         )
-    )
+        state_dict = torch.load(pmodel_state_dict_path)
 
-    start_time = time.time()
-    train_model(nfm, epochs, nfm.p.batchsize, accum_iter)
+        pmodel_state_dict = proposal_model.state_dict()
+        partial_state_dict = {
+            k: v
+            for k, v in state_dict.items()
+            if k in pmodel_state_dict and "p." not in k
+        }
+        pmodel_state_dict.update(partial_state_dict)
+
+        proposal_model.load_state_dict(pmodel_state_dict)
+        proposal_model.eval()
+
+        retrain_model(
+            nfm,
+            init_state_dict_path,
+            epochs,
+            accum_iter,
+            init_beta,
+            proposal_model=proposal_model,
+            sample_interval=sample_interval,
+        )
+    else:
+        retrain_model(
+            nfm,
+            init_state_dict_path,
+            epochs,
+            accum_iter,
+            init_beta,
+        )
+
     print("Training time: {:.3f}s \n".format(time.time() - start_time))
 
-    if is_save:
-        torch.save(nfm, nfm_name + "_retrain.pt")
-        torch.save(nfm.state_dict(), nfm_name + "_state_retrain.pt")
-
-    print("Start computing integration...")
     start_time = time.time()
+
     num_hist_bins = 25
+    if is_save:
+        torch.save(
+            nfm.state_dict(),
+            "nfm_o{0}_beta{1}_l{2}c{3}b{4}_state_test.pt".format(
+                order, beta, num_blocks, num_hidden_channels, num_bins
+            ),
+        )
+
     with torch.no_grad():
         mean, err, partition_z = nfm.integrate_block(blocks, num_hist_bins)
     print("Final integration time: {:.3f}s".format(time.time() - start_time))
     print(
         "Result with {:d} is {:.5e} +/- {:.5e}. \n Target result:{:.5e}".format(
-            blocks * nfm.p.batchsize, mean, err, nfm.p.targetval
+            blocks * diagram.batchsize, mean, err, nfm.p.targetval
         )
     )
+    loss = nfm.loss_block(400, partition_z)
+    print("Final loss: ", loss, "\n")
 
     start_time = time.time()
-    mean_mcmc, err_mcmc = nfm.mcmc_integration(
-        num_blocks=blocks, len_chain=blocks, thinning=1, alpha=0.1
-    )
+    mean_mcmc, err_mcmc = nfm.mcmc_integration(len_chain=blocks, thinning=1, alpha=0.1)
     print("MCMC integration time: {:.3f}s".format(time.time() - start_time))
     print(
         "MCMC result with {:d} samples is {:.5e} +/- {:.5e}. \n Target result:{:.5e}".format(
-            blocks * nfm.p.batchsize, mean_mcmc, err_mcmc, nfm.p.targetval
+            blocks * diagram.batchsize, mean_mcmc, err_mcmc, nfm.p.targetval
         )
     )
-
-    loss = nfm.loss_block(100, partition_z)
-    print("Final loss: ", loss)
 
 
 def main(argv):
@@ -420,10 +475,22 @@ def main(argv):
 
     nfm = generate_model(
         diagram,
-        hidden_layers=hidden_layers,
+        num_blocks=num_blocks,
         num_hidden_channels=num_hidden_channels,
         num_bins=num_bins,
     )
+    if has_init_model:
+        state_dict = torch.load(init_state_dict_path)["model_state_dict"]
+
+        pmodel_state_dict = nfm.state_dict()
+        partial_state_dict = {
+            k: v
+            for k, v in state_dict.items()
+            if k in pmodel_state_dict and "p." not in k
+        }
+        pmodel_state_dict.update(partial_state_dict)
+        nfm.load_state_dict(pmodel_state_dict)
+
     for name, param in nfm.named_parameters():
         if param.requires_grad:
             print(name, param.data.shape)
@@ -436,7 +503,7 @@ def main(argv):
     with torch.no_grad():
         mean, err, partition_z = nfm.integrate_block(blocks)
     print("Initial integration time: {:.3f}s".format(time.time() - start_time))
-    loss = nfm.loss_block(20, partition_z)
+    loss = nfm.loss_block(100, partition_z)
     print("Initial loss: ", loss)
 
     print(
@@ -459,11 +526,11 @@ def main(argv):
         )
         proposal_model = generate_model(
             diagram,
-            hidden_layers=hidden_layers,
+            num_blocks=num_blocks,
             num_hidden_channels=num_hidden_channels,
             num_bins=num_bins,
         )
-        state_dict = torch.load(model_state_dict_path)
+        state_dict = torch.load(pmodel_state_dict_path)
         # proposal_model.load_state_dict(state_dict)
 
         pmodel_state_dict = proposal_model.state_dict()
@@ -485,22 +552,34 @@ def main(argv):
                 max_iter=epochs,
                 num_samples=diagram.batchsize,
                 accum_iter=accum_iter,
-                has_scheduler=True,
                 proposal_model=proposal_model,
                 save_checkpoint=True,
             )
             run_train(trainfn, world_size)
         else:
-            train_model(
-                nfm,
-                epochs,
-                diagram.batchsize,
-                proposal_model=proposal_model,
-                accum_iter=accum_iter,
-                init_lr=init_lr,
-            )
+            print("initial learning rate: ", init_lr)
+            if is_annealing:
+                train_model_annealing(
+                    nfm,
+                    epochs,
+                    diagram.batchsize,
+                    accum_iter,
+                    init_lr,
+                    init_beta=init_beta,
+                    proposal_model=proposal_model,
+                    sample_interval=sample_interval,
+                )
+            else:
+                train_model(
+                    nfm,
+                    epochs,
+                    diagram.batchsize,
+                    accum_iter=accum_iter,
+                    init_lr=init_lr,
+                    proposal_model=proposal_model,
+                    sample_interval=sample_interval,
+                )
     else:
-        start_time = time.time()
         if multi_gpu:
             trainfn = partial(
                 train_model_parallel,
@@ -508,7 +587,6 @@ def main(argv):
                 max_iter=epochs,
                 num_samples=diagram.batchsize,
                 accum_iter=accum_iter,
-                has_scheduler=True,
                 proposal_model=None,
                 save_checkpoint=True,
             )
@@ -517,7 +595,7 @@ def main(argv):
             print("initial learning rate: ", init_lr)
             if is_annealing:
                 train_model_annealing(
-                    nfm, epochs, diagram.batchsize, accum_iter, init_lr
+                    nfm, epochs, diagram.batchsize, accum_iter, init_lr, init_beta
                 )
             else:
                 train_model(nfm, epochs, diagram.batchsize, accum_iter, init_lr)
@@ -533,13 +611,13 @@ def main(argv):
     if is_save:
         # nfm.save(
         #     "nfm_o{0}_beta{1}_l{2}c{3}b{4}.pt".format(
-        #         order, beta, hidden_layers, num_hidden_channels, num_bins
+        #         order, beta, num_blocks, num_hidden_channels, num_bins
         #     )
         # )
         torch.save(
             nfm.state_dict(),
-            "nfm_o{0}_beta{1}_l{2}c{3}b{4}_state1.pt".format(
-                order, beta, hidden_layers, num_hidden_channels, num_bins
+            "nfm_o{0}_beta{1}_l{2}c{3}b{4}_state_test.pt".format(
+                order, beta, num_blocks, num_hidden_channels, num_bins
             ),
         )
 
@@ -551,11 +629,11 @@ def main(argv):
             blocks * diagram.batchsize, mean, err, nfm.p.targetval
         )
     )
+    loss = nfm.loss_block(400, partition_z)
+    print("Final loss: ", loss, "\n")
 
     start_time = time.time()
-    mean_mcmc, err_mcmc = nfm.mcmc_integration(
-        num_blocks=blocks, len_chain=blocks, thinning=1, alpha=0.1
-    )
+    mean_mcmc, err_mcmc = nfm.mcmc_integration(len_chain=blocks, thinning=1, alpha=0.1)
     print("MCMC integration time: {:.3f}s".format(time.time() - start_time))
     print(
         "MCMC result with {:d} samples is {:.5e} +/- {:.5e}. \n Target result:{:.5e}".format(
@@ -563,8 +641,6 @@ def main(argv):
         )
     )
 
-    loss = nfm.loss_block(100, partition_z)
-    print("Final loss: ", loss)
     # torch.cuda.memory._dump_snapshot("my_snapshot.pickle")
 
 
