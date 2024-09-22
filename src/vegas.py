@@ -8,18 +8,23 @@ class AdaptiveMap:
     """
     Represents the adaptive map used by the Vegas algorithm.
     """
-
-    def __init__(self, ndim: int, bins_per_dim: int = 50):
+    def __init__(self, dim, nbin=1000, range=None, device='cpu'):
         """
         Initialize the adaptive map.
 
         Args:
-            ndim (int): Number of dimensions.
-            bins_per_dim (int, optional): Number of bins per dimension. Defaults to 50.
+            dim (int): Number of dimensions.
+            nbin (int, optional): Number of bins per dimension. Defaults to 1000.
         """
-        self.ndim = ndim
-        self.bins_per_dim = bins_per_dim
-        self.grid = torch.ones(ndim, bins_per_dim)
+        self.dim = dim
+        self.nbin = nbin
+        self.device = device
+        
+        if range is None:
+            range = [(0, 1)] * dim
+        
+        self.range = torch.tensor(range, dtype=torch.float32, device=self.device)
+        self.grid = torch.linspace(0, 1, nbin+1, device=self.device).repeat(dim, 1)
 
     def refine(self, samples: torch.Tensor, values: torch.Tensor):
         """
@@ -30,8 +35,21 @@ class AdaptiveMap:
             values (torch.Tensor): Function values at the sample points of shape (num_samples,).
         """
         # Implementation of grid refinement
+    
+    def jacobian(self, y):
+        """Compute the Jacobian of the transformation."""
+        if not isinstance(y, torch.Tensor):
+            y = torch.tensor(y, dtype=torch.float32, device=self.device)
+        
+        bin_indices = torch.floor(y * self.nbin).long()
+        
+        lower = self.grid[torch.arange(self.dim), bin_indices]
+        upper = self.grid[torch.arange(self.dim), bin_indices + 1]
+        
+        jac = (upper - lower) * self.nbin
+        return jac * (self.range[:, 1] - self.range[:, 0])
 
-    def map_points(self, points: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+    def map(self, points: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Map points from the unit hypercube to the integration domain.
 
@@ -47,6 +65,25 @@ class AdaptiveMap:
         
         # mapped_points = torch.clamp(mapped_points, min=0, max=1)
         # return mapped_points, jacobian
+
+    def invmap(self, points: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Inverse map points from the integration domain to the unit hypercube.
+
+        Args:
+            points (torch.Tensor): Points in the integration domain of shape (num_points, ndim).
+
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: 
+                - Inverse mapped points in the unit hypercube.
+                - Jacobian of the inverse transformation for each point.
+        """
+        # Implementation of inverse point mapping
+        
+        # inv_mapped_points = torch.clamp(inv_mapped_points, min=0, max=1)
+        # return inv_mapped_points, jacobian
+
+
 
 
 class VegasIntegrator(Integrator):
