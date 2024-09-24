@@ -32,15 +32,13 @@ class Integrator:
             self.batch_size = batch_size
             self.neval = -(-neval // batch_size) * batch_size
 
-        # self.batch_size = neval
-
         self.device = device
 
     def __call__(self, f: Callable, **kwargs):
         raise NotImplementedError("Subclasses must implement this method")
 
 
-class MCIntegrator(Integrator):
+class MonteCarlo(Integrator):
     def __init__(
         self,
         map,
@@ -104,7 +102,7 @@ class MCIntegrator(Integrator):
             return values * jac
 
 
-class MCMCIntegrator(MCIntegrator):
+class MCMC(MonteCarlo):
     def __init__(
         self,
         map: Map,
@@ -116,7 +114,6 @@ class MCMCIntegrator(MCIntegrator):
         adapt=False,
         alpha=0.5,
     ):
-        # print(batch_size)
         super().__init__(map, nitn, neval, batch_size, device, adapt, alpha)
         self.n_burnin = n_burnin
 
@@ -134,7 +131,7 @@ class MCMCIntegrator(MCIntegrator):
         current_x, current_jac = self.map.forward(current_y)
         current_prob = f(current_x)
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_prob.abs()
-        current_weight.masked_fill_(current_prob < epsilon, epsilon)
+        current_weight.masked_fill_(current_weight < epsilon, epsilon)
         # current_prob.masked_fill_(current_prob.abs() < epsilon, epsilon)
 
         proposed_y = torch.empty_like(current_y)
@@ -160,9 +157,7 @@ class MCMCIntegrator(MCIntegrator):
                 proposed_x[:], new_jac = self.map.forward(proposed_y)
 
                 new_prob[:] = f(proposed_x)
-                # new_prob.masked_fill_(new_prob.abs() < epsilon, epsilon)
                 new_weight = mix_rate / new_jac + (1 - mix_rate) * new_prob.abs()
-                new_weight.masked_fill_(new_prob < epsilon, epsilon)
 
                 acceptance_probs = new_weight / current_weight * new_jac / current_jac
 

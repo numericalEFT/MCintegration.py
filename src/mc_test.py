@@ -1,67 +1,74 @@
-import numpy as np
-import matplotlib.pyplot as plt
+import torch
+from integrators import MonteCarlo, MCMC
+from maps import Vegas, Affine
+from utils import set_seed, get_device
+
+set_seed(42)
+device = get_device()
 
 
-def target_function(x, y):
-    """目标函数，例如 f(x, y) = x^2 + y^2"""
-    return x**2 + y**2
+def unit_circle_integrand(x):
+    inside_circle = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
+    # return {
+    #     "scalar": inside_circle,
+    #     "vector": torch.stack([inside_circle, 2 * inside_circle], dim=1),
+    #     "matrix": torch.stack(
+    #         [
+    #             inside_circle.unsqueeze(1).repeat(1, 3),
+    #             (2 * inside_circle).unsqueeze(1).repeat(1, 3),
+    #         ],
+    #         dim=1,
+    #     ),
+    # }
+    return inside_circle
 
 
-def proposal_function(x, y, step_size):
-    """生成新提议点"""
-    theta = np.random.uniform(0, 2 * np.pi)
-    r = np.random.uniform(0, step_size)
-    x_new = x + r * np.cos(theta)
-    y_new = y + r * np.sin(theta)
-    return x_new, y_new
+def half_sphere_integrand(x):
+    return torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
 
 
-def is_inside_circle(x, y):
-    """检查点是否在单位圆内"""
-    return x**2 + y**2 <= 1
+dim = 2
+map_spec = [(-1, 1), (-1, 1)]
 
+affine_map = Affine(map_spec, device=device)
+# vegas_map = Vegas(map_spec, device=device)
 
-def mcmc_integrate(num_samples, step_size):
-    """MCMC积分计算单位圆的函数"""
-    x_current, y_current = np.random.uniform(-1, 1), np.random.uniform(-1, 1)
-    while not is_inside_circle(x_current, y_current):
-        x_current, y_current = np.random.uniform(-1, 1), np.random.uniform(-1, 1)
+# Monte Carlo integration
+print("Calculate the area of the unit circle using Monte Carlo integration...")
 
-    accepted_samples = []
+mc_integrator = MonteCarlo(affine_map, neval=400000, batch_size=1000, device=device)
+res = mc_integrator(unit_circle_integrand)
+print("Plain MC Integral results:")
+print(f"  Integral: {res.mean}")
+print(f"  Error: {res.sdev}")
 
-    for _ in range(num_samples):
-        x_new, y_new = proposal_function(x_current, y_current, step_size)
+res = MonteCarlo(map_spec, neval=400000, batch_size=1000, device=device)(
+    unit_circle_integrand
+)
+print("Plain MC Integral results:")
+print(f"  Integral: {res.mean}")
+print(f"  Error: {res.sdev}")
 
-        if is_inside_circle(x_new, y_new):
-            # 计算接受概率
-            acceptance_prob = min(
-                1, target_function(x_new, y_new) / target_function(x_current, y_current)
-            )
-            if np.random.rand() < acceptance_prob:
-                x_current, y_current = x_new, y_new
+mcmc_integrator = MCMC(
+    map_spec, neval=400000, batch_size=1000, n_burnin=100, device=device
+)
+res = mcmc_integrator(unit_circle_integrand, mix_rate=0.5)
+print("MCMC Integral results:")
+print(f"  Integral: {res.mean}")
+print(f"  Error: {res.sdev}")
 
-        accepted_samples.append((x_current, y_current))
+# True value of pi
+print(f"True value of pi: {torch.pi:.6f}")
 
-    return np.array(accepted_samples)
+res = mc_integrator(half_sphere_integrand)
+print("Plain MC Integral results:")
+print(f"  Integral: {res.mean}")
+print(f"  Error: {res.sdev}")
 
-
-# 参数设置
-num_samples = 1000000
-step_size = 0.1
-
-# 运行MCMC积分
-samples = mcmc_integrate(num_samples, step_size)
-
-# 计算积分估计
-integral_estimate = (
-    np.mean([target_function(x, y) for x, y in samples]) * np.pi
-)  # 圆面积
-print("估计的积分值:", integral_estimate)
-
-# 可视化接受的样本
-plt.scatter(*zip(*samples), s=1, color="blue")
-plt.xlim(-1, 1)
-plt.ylim(-1, 1)
-plt.gca().set_aspect("equal", adjustable="box")
-plt.title("MCMC Samples Inside Unit Circle")
-plt.show()
+mcmc_integrator = MCMC(
+    map_spec, neval=400000, batch_size=1000, n_burnin=100, device=device
+)
+res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5)
+print("MCMC Integral results:")
+print(f"  Integral: {res.mean}")
+print(f"  Error: {res.sdev}")
