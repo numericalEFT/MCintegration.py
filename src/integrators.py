@@ -1,188 +1,219 @@
-from typing import Callable, Union, Dict, List, Tuple, Optional
-import numpy as np
+from typing import Callable, Union, List, Tuple, Dict
 import torch
-from .statistics import Statistics
-from .utils import RAvg, to_tensor, from_tensor, discretize
-from .mcmc import MCMCIntegrator, VegasMCMCIntegrator
+from utils import RAvg
+from maps import Map, Affine
+import gvar
+
 
 class Integrator:
     """
-    Base class for Monte Carlo integrators.
+    Base class for all integrators.
     """
 
-    def __init__(self,
-                 ndim: int,
-                 integrand: Callable,
-                 bounds: Union[List[Tuple[float, float]], np.ndarray],
-                 use_gpu: bool = False,
-                 num_cpus: int = 1,
-                 discrete_dims: Optional[List[int]] = None):
-        """
-        Initialize the integrator.
+    def __init__(
+        self,
+        # bounds: Union[List[Tuple[float, float]], np.ndarray],
+        map,
+        neval: int = 1000,
+        batch_size: int = None,
+        device="cpu",
+        # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+    ):
+        if not isinstance(map, Map):
+            map = Affine(map)
 
-        Args:
-            ndim (int): Number of dimensions of the integral.
-            integrand (Callable): The function to integrate. Should accept a tensor of shape (batch_size, ndim).
-            bounds (Union[List[Tuple[float, float]], np.ndarray]): Integration bounds. Can be a list of tuples or a numpy array of shape (ndim, 2).
-            use_gpu (bool, optional): Whether to use GPU acceleration. Defaults to False.
-            num_cpus (int, optional): Number of CPU cores to use for parallel computation. Ignored if use_gpu is True. Defaults to 1.
-            device (torch.device, optional): The device to use for computation. Defaults to torch.device("cuda" if use_gpu else "cpu").
-            statistics (Statistics, optional): The statistics object to use for storing integration results and error estimates. Defaults to Statistics().
-        """
-        self.ndim = ndim
-        self.integrand = integrand
-        self.bounds = bounds
-        self.use_gpu = use_gpu
-        self.num_cpus = num_cpus
-        self.device = torch.device("cuda" if use_gpu else "cpu")
-        self.discrete_dims = discrete_dims or []
-        self.statistics = Statistics()
+        self.dim = map.dim
+        self.map = map
+        self.neval = neval
+        if batch_size is None:
+            self.batch_size = neval
+            self.neval = neval
+        else:
+            self.batch_size = batch_size
+            self.neval = -(-neval // batch_size) * batch_size
 
-    def _wrap_integrand(self, func: Callable) -> Callable:
-        def wrapped(x):
-            x_tensor = to_tensor(x, self.device)
-            x_discrete = discretize(x_tensor, self.discrete_dims, self.bounds)
-            result = func(x_discrete)
-            return from_tensor(result)
-        return wrapped
+        # self.batch_size = neval
 
-    # def integrate(self, neval: int) -> Union[float, np.ndarray, Dict]:
-    def integrate(self, *args, **kwargs) -> Union[float, np.ndarray, Dict]:
-        """
-        Perform the integration.
+        self.device = device
 
-        Args:
-            neval (int): Number of function evaluations.
+    def __call__(self, f: Callable, **kwargs):
+        raise NotImplementedError("Subclasses must implement this method")
 
-        Returns:
-            Union[float, np.ndarray, Dict]: The estimated integral value. Could be a scalar, array, or dictionary.
-        """
-        raise NotImplementedError("Subclasses should implement this method.")
 
-    def get_sample_points(self, num_points: int) -> torch.Tensor:
-        """
-        Generate sample points for the integration.
+class MCIntegrator(Integrator):
+    def __init__(
+        self,
+        map,
+        nitn: int = 10,
+        neval: int = 1000,
+        batch_size: int = None,
+        device="cpu",
+        adapt=False,
+        alpha=0.5,
+    ):
+        super().__init__(map, neval, batch_size, device)
+        self.adapt = adapt
+        self.alpha = alpha
+        self.nitn = nitn
 
-        Args:
-            num_points (int): Number of sample points to generate.
+    def __call__(self, f: Callable, **kwargs):
+        u = torch.rand(self.batch_size, self.dim, device=self.device)
+        x, _ = self.map.forward(u)
+        f_values = f(x)
+        f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
+        type_fval = f_values.dtype if f_size == 1 else type(f_values[0].dtype)
 
-        Returns:
-            torch.Tensor: A tensor of shape (num_points, ndim) containing the sample points.
-        """
-        raise NotImplementedError("Subclasses should implement this method.")
+        mean = torch.zeros(f_size, dtype=type_fval, device=self.device)
+        var = torch.zeros(f_size, dtype=type_fval, device=self.device)
+        # var = torch.zeros((f_size, f_size), dtype=type_fval, device=self.device)
 
-    def get_statistics(self) -> Statistics:
-        """
-        Get the statistics of the integration.
+        result = RAvg(weighted=self.adapt)
+        neval_batch = self.neval // self.batch_size
 
-        Returns:
-            Statistics: The statistics object containing integration results and error estimates.
-        """
-        return self.statistics
+        for itn in range(self.nitn):
+            mean[:] = 0
+            var[:] = 0
+            for _ in range(neval_batch):
+                y = torch.rand(
+                    self.batch_size, self.dim, dtype=torch.float64, device=self.device
+                )
+                x, jac = self.map.forward(y)
 
-class PlainMCIntegrator(Integrator):
-    """
-    Plain Monte Carlo integrator.
-    """
-    
-    def integrate(self, neval: int) -> Union[float, np.ndarray, Dict]:
-        samples = self.get_sample_points(neval)
-        values = self.integrand(samples)
-        
-        ravg = RAvg(values)
-        result = ravg.mean()
-        error = ravg.error()
+                f_values = f(x)
+                batch_results = self._multiply_by_jacobian(f_values, jac)
 
-        self.statistics.update(result, error, neval)
+                mean += torch.mean(batch_results, dim=-1) / neval_batch
+                var += torch.var(batch_results, dim=-1) / (self.neval * neval_batch)
+
+                if self.adapt:
+                    self.map.add_training_data(y, batch_results**2)
+
+            result.sum_neval += self.neval
+            result.add(gvar.gvar(mean.item(), (var**0.5).item()))
+            if self.adapt:
+                self.map.adapt(alpha=self.alpha)
+
         return result
 
-    def get_sample_points(self, num_points: int) -> torch.Tensor:
-        return torch.rand(num_points, self.ndim, device=self.device)
+    def _multiply_by_jacobian(self, values, jac):
+        # if isinstance(values, dict):
+        #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
+        if isinstance(values, (list, tuple)):
+            return torch.stack([v * jac for v in values])
+        else:
+            return values * jac
 
-class MCMCIntegratorWrapper(Integrator):
-    def __init__(self,
-                 ndim: int,
-                 integrand: Callable,
-                 prior: Callable,
-                 proposal: Callable,
-                 bounds: Union[List[Tuple[float, float]], np.ndarray],
-                 discrete_dims: Optional[List[int]] = None,
-                 use_gpu: bool = False,
-                 num_cpus: int = 1):
-        super().__init__(ndim, integrand, bounds, use_gpu, num_cpus, discrete_dims)
-        self.mcmc_integrator = MCMCIntegrator(ndim, self._wrap_integrand(integrand), prior, proposal, bounds, discrete_dims, use_gpu)
 
-    def integrate(self, nsteps: int, burnin: int = 1000) -> Union[float, np.ndarray, Dict]:
-        result = self.mcmc_integrator.integrate(nsteps, burnin)
-        error_estimate = self._estimate_error(result)
-        self.statistics.update(result, error_estimate, nsteps)
-        return from_tensor(result)
+class MCMCIntegrator(MCIntegrator):
+    def __init__(
+        self,
+        map: Map,
+        nitn: int = 10,
+        neval=10000,
+        batch_size=None,
+        n_burnin=500,
+        device="cpu",
+        adapt=False,
+        alpha=0.5,
+    ):
+        # print(batch_size)
+        super().__init__(map, nitn, neval, batch_size, device, adapt, alpha)
+        self.n_burnin = n_burnin
 
-    def _estimate_error(self, chain: torch.Tensor) -> torch.Tensor:
-        # Use batch means for error estimate
-        batch_size = min(100, len(chain) // 64) 
-        num_batches = len(chain) // batch_size
-        batches = chain[:num_batches * batch_size].reshape(num_batches, batch_size, -1)
-        batch_means = torch.mean(batches, dim=1)
-        return torch.std(batch_means, dim=0) / np.sqrt(num_batches)
+    def __call__(
+        self,
+        f: Callable,
+        proposal_dist="global_uniform",
+        thinning=1,
+        mix_rate=0.0,
+        **kwargs,
+    ):
+        epsilon = 1e-16  # Small value to ensure numerical stability
+        vars_shape = (self.batch_size, self.dim)
+        current_y = torch.rand(vars_shape, dtype=torch.float64, device=self.device)
+        current_x, current_jac = self.map.forward(current_y)
+        current_prob = f(current_x)
+        current_weight = mix_rate / current_jac + (1 - mix_rate) * current_prob.abs()
+        current_weight.masked_fill_(current_prob < epsilon, epsilon)
+        # current_prob.masked_fill_(current_prob.abs() < epsilon, epsilon)
 
-class VegasMCMCIntegratorWrapper(Integrator):
-    def __init__(self,
-                 ndim: int,
-                 integrand: Callable,
-                 prior: Callable,
-                 bounds: Union[List[Tuple[float, float]], np.ndarray],
-                 discrete_dims: Optional[List[int]] = None,
-                 use_gpu: bool = False,
-                 num_cpus: int = 1):
-        super().__init__(ndim, integrand, bounds, use_gpu, num_cpus, discrete_dims)
-        self.vegas_mcmc_integrator = VegasMCMCIntegrator(ndim, self._wrap_integrand(integrand), prior, bounds, discrete_dims, use_gpu)
+        proposed_y = torch.empty_like(current_y)
+        proposed_x = torch.empty_like(proposed_y)
+        new_prob = torch.empty_like(current_prob)
+        new_weight = torch.empty_like(current_weight)
 
-    def integrate(self, nsteps: int, burnin: int = 1000, adapt_iters: int = 5, adapt_evals: int = 10000) -> Union[float, np.ndarray, Dict]:
-        self.vegas_mcmc_integrator.adapt(adapt_evals, adapt_iters)
-        result = self.vegas_mcmc_integrator.integrate(nsteps, burnin)
-        error_estimate = self._estimate_error(result)
-        self.statistics.update(result, error_estimate, nsteps)
-        return from_tensor(result)
+        f_size = len(current_prob) if isinstance(current_prob, (list, tuple)) else 1
+        type_fval = current_prob.dtype if f_size == 1 else type(current_prob[0].dtype)
+        mean = torch.zeros(f_size, dtype=type_fval, device=self.device)
+        mean_ref = torch.zeros_like(mean)
+        var = torch.zeros(f_size, dtype=type_fval, device=self.device)
+        var_ref = torch.zeros_like(mean)
 
-    def _estimate_error(self, chain: torch.Tensor) -> torch.Tensor:
-        return MCMCIntegratorWrapper._estimate_error(self, chain)
+        result = RAvg(weighted=self.adapt)
+        result_ref = RAvg(weighted=self.adapt)
 
-def integrate(integrand: Callable,
-              ndim: int,
-              bounds: Union[List[Tuple[float, float]], np.ndarray],
-              method: str = 'plain',
-              neval: int = 10000,
-              use_gpu: bool = False,
-              num_cpus: int = 1,
-              discrete_dims: Optional[List[int]] = None,
-              **kwargs) -> Union[float, np.ndarray, Dict]:
-    """
-    Convenience function to perform integration using the specified method.
+        neval_batch = self.neval // self.batch_size
+        n_meas = 0
+        for itn in range(self.nitn):
+            for i in range(self.neval // self.batch_size):
+                proposed_y[:] = self._propose(current_y, proposal_dist, **kwargs)
+                proposed_x[:], new_jac = self.map.forward(proposed_y)
 
-    Args:
-        integrand (Callable): The function to integrate. Should accept a tensor of shape (batch_size, ndim).
-        ndim (int): Number of dimensions of the integral.
-        bounds (Union[List[Tuple[float, float]], np.ndarray]): Integration bounds. Can be a list of tuples or a numpy array of shape (ndim, 2).
-        method (str, optional): Integration method to use. Options: 'plain', 'stratified', 'vegas'. Defaults to 'plain'.
-        neval (int, optional): Number of function evaluations. Defaults to 10000.
-        use_gpu (bool, optional): Whether to use GPU acceleration. Defaults to False.
-        num_cpus (int, optional): Number of CPU cores to use for parallel computation. Ignored if use_gpu is True. Defaults to 1.
-        **kwargs: Additional keyword arguments for the specific integration method.
+                new_prob[:] = f(proposed_x)
+                # new_prob.masked_fill_(new_prob.abs() < epsilon, epsilon)
+                new_weight = mix_rate / new_jac + (1 - mix_rate) * new_prob.abs()
+                new_weight.masked_fill_(new_prob < epsilon, epsilon)
 
-    Returns:
-        Union[float, np.ndarray, Dict]: The estimated integral value. Could be a scalar, array, or dictionary.
-    """
-    if method == 'plainMC':
-        integrator = PlainMCIntegrator(ndim, integrand, bounds, use_gpu, num_cpus)
-    elif method == 'mcmc':
-        prior = kwargs.get('prior', lambda x: torch.ones_like(x[..., 0]))
-        proposal = kwargs.get('proposal', lambda x: x + torch.randn_like(x) * 0.1)
-        integrator = MCMCIntegratorWrapper(ndim, integrand, prior, proposal, bounds, discrete_dims, use_gpu, num_cpus)
-        return integrator.integrate(neval, kwargs.get('burnin', 1000))
-    elif method == 'vegas_mcmc':
-        prior = kwargs.get('prior', lambda x: torch.ones_like(x[..., 0]))
-        integrator = VegasMCMCIntegratorWrapper(ndim, integrand, prior, bounds, discrete_dims, use_gpu, num_cpus)
-        return integrator.integrate(neval, kwargs.get('burnin', 1000), kwargs.get('adapt_iters', 5), kwargs.get('adapt_evals', 10000))
-    else:
-        raise ValueError(f"Unknown integration method: {method}")
+                acceptance_probs = new_weight / current_weight * new_jac / current_jac
+
+                accept = (
+                    torch.rand(self.batch_size, dtype=torch.float64, device=self.device)
+                    <= acceptance_probs
+                )
+
+                current_y = torch.where(accept.unsqueeze(1), proposed_y, current_y)
+                current_prob = torch.where(accept, new_prob, current_prob)
+                current_weight = torch.where(accept, new_weight, current_weight)
+                current_jac = torch.where(accept, new_jac, current_jac)
+
+                if i < self.n_burnin and (self.adapt or itn == 0):
+                    continue
+                elif i % thinning == 0:
+                    n_meas += 1
+                    batch_results = current_prob / current_weight
+
+                    mean += torch.mean(batch_results, dim=-1) / neval_batch
+                    var += torch.var(batch_results, dim=-1) / neval_batch
+
+                    batch_results_ref = 1 / (current_jac * current_weight)
+                    mean_ref += torch.mean(batch_results_ref, dim=-1) / neval_batch
+                    var_ref += torch.var(batch_results_ref, dim=-1) / neval_batch
+
+                    if self.adapt:
+                        self.map.add_training_data(
+                            current_y, (current_prob * current_jac) ** 2
+                        )
+            result.sum_neval += self.neval
+            result.add(gvar.gvar(mean.item(), ((var / n_meas) ** 0.5).item()))
+            result_ref.sum_neval += self.batch_size
+            result_ref.add(
+                gvar.gvar(mean_ref.item(), ((var_ref / n_meas) ** 0.5).item())
+            )
+
+            if self.adapt:
+                self.map.adapt(alpha=self.alpha)
+
+        return result / result_ref
+
+    def _propose(self, u, proposal_dist, **kwargs):
+        if proposal_dist == "random_walk":
+            step_size = kwargs.get("step_size", 0.2)
+            return (u + (torch.rand_like(u) - 0.5) * step_size) % 1.0
+        elif proposal_dist == "global_uniform":
+            return torch.rand_like(u)
+        # elif proposal_dist == "gaussian":
+        #     mean = kwargs.get("mean", torch.zeros_like(u))
+        #     std = kwargs.get("std", torch.ones_like(u))
+        #     return torch.normal(mean, std)
+        else:
+            raise ValueError(f"Unknown proposal distribution: {proposal_dist}")
