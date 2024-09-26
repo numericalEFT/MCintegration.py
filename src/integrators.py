@@ -66,12 +66,12 @@ class MonteCarlo(Integrator):
         # var = torch.zeros((f_size, f_size), dtype=type_fval, device=self.device)
 
         result = RAvg(weighted=self.adapt)
-        neval_batch = self.neval // self.batch_size
+        epoch = self.neval // self.batch_size
 
         for itn in range(self.nitn):
             mean[:] = 0
             var[:] = 0
-            for _ in range(neval_batch):
+            for _ in range(epoch):
                 y = torch.rand(
                     self.batch_size, self.dim, dtype=torch.float64, device=self.device
                 )
@@ -80,8 +80,8 @@ class MonteCarlo(Integrator):
                 f_values = f(x)
                 batch_results = self._multiply_by_jacobian(f_values, jac)
 
-                mean += torch.mean(batch_results, dim=-1) / neval_batch
-                var += torch.var(batch_results, dim=-1) / (self.neval * neval_batch)
+                mean += torch.mean(batch_results, dim=-1) / epoch
+                var += torch.var(batch_results, dim=-1) / (self.neval * epoch)
 
                 if self.adapt:
                     self.map.add_training_data(y, batch_results**2)
@@ -129,18 +129,18 @@ class MCMC(MonteCarlo):
         vars_shape = (self.batch_size, self.dim)
         current_y = torch.rand(vars_shape, dtype=torch.float64, device=self.device)
         current_x, current_jac = self.map.forward(current_y)
-        current_prob = f(current_x)
-        current_weight = mix_rate / current_jac + (1 - mix_rate) * current_prob.abs()
+        current_fval = f(current_x)
+        current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
         current_weight.masked_fill_(current_weight < epsilon, epsilon)
-        # current_prob.masked_fill_(current_prob.abs() < epsilon, epsilon)
+        # current_fval.masked_fill_(current_fval.abs() < epsilon, epsilon)
 
         proposed_y = torch.empty_like(current_y)
         proposed_x = torch.empty_like(proposed_y)
-        new_prob = torch.empty_like(current_prob)
+        new_fval = torch.empty_like(current_fval)
         new_weight = torch.empty_like(current_weight)
 
-        f_size = len(current_prob) if isinstance(current_prob, (list, tuple)) else 1
-        type_fval = current_prob.dtype if f_size == 1 else type(current_prob[0].dtype)
+        f_size = len(current_fval) if isinstance(current_fval, (list, tuple)) else 1
+        type_fval = current_fval.dtype if f_size == 1 else type(current_fval[0].dtype)
         mean = torch.zeros(f_size, dtype=type_fval, device=self.device)
         mean_ref = torch.zeros_like(mean)
         var = torch.zeros(f_size, dtype=type_fval, device=self.device)
@@ -149,15 +149,15 @@ class MCMC(MonteCarlo):
         result = RAvg(weighted=self.adapt)
         result_ref = RAvg(weighted=self.adapt)
 
-        neval_batch = self.neval // self.batch_size
+        epoch = self.neval // self.batch_size
         n_meas = 0
         for itn in range(self.nitn):
-            for i in range(self.neval // self.batch_size):
+            for i in range(epoch):
                 proposed_y[:] = self._propose(current_y, proposal_dist, **kwargs)
                 proposed_x[:], new_jac = self.map.forward(proposed_y)
 
-                new_prob[:] = f(proposed_x)
-                new_weight = mix_rate / new_jac + (1 - mix_rate) * new_prob.abs()
+                new_fval[:] = f(proposed_x)
+                new_weight = mix_rate / new_jac + (1 - mix_rate) * new_fval.abs()
 
                 acceptance_probs = new_weight / current_weight * new_jac / current_jac
 
@@ -167,7 +167,7 @@ class MCMC(MonteCarlo):
                 )
 
                 current_y = torch.where(accept.unsqueeze(1), proposed_y, current_y)
-                current_prob = torch.where(accept, new_prob, current_prob)
+                current_fval = torch.where(accept, new_fval, current_fval)
                 current_weight = torch.where(accept, new_weight, current_weight)
                 current_jac = torch.where(accept, new_jac, current_jac)
 
@@ -175,18 +175,18 @@ class MCMC(MonteCarlo):
                     continue
                 elif i % thinning == 0:
                     n_meas += 1
-                    batch_results = current_prob / current_weight
+                    batch_results = current_fval / current_weight
 
-                    mean += torch.mean(batch_results, dim=-1) / neval_batch
-                    var += torch.var(batch_results, dim=-1) / neval_batch
+                    mean += torch.mean(batch_results, dim=-1) / epoch
+                    var += torch.var(batch_results, dim=-1) / epoch
 
                     batch_results_ref = 1 / (current_jac * current_weight)
-                    mean_ref += torch.mean(batch_results_ref, dim=-1) / neval_batch
-                    var_ref += torch.var(batch_results_ref, dim=-1) / neval_batch
+                    mean_ref += torch.mean(batch_results_ref, dim=-1) / epoch
+                    var_ref += torch.var(batch_results_ref, dim=-1) / epoch
 
                     if self.adapt:
                         self.map.add_training_data(
-                            current_y, (current_prob * current_jac) ** 2
+                            current_y, (current_fval * current_jac) ** 2
                         )
             result.sum_neval += self.neval
             result.add(gvar.gvar(mean.item(), ((var / n_meas) ** 0.5).item()))
