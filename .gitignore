@@ -1,0 +1,20 @@
+# Runtime files
+run/*
+*.dat
+*.txt
+__pycache__
+*.pyc
+*.pt
+
+*.vscode
+
+# Temporarily unignore vscode settings
+.vscode/
+
+*.DS_Store
+*.pb.gz
+.DS_Store
+*.history
+
+*.pdf
+*.dot
