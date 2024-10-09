@@ -2,6 +2,37 @@ import torch
 import numpy as np
 from torch import nn
 
+class NormalizingFlow(nn.Module):
+    def __init__(self, q0, maps):
+        super().__init__()
+        if not maps:
+            raise ValueError("Maps can not be empty.")
+        self.q0 = q0
+        self.maps = maps
+        self.dim = maps[0].dim
+        self.bounds = maps[0].bounds
+    def forward(self, u):
+        log_detJ = torch.zeros(len(u), device=u.device)
+        for map in self.flows:
+                u, log_detj = map.forward(u)
+                log_detJ += log_detj
+        return u, log_detJ
+    def inverse(self, x):
+        log_detJ = torch.zeros(len(x), device=x.device)
+        for i in range(len(self.maps) - 1, -1, -1):
+            x, log_detj = self.maps[i].inverse(x)
+            log_detJ += log_detj
+        return x, log_detJ
+    def sample(self, nsample):
+        u, log_detJ = self.q0.sample(nsample)
+        for map in self.maps:
+            u, log_detj = map(u)
+            log_detJ += log_detj
+        return u, log_detJ
+    
+
+
+
 class Map(nn.Module):
     def __init__(self, bounds, device="cpu"):
         super().__init__()
@@ -17,10 +48,6 @@ class Map(nn.Module):
     
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
-    
-    def sample(self, nsample):
-        raise NotImplementedError("Subclasses must implement this method")
-
 
 
 class Affine(Map):
@@ -266,8 +293,7 @@ class Vegas(Map):
 
         return u, torch.log(jac)
 
-    def sample(self, nsample):
-        return super()
+        
 
 
 class NormalizingFlow(Map):
@@ -281,5 +307,3 @@ class NormalizingFlow(Map):
     def inverse(self, x):
         return self.flow_model.inverse(x)
     
-    def sample(self, nsample):
-        return self.flow_model.sample(nsample)
