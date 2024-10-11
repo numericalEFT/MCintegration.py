@@ -1,7 +1,8 @@
 from typing import Callable, Union, List, Tuple, Dict
 import torch
 from utils import RAvg
-from maps import Map, Affine, NormalizingFlow
+from maps import Map, Affine, CompositeMap
+from base import Uniform
 import gvar
 
 
@@ -12,19 +13,17 @@ class Integrator:
 
     def __init__(
         self,
-        # bounds: Union[List[Tuple[float, float]], np.ndarray],
-        maps: NormalizingFlow,
+        bounds: List[Tuple[float, float]],  #, np.ndarray],
+        q0 = None,
+        maps = None,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
-        dtype = torch.float32,
         # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     ):
-        #if not isinstance(map, Map):
-        #    map = Affine(map)
-
-        self.dim = maps.dim
-        self.bounds = maps.bounds
+        self.dim = len(bounds)
+        if not q0:
+            q0 = Uniform(bounds)
         self.maps = maps
         self.neval = neval
         if nbatch is None:
@@ -35,10 +34,15 @@ class Integrator:
             self.neval = -(-neval // nbatch) * nbatch
 
         self.device = device
-        self.dtype = dtype
     def __call__(self, f: Callable, **kwargs):
         raise NotImplementedError("Subclasses must implement this method")
-
+    def sample(self, nsample, **kwargs):
+        u,  log_detJ= self.q0.sample(nsample, **kwargs)
+        if not self.maps:
+            return u, log_detJ
+        else:
+            u, log_detj = self.maps.forward(u)
+            return u, log_detJ + log_detj 
 
 class MonteCarlo(Integrator):
     def __init__(
@@ -51,11 +55,11 @@ class MonteCarlo(Integrator):
     ):
         super().__init__(map, neval, nbatch, device)
         self.nitn = nitn
-
+    
     def __call__(self, f: Callable, **kwargs):
         # u = torch.rand(self.nbatch, self.dim, device=self.device)
         # x, _ = self.map.forward(u)
-        x,_ = self.maps.sample(self.nbatch)
+        x,_ = self.sample(self.nbatch)
         f_values = f(x)
         f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
         type_fval = f_values.dtype if f_size == 1 else type(f_values[0].dtype)
@@ -75,7 +79,7 @@ class MonteCarlo(Integrator):
                 #     self.nbatch, self.dim, dtype=torch.float64, device=self.device
                 # )
                 # x, jac = self.map.forward(y)
-                x, log_detJ = self.maps.sample(self.nbatch)
+                x, log_detJ = self.sample(self.nbatch)
                 f_values = f(x)
                 batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ) )
 
@@ -84,9 +88,15 @@ class MonteCarlo(Integrator):
 
             result.sum_neval += self.neval
             result.add(gvar.gvar(mean.item(), (var**0.5).item()))
-
         return result
-
+    
+    # def sample(self, nsample):
+    #     u, log_detJ = self.q0.sample(nsample)
+    #     for map in self.maps:
+    #         u, log_detj = map(u)
+    #         log_detJ += log_detj
+    #     return u, log_detJ
+    
     def _multiply_by_jacobian(self, values, jac):
         # if isinstance(values, dict):
         #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
@@ -123,7 +133,7 @@ class MCMC(MonteCarlo):
         #vars_shape = (self.nbatch, self.dim)
         # current_y = torch.rand(vars_shape, dtype=torch.float64, device=self.device)
         # current_x, current_jac = self.map.forward(current_y)
-        current_x, current_jac = self.maps.sample(self.nbatch)
+        current_x, current_jac = self.sample(self.nbatch)
         current_jac = torch.exp(current_jac)
         current_fval = f(current_x)
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
