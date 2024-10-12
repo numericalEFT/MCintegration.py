@@ -13,17 +13,20 @@ class Integrator:
 
     def __init__(
         self,
-        bounds: List[Tuple[float, float]],  #, np.ndarray],
-        q0 = None,
-        maps = None,
+        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        q0=None,
+        maps=None,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
+        adapt=False,
         # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     ):
+        self.adapt = adapt
         self.dim = len(bounds)
         if not q0:
             q0 = Uniform(bounds)
+        self.q0 = q0
         self.maps = maps
         self.neval = neval
         if nbatch is None:
@@ -34,32 +37,38 @@ class Integrator:
             self.neval = -(-neval // nbatch) * nbatch
 
         self.device = device
+
     def __call__(self, f: Callable, **kwargs):
         raise NotImplementedError("Subclasses must implement this method")
+
     def sample(self, nsample, **kwargs):
-        u,  log_detJ= self.q0.sample(nsample, **kwargs)
+        u, log_detJ = self.q0.sample(nsample)
         if not self.maps:
             return u, log_detJ
         else:
             u, log_detj = self.maps.forward(u)
-            return u, log_detJ + log_detj 
+            return u, log_detJ + log_detj
+
 
 class MonteCarlo(Integrator):
     def __init__(
         self,
-        map,
+        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        q0=None,
+        maps=None,
         nitn: int = 10,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
+        adapt=False,
     ):
-        super().__init__(map, neval, nbatch, device)
+        super().__init__(bounds, q0, maps, neval, nbatch, device, adapt)
         self.nitn = nitn
-    
+
     def __call__(self, f: Callable, **kwargs):
         # u = torch.rand(self.nbatch, self.dim, device=self.device)
         # x, _ = self.map.forward(u)
-        x,_ = self.sample(self.nbatch)
+        x, _ = self.sample(self.nbatch)
         f_values = f(x)
         f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
         type_fval = f_values.dtype if f_size == 1 else type(f_values[0].dtype)
@@ -81,7 +90,9 @@ class MonteCarlo(Integrator):
                 # x, jac = self.map.forward(y)
                 x, log_detJ = self.sample(self.nbatch)
                 f_values = f(x)
-                batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ) )
+                batch_results = self._multiply_by_jacobian(
+                    f_values, torch.exp(log_detJ)
+                )
 
                 mean += torch.mean(batch_results, dim=-1) / epoch
                 var += torch.var(batch_results, dim=-1) / (self.neval * epoch)
@@ -89,14 +100,14 @@ class MonteCarlo(Integrator):
             result.sum_neval += self.neval
             result.add(gvar.gvar(mean.item(), (var**0.5).item()))
         return result
-    
+
     # def sample(self, nsample):
     #     u, log_detJ = self.q0.sample(nsample)
     #     for map in self.maps:
     #         u, log_detj = map(u)
     #         log_detJ += log_detj
     #     return u, log_detJ
-    
+
     def _multiply_by_jacobian(self, values, jac):
         # if isinstance(values, dict):
         #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
@@ -109,16 +120,17 @@ class MonteCarlo(Integrator):
 class MCMC(MonteCarlo):
     def __init__(
         self,
-        map: Map,
+        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        q0=None,
+        maps=None,
         nitn: int = 10,
         neval=10000,
         nbatch=None,
         nburnin=500,
         device="cpu",
         adapt=False,
-        alpha=0.5,
     ):
-        super().__init__(map, nitn, neval, nbatch, device, adapt, alpha)
+        super().__init__(bounds, q0, maps, nitn, neval, nbatch, device, adapt)
         self.nburnin = nburnin
 
     def __call__(
@@ -130,10 +142,14 @@ class MCMC(MonteCarlo):
         **kwargs,
     ):
         epsilon = 1e-16  # Small value to ensure numerical stability
-        #vars_shape = (self.nbatch, self.dim)
-        # current_y = torch.rand(vars_shape, dtype=torch.float64, device=self.device)
-        # current_x, current_jac = self.map.forward(current_y)
-        current_x, current_jac = self.sample(self.nbatch)
+        # vars_shape = (self.nbatch, self.dim)
+        current_y, current_jac = self.q0.sample(self.nbatch)
+        if self.maps:
+            current_x, jac = self.maps.forward(current_y)
+            current_jac += jac
+        else:
+            current_x = current_y
+        # current_x, current_jac = self.sample(self.nbatch)
         current_jac = torch.exp(current_jac)
         current_fval = f(current_x)
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
@@ -160,7 +176,7 @@ class MCMC(MonteCarlo):
         for itn in range(self.nitn):
             for i in range(epoch):
                 proposed_y[:] = self._propose(current_y, proposal_dist, **kwargs)
-                proposed_x[:], new_jac = self.map.forward(proposed_y)
+                proposed_x[:], new_jac = self.maps.forward(proposed_y)
 
                 new_fval[:] = f(proposed_x)
                 new_weight = mix_rate / new_jac + (1 - mix_rate) * new_fval.abs()
@@ -177,7 +193,7 @@ class MCMC(MonteCarlo):
                 current_weight = torch.where(accept, new_weight, current_weight)
                 current_jac = torch.where(accept, new_jac, current_jac)
 
-                if i < self.nburnin and (self.adapt or itn == 0):
+                if i < self.nburnin and itn == 0:
                     continue
                 elif i % thinning == 0:
                     n_meas += 1
@@ -190,19 +206,12 @@ class MCMC(MonteCarlo):
                     mean_ref += torch.mean(batch_results_ref, dim=-1) / epoch
                     var_ref += torch.var(batch_results_ref, dim=-1) / epoch
 
-                    if self.adapt:
-                        self.map.add_training_data(
-                            current_y, (current_fval * current_jac) ** 2
-                        )
             result.sum_neval += self.neval
             result.add(gvar.gvar(mean.item(), ((var / n_meas) ** 0.5).item()))
             result_ref.sum_neval += self.nbatch
             result_ref.add(
                 gvar.gvar(mean_ref.item(), ((var_ref / n_meas) ** 0.5).item())
             )
-
-            if self.adapt:
-                self.map.adapt(alpha=self.alpha)
 
         return result / result_ref
 

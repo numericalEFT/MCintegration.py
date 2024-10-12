@@ -3,7 +3,6 @@ import numpy as np
 from torch import nn
 
 
-
 class Map(nn.Module):
     def __init__(self, bounds, device="cpu"):
         super().__init__()
@@ -16,9 +15,10 @@ class Map(nn.Module):
 
     def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
-    
+
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
+
 
 class CompositeMap(Map):
     def __init__(self, maps, device="cpu"):
@@ -26,18 +26,21 @@ class CompositeMap(Map):
             raise ValueError("Maps can not be empty.")
         super().__init__(maps[-1].bounds, device)
         self.maps = maps
+
     def forward(self, u):
         log_detJ = torch.zeros(len(u), device=u.device)
-        for map in self.flows:
-                u, log_detj = map.forward(u)
-                log_detJ += log_detj
+        for map in self.maps:
+            u, log_detj = map.forward(u)
+            log_detJ += log_detj
         return u, log_detJ
+
     def inverse(self, x):
         log_detJ = torch.zeros(len(x), device=x.device)
         for i in range(len(self.maps) - 1, -1, -1):
             x, log_detj = self.maps[i].inverse(x)
             log_detJ += log_detj
         return x, log_detJ
+
 
 class Affine(Map):
     def __init__(self, bounds, device="cpu"):
@@ -49,8 +52,9 @@ class Affine(Map):
         return u * self._A + self.bounds[:, 0], torch.log(self._jac1.repeat(u.shape[0]))
 
     def inverse(self, x):
-        return (x - self.bounds[:, 0]) / self._A, torch.log(self._jac1.repeat(x.shape[0]))
-
+        return (x - self.bounds[:, 0]) / self._A, torch.log(
+            self._jac1.repeat(x.shape[0])
+        )
 
 
 class Vegas(Map):
@@ -282,17 +286,14 @@ class Vegas(Map):
 
         return u, torch.log(jac)
 
-        
 
+# class NormalizingFlow(Map):
+#     def __init__(self, bounds, flow_model, device="cpu"):
+#         super().__init__(bounds, device)
+#         self.flow_model = flow_model.to(device)
 
-class NormalizingFlow(Map):
-    def __init__(self, bounds, flow_model, device="cpu"):
-        super().__init__(bounds, device)
-        self.flow_model = flow_model.to(device)
+#     def forward(self, u):
+#         return self.flow_model.forward(u)
 
-    def forward(self, u):
-        return self.flow_model.forward(u)
-
-    def inverse(self, x):
-        return self.flow_model.inverse(x)
-    
+#     def inverse(self, x):
+#         return self.flow_model.inverse(x)
