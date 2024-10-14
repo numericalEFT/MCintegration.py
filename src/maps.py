@@ -1,63 +1,67 @@
 import torch
 import numpy as np
+from torch import nn
 
 
-class Map:
-    def __init__(self, map_spec, device="cpu"):
-        # if isinstance(map_spec, dict):
-        #     self.map_spec = {
-        #         k: torch.tensor(v, device=device) for k, v in map_spec.items()
-        #     }
-        if isinstance(map_spec, (list, np.ndarray)):
-            self.map_spec = torch.tensor(map_spec, dtype=torch.float64, device=device)
+class Map(nn.Module):
+    def __init__(self, bounds, device="cpu"):
+        super().__init__()
+        if isinstance(bounds, (list, np.ndarray)):
+            self.bounds = torch.tensor(bounds, dtype=torch.float64, device=device)
         else:
             raise ValueError("Unsupported map specification")
-        self.dim = self.map_spec.shape[0]
+        self.dim = self.bounds.shape[0]
         self.device = device
 
-    def forward(self, y):
+    def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
 
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
 
-    def log_det_jacobian(self, y):
-        raise NotImplementedError("Subclasses must implement this method")
+
+class CompositeMap(Map):
+    def __init__(self, maps, device="cpu"):
+        if not maps:
+            raise ValueError("Maps can not be empty.")
+        super().__init__(maps[-1].bounds, device)
+        self.maps = maps
+
+    def forward(self, u):
+        log_detJ = torch.zeros(len(u), device=u.device)
+        for map in self.maps:
+            u, log_detj = map.forward(u)
+            log_detJ += log_detj
+        return u, log_detJ
+
+    def inverse(self, x):
+        log_detJ = torch.zeros(len(x), device=x.device)
+        for i in range(len(self.maps) - 1, -1, -1):
+            x, log_detj = self.maps[i].inverse(x)
+            log_detJ += log_detj
+        return x, log_detJ
 
 
 class Affine(Map):
-    def __init__(self, map_spec, device="cpu"):
-        super().__init__(map_spec, device)
-        self._A = self.map_spec[:, 1] - self.map_spec[:, 0]
+    def __init__(self, bounds, device="cpu"):
+        super().__init__(bounds, device)
+        self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jac1 = torch.prod(self._A)
 
-    def forward(self, y):
-        return y * self._A + self.map_spec[:, 0], self._jac1.repeat(y.shape[0])
+    def forward(self, u):
+        return u * self._A + self.bounds[:, 0], torch.log(self._jac1.repeat(u.shape[0]))
 
     def inverse(self, x):
-        return (x - self.map_spec[:, 0]) / self._A, self._jac1.repeat(x.shape[0])
-
-    def log_det_jacobian(self, y):
-        return torch.log(self._jac1) * y.shape[0]
-
-
-class AdaptiveMap(Map):
-    def __init__(self, map_spec, alpha=0.5, device="cpu"):
-        super().__init__(map_spec, device)
-        self.alpha = alpha
-
-    def add_training_data(self, y, f):
-        pass
-
-    def adapt(self, alpha=0.0):
-        pass
+        return (x - self.bounds[:, 0]) / self._A, torch.log(
+            self._jac1.repeat(x.shape[0])
+        )
 
 
-class Vegas(AdaptiveMap):
-    def __init__(self, map_spec, ninc=1000, alpha=0.5, device="cpu"):
-        super().__init__(map_spec, alpha, device)
+class Vegas(Map):
+    def __init__(self, bounds, ninc=1000, alpha=0.5, device="cpu"):
+        super().__init__(bounds, device)
         # self.nbin = nbin
-
+        self.alpha = alpha
         if isinstance(ninc, int):
             self.ninc = torch.ones(self.dim, dtype=torch.int32, device=device) * ninc
         else:
@@ -72,8 +76,8 @@ class Vegas(AdaptiveMap):
 
         for d in range(self.dim):
             self.grid[d, : self.ninc[d] + 1] = torch.linspace(
-                self.map_spec[d, 0],
-                self.map_spec[d, 1],
+                self.bounds[d, 0],
+                self.bounds[d, 1],
                 self.ninc[d] + 1,
                 dtype=torch.float64,
                 device=self.device,
@@ -83,8 +87,8 @@ class Vegas(AdaptiveMap):
             )
         self.clear()
 
-    def add_training_data(self, y, f):
-        """Add training data ``f`` for ``y``-space points ``y``.
+    def add_training_data(self, u, f):
+        """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
         Grid increments will be made smaller in regions where
@@ -93,19 +97,19 @@ class Vegas(AdaptiveMap):
         when ``f`` is constant across the grid.
 
         Args:
-            y (tensor): ``y`` values corresponding to the training data.
-                ``y`` is a contiguous 2-d tensor, where ``y[j, d]``
+            u (tensor): ``u`` values corresponding to the training data.
+                ``u`` is a contiguous 2-d tensor, where ``u[j, d]``
                 is for points along direction ``d``.
             f (tensor): Training function values. ``f[j]`` corresponds to
-                point ``y[j, d]`` in ``y``-space.
+                point ``u[j, d]`` in ``u``-space.
         """
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
             self.n_f = torch.zeros_like(self.inc) + 1e-10
-        iy = torch.floor(y * self.ninc).long()
+        iu = torch.floor(u * self.ninc).long()
         for d in range(self.dim):
-            self.sum_f[d, iy[:, d]] += torch.abs(f)
-            self.n_f[d, iy[:, d]] += 1
+            self.sum_f[d, iu[:, d]] += torch.abs(f)
+            self.n_f[d, iu[:, d]] += 1
 
     def adapt(self, alpha=0.0):
         """Adapt grid to accumulated training data.
@@ -218,101 +222,78 @@ class Vegas(AdaptiveMap):
         self.n_f = None
 
     @torch.no_grad()
-    def forward(self, y):
-        y = y.to(self.device)
-        y_ninc = y * self.ninc
-        iy = torch.floor(y_ninc).long()
-        dy_ninc = y_ninc - iy
+    def forward(self, u):
+        u = u.to(self.device)
+        u_ninc = u * self.ninc
+        iu = torch.floor(u_ninc).long()
+        du_ninc = u_ninc - iu
 
-        x = torch.empty_like(y)
-        jac = torch.ones(y.shape[0], device=x.device)
+        x = torch.empty_like(u)
+        jac = torch.ones(u.shape[0], device=x.device)
         # self.jac.fill_(1.0)
         for d in range(self.dim):
-            # Handle the case where iy < ninc
+            # Handle the case where iu < ninc
             ninc = self.ninc[d]
-            mask = iy[:, d] < ninc
+            mask = iu[:, d] < ninc
             if mask.any():
                 x[mask, d] = (
-                    self.grid[d, iy[mask, d]]
-                    + self.inc[d, iy[mask, d]] * dy_ninc[mask, d]
+                    self.grid[d, iu[mask, d]]
+                    + self.inc[d, iu[mask, d]] * du_ninc[mask, d]
                 )
-                jac[mask] *= self.inc[d, iy[mask, d]] * ninc
+                jac[mask] *= self.inc[d, iu[mask, d]] * ninc
 
-            # Handle the case where iy >= ninc
+            # Handle the case where iu >= ninc
             mask_inv = ~mask
             if mask_inv.any():
                 x[mask_inv, d] = self.grid[d, ninc]
                 jac[mask_inv] *= self.inc[d, ninc - 1] * ninc
 
-        return x, jac
+        return x, torch.log(jac)
 
     @torch.no_grad()
     def inverse(self, x):
         # self.jac.fill_(1.0)
         x = x.to(self.device)
-        y = torch.empty_like(x)
+        u = torch.empty_like(x)
         jac = torch.ones(x.shape[0], device=x.device)
         for d in range(self.dim):
             ninc = self.ninc[d]
-            iy = torch.searchsorted(self.grid[d, :], x[:, d].contiguous(), right=True)
+            iu = torch.searchsorted(self.grid[d, :], x[:, d].contiguous(), right=True)
 
-            mask_valid = (iy > 0) & (iy <= ninc)
-            mask_lower = iy <= 0
-            mask_upper = iy > ninc
+            mask_valid = (iu > 0) & (iu <= ninc)
+            mask_lower = iu <= 0
+            mask_upper = iu > ninc
 
-            # Handle valid range (0 < iy <= ninc)
+            # Handle valid range (0 < iu <= ninc)
             if mask_valid.any():
-                iyi_valid = iy[mask_valid] - 1
-                y[mask_valid, d] = (
-                    iyi_valid
-                    + (x[mask_valid, d] - self.grid[d, iyi_valid])
-                    / self.inc[d, iyi_valid]
+                iui_valid = iu[mask_valid] - 1
+                u[mask_valid, d] = (
+                    iui_valid
+                    + (x[mask_valid, d] - self.grid[d, iui_valid])
+                    / self.inc[d, iui_valid]
                 ) / ninc
-                jac[mask_valid] *= self.inc[d, iyi_valid] * ninc
+                jac[mask_valid] *= self.inc[d, iui_valid] * ninc
 
-            # Handle lower bound (iy <= 0)\
+            # Handle lower bound (iu <= 0)\
             if mask_lower.any():
-                y[mask_lower, d] = 0.0
+                u[mask_lower, d] = 0.0
                 jac[mask_lower] *= self.inc[d, 0] * ninc
 
-            # Handle upper bound (iy > ninc)
+            # Handle upper bound (iu > ninc)
             if mask_upper.any():
-                y[mask_upper, d] = 1.0
+                u[mask_upper, d] = 1.0
                 jac[mask_upper] *= self.inc[d, ninc - 1] * ninc
 
-        return y, jac
-
-    @torch.no_grad()
-    def log_det_jacobian(self, y):
-        y = y.to(self.device)
-        y_ninc = y * self.ninc
-        iy = torch.floor(y_ninc).long()
-
-        jac = torch.ones(y.shape[0], device=x.device)
-        for d in range(self.dim):
-            # Handle the case where iy < ninc
-            mask = iy[:, d] < self.ninc
-            if mask.any():
-                jac[mask] *= self.inc[d, iy[mask, d]] * self.ninc
-
-            # Handle the case where iy >= ninc
-            mask_inv = ~mask
-            if mask_inv.any():
-                jac[mask_inv] *= self.inc[d, self.ninc - 1] * self.ninc
-
-        return torch.sum(torch.log(jac), dim=-1)
+        return u, torch.log(jac)
 
 
-class NormalizingFlow(AdaptiveMap):
-    def __init__(self, map_spec, flow_model, alpha=0.5, device="cpu"):
-        super().__init__(map_spec, alpha, device)
-        self.flow_model = flow_model.to(device)
+# class NormalizingFlow(Map):
+#     def __init__(self, bounds, flow_model, device="cpu"):
+#         super().__init__(bounds, device)
+#         self.flow_model = flow_model.to(device)
 
-    def forward(self, u):
-        return self.flow_model.forward(u)[0]
+#     def forward(self, u):
+#         return self.flow_model.forward(u)
 
-    def inverse(self, x):
-        return self.flow_model.inverse(x)[0]
-
-    def log_det_jacobian(self, u):
-        return self.flow_model.forward(u)[1]
+#     def inverse(self, x):
+#         return self.flow_model.inverse(x)
