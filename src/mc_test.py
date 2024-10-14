@@ -5,6 +5,7 @@ from utils import set_seed, get_device
 
 set_seed(42)
 device = get_device()
+# device = torch.device("cpu")
 
 
 def unit_circle_integrand(x):
@@ -37,7 +38,11 @@ affine_map = Affine(bounds, device=device)
 print("Calculate the area of the unit circle using Monte Carlo integration...")
 
 mc_integrator = MonteCarlo(
-    bounds, maps=affine_map, neval=400000, nbatch=1000, device=device
+    # bounds, maps=affine_map, neval=400000, nbatch=1000, device=device
+    bounds,
+    neval=400000,
+    nbatch=1000,
+    device=device,
 )
 res = mc_integrator(unit_circle_integrand)
 print("Plain MC Integral results:")
@@ -51,9 +56,7 @@ print("Plain MC Integral results:")
 print(f"  Integral: {res.mean}")
 print(f"  Error: {res.sdev}")
 
-mcmc_integrator = MCMC(
-    bounds, maps=affine_map, neval=400000, nbatch=1000, nburnin=100, device=device
-)
+mcmc_integrator = MCMC(bounds, neval=400000, nbatch=1000, nburnin=100, device=device)
 res = mcmc_integrator(unit_circle_integrand, mix_rate=0.5)
 print("MCMC Integral results:")
 print(f"  Integral: {res.mean}")
@@ -67,9 +70,7 @@ print("Plain MC Integral results:")
 print(f"  Integral: {res.mean}")
 print(f"  Error: {res.sdev}")
 
-mcmc_integrator = MCMC(
-    bounds, maps=affine_map, neval=400000, nbatch=1000, nburnin=100, device=device
-)
+mcmc_integrator = MCMC(bounds, neval=400000, nbatch=1000, nburnin=100, device=device)
 res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5)
 print("MCMC Integral results:")
 print(f"  Integral: {res.mean}")

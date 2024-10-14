@@ -4,6 +4,7 @@ from utils import RAvg
 from maps import Map, Affine, CompositeMap
 from base import Uniform
 import gvar
+import numpy as np
 
 
 class Integrator:
@@ -13,19 +14,19 @@ class Integrator:
 
     def __init__(
         self,
-        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        bounds: Union[List[Tuple[float, float]], np.ndarray],
         q0=None,
         maps=None,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
         adapt=False,
-        # device=torch.device("cuda" if torch.cuda.is_available() else "cpu"),
     ):
         self.adapt = adapt
         self.dim = len(bounds)
         if not q0:
-            q0 = Uniform(bounds)
+            q0 = Uniform(bounds, device=device)
+        self.bounds = torch.tensor(bounds, dtype=torch.float64, device=device)
         self.q0 = q0
         self.maps = maps
         self.neval = neval
@@ -53,7 +54,7 @@ class Integrator:
 class MonteCarlo(Integrator):
     def __init__(
         self,
-        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        bounds: Union[List[Tuple[float, float]], np.ndarray],
         q0=None,
         maps=None,
         nitn: int = 10,
@@ -66,8 +67,6 @@ class MonteCarlo(Integrator):
         self.nitn = nitn
 
     def __call__(self, f: Callable, **kwargs):
-        # u = torch.rand(self.nbatch, self.dim, device=self.device)
-        # x, _ = self.map.forward(u)
         x, _ = self.sample(self.nbatch)
         f_values = f(x)
         f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
@@ -84,10 +83,6 @@ class MonteCarlo(Integrator):
             mean[:] = 0
             var[:] = 0
             for _ in range(epoch):
-                # y = torch.rand(
-                #     self.nbatch, self.dim, dtype=torch.float64, device=self.device
-                # )
-                # x, jac = self.map.forward(y)
                 x, log_detJ = self.sample(self.nbatch)
                 f_values = f(x)
                 batch_results = self._multiply_by_jacobian(
@@ -101,13 +96,6 @@ class MonteCarlo(Integrator):
             result.add(gvar.gvar(mean.item(), (var**0.5).item()))
         return result
 
-    # def sample(self, nsample):
-    #     u, log_detJ = self.q0.sample(nsample)
-    #     for map in self.maps:
-    #         u, log_detj = map(u)
-    #         log_detJ += log_detj
-    #     return u, log_detJ
-
     def _multiply_by_jacobian(self, values, jac):
         # if isinstance(values, dict):
         #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
@@ -120,7 +108,7 @@ class MonteCarlo(Integrator):
 class MCMC(MonteCarlo):
     def __init__(
         self,
-        bounds: List[Tuple[float, float]],  # , np.ndarray],
+        bounds: Union[List[Tuple[float, float]], np.ndarray],
         q0=None,
         maps=None,
         nitn: int = 10,
@@ -132,6 +120,9 @@ class MCMC(MonteCarlo):
     ):
         super().__init__(bounds, q0, maps, nitn, neval, nbatch, device, adapt)
         self.nburnin = nburnin
+        if maps is None:
+            self.maps = Affine([(0, 1)] * self.dim, device=device)
+        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def __call__(
         self,
@@ -144,12 +135,11 @@ class MCMC(MonteCarlo):
         epsilon = 1e-16  # Small value to ensure numerical stability
         # vars_shape = (self.nbatch, self.dim)
         current_y, current_jac = self.q0.sample(self.nbatch)
-        if self.maps:
-            current_x, jac = self.maps.forward(current_y)
-            current_jac += jac
-        else:
-            current_x = current_y
-        # current_x, current_jac = self.sample(self.nbatch)
+        # if self.maps:
+        current_x, detJ = self.maps.forward(current_y)
+        current_jac += detJ
+        # else:
+        #     current_x = current_y
         current_jac = torch.exp(current_jac)
         current_fval = f(current_x)
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
@@ -157,7 +147,7 @@ class MCMC(MonteCarlo):
         # current_fval.masked_fill_(current_fval.abs() < epsilon, epsilon)
 
         proposed_y = torch.empty_like(current_y)
-        proposed_x = torch.empty_like(proposed_y)
+        proposed_x = torch.empty_like(current_x)
         new_fval = torch.empty_like(current_fval)
         new_weight = torch.empty_like(current_weight)
 
@@ -177,6 +167,7 @@ class MCMC(MonteCarlo):
             for i in range(epoch):
                 proposed_y[:] = self._propose(current_y, proposal_dist, **kwargs)
                 proposed_x[:], new_jac = self.maps.forward(proposed_y)
+                new_jac = torch.exp(new_jac)
 
                 new_fval[:] = f(proposed_x)
                 new_weight = mix_rate / new_jac + (1 - mix_rate) * new_fval.abs()
@@ -213,14 +204,23 @@ class MCMC(MonteCarlo):
                 gvar.gvar(mean_ref.item(), ((var_ref / n_meas) ** 0.5).item())
             )
 
-        return result / result_ref
+        return result / result_ref * self._rangebounds.prod()
 
     def _propose(self, u, proposal_dist, **kwargs):
         if proposal_dist == "random_walk":
             step_size = kwargs.get("step_size", 0.2)
-            return (u + (torch.rand_like(u) - 0.5) * step_size) % 1.0
+            step_sizes = self._rangebounds * step_size
+            step = (
+                torch.empty(self.dim, device=self.device).uniform_(-1, 1) * step_sizes
+            )
+            new_u = (u + step - self.bounds[:, 0]) % self._rangebounds + self.bounds[
+                :, 0
+            ]
+            return new_u
+            # return (u + (torch.rand_like(u) - 0.5) * step_size) % 1.0
         elif proposal_dist == "uniform":
-            return torch.rand_like(u)
+            # return torch.rand_like(u)
+            return torch.rand_like(u) * self._rangebounds + self.bounds[:, 0]
         # elif proposal_dist == "gaussian":
         #     mean = kwargs.get("mean", torch.zeros_like(u))
         #     std = kwargs.get("std", torch.ones_like(u))

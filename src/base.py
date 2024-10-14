@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import numpy as np
 
 
 class BaseDistribution(nn.Module):
@@ -10,7 +11,12 @@ class BaseDistribution(nn.Module):
 
     def __init__(self, bounds, device="cpu"):
         super().__init__()
-        self.bounds = bounds
+        # self.bounds = bounds
+        if isinstance(bounds, (list, np.ndarray)):
+            self.bounds = torch.tensor(bounds, dtype=torch.float64, device=device)
+        else:
+            raise ValueError("Unsupported map specification")
+        self.dim = self.bounds.shape[0]
         self.device = device
 
     def sample(self, nsamples=1, **kwargs):
@@ -32,12 +38,12 @@ class Uniform(BaseDistribution):
 
     def __init__(self, bounds, device="cpu"):
         super().__init__(bounds, device)
+        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, nsamples=1, **kwargs):
-        dim = len(self.bounds)
-        u = torch.rand((nsamples, dim), device=self.device)
-        log_detJ = torch.zeros(nsamples, device=self.device)
-        for i, bound in enumerate(self.bounds):
-            u[:, i] = (bound[1] - bound[0]) * u[:, i] + bound[0]
-            log_detJ += -torch.log(torch.tensor(bound[1] - bound[0]))
+        u = (
+            torch.rand((nsamples, self.dim), device=self.device) * self._rangebounds
+            + self.bounds[:, 0]
+        )
+        log_detJ = torch.log(self._rangebounds).sum().repeat(nsamples)
         return u, log_detJ
