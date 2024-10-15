@@ -4,4 +4,3 @@ normflows
 vegas
 mpmath
 matplotlib
-os
