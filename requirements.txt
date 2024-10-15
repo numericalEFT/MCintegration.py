@@ -5,4 +5,4 @@ vegas
 mpmath
 matplotlib
 tqdm
-absl
+absl-py
