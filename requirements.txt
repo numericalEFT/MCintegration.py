@@ -3,3 +3,5 @@ numpy
 normflows
 vegas
 mpmath
+matplotlib
+os
