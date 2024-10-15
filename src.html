@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="./">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>src package &#8212; MCintegration 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4848ba22" />
+    <link rel="stylesheet" type="text/css" href="_static/pyramid.css?v=424f8d56" />
+    <script src="_static/documentation_options.js?v=8d563738"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
+<!--[if lte IE 6]>
+<link rel="stylesheet" href="_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<![endif]-->
+
+  </head><body>
+
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">src package</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="src-package">
+<h1>src package<a class="headerlink" href="#src-package" title="Link to this heading">¶</a></h1>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
+</section>
+<section id="module-integrators">
+<span id="integrators-module"></span><h2>integrators module<a class="headerlink" href="#module-integrators" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="integrators.Integrator">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">Integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#Integrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.Integrator" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Base class for all integrators.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="integrators.MCMC">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MCMC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#maps.Map" title="maps.Map"><span class="pre">Map</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nitn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_burnin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adapt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MCMC"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MCMC" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#integrators.MonteCarlo" title="integrators.MonteCarlo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="integrators.MonteCarlo">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nitn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adapt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MonteCarlo" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#integrators.Integrator" title="integrators.Integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Integrator</span></code></a></p>
+</dd></dl>
+
+</section>
+<section id="module-maps">
+<span id="maps-module"></span><h2>maps module<a class="headerlink" href="#module-maps" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="maps.AdaptiveMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">AdaptiveMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#maps.Map" title="maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.AdaptiveMap.adapt">
+<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap.adapt" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.AdaptiveMap.add_training_data">
+<span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap.add_training_data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maps.Affine">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Affine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#maps.Map" title="maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Affine.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.forward" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Affine.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.inverse" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Affine.log_det_jacobian">
+<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.log_det_jacobian" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maps.Map">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Map.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.forward" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Map.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.inverse" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Map.log_det_jacobian">
+<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.log_det_jacobian" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maps.NormalizingFlow">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">NormalizingFlow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#maps.AdaptiveMap" title="maps.AdaptiveMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.NormalizingFlow.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.forward" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.NormalizingFlow.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.inverse" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.NormalizingFlow.log_det_jacobian">
+<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.log_det_jacobian" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="maps.Vegas">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Vegas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ninc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#maps.AdaptiveMap" title="maps.AdaptiveMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.adapt">
+<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.adapt" title="Link to this definition">¶</a></dt>
+<dd><p>Adapt grid to accumulated training data.</p>
+<p><code class="docutils literal notranslate"><span class="pre">self.adapt(...)</span></code> projects the training data onto
+each axis independently and maps it into <code class="docutils literal notranslate"><span class="pre">x</span></code> space.
+It shrinks <code class="docutils literal notranslate"><span class="pre">x</span></code>-grid increments in regions where the
+projected training data is large, and grows increments
+where the projected data is small. The grid along
+any direction is unchanged if the training data
+is constant along that direction.</p>
+<p>The number of increments along a direction can be
+changed by setting parameter <code class="docutils literal notranslate"><span class="pre">ninc</span></code> (array or number).</p>
+<p>The grid does not change if no training data has
+been accumulated, unless <code class="docutils literal notranslate"><span class="pre">ninc</span></code> is specified, in
+which case the number of increments is adjusted
+while preserving the relative density of increments
+at different values of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>alpha</strong> (<em>float</em>) – Determines the speed with which the grid
+adapts to training data. Large (postive) values imply
+rapid evolution; small values (much less than one) imply
+slow evolution. Typical values are of order one. Choosing
+<code class="docutils literal notranslate"><span class="pre">alpha&lt;0</span></code> causes adaptation to the unmodified training
+data (usually not a good idea).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.add_training_data">
+<span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.add_training_data" title="Link to this definition">¶</a></dt>
+<dd><p>Add training data <code class="docutils literal notranslate"><span class="pre">f</span></code> for <code class="docutils literal notranslate"><span class="pre">y</span></code>-space points <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
+<p>Accumulates training data for later use by <code class="docutils literal notranslate"><span class="pre">self.adapt()</span></code>.
+Grid increments will be made smaller in regions where
+<code class="docutils literal notranslate"><span class="pre">f</span></code> is larger than average, and larger where <code class="docutils literal notranslate"><span class="pre">f</span></code>
+is smaller than average. The grid is unchanged (converged?)
+when <code class="docutils literal notranslate"><span class="pre">f</span></code> is constant across the grid.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y</strong> (<em>tensor</em>) – <code class="docutils literal notranslate"><span class="pre">y</span></code> values corresponding to the training data.
+<code class="docutils literal notranslate"><span class="pre">y</span></code> is a contiguous 2-d tensor, where <code class="docutils literal notranslate"><span class="pre">y[j,</span> <span class="pre">d]</span></code>
+is for points along direction <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p></li>
+<li><p><strong>f</strong> (<em>tensor</em>) – Training function values. <code class="docutils literal notranslate"><span class="pre">f[j]</span></code> corresponds to
+point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <span class="pre">d]</span></code> in <code class="docutils literal notranslate"><span class="pre">y</span></code>-space.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.clear">
+<span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.clear" title="Link to this definition">¶</a></dt>
+<dd><p>Clear information accumulated by <a class="reference internal" href="#maps.AdaptiveMap.add_training_data" title="maps.AdaptiveMap.add_training_data"><code class="xref py py-meth docutils literal notranslate"><span class="pre">AdaptiveMap.add_training_data()</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.extract_grid">
+<span class="sig-name descname"><span class="pre">extract_grid</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.extract_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.extract_grid" title="Link to this definition">¶</a></dt>
+<dd><p>Return a list of lists specifying the map’s grid.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.forward" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.inverse" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="maps.Vegas.log_det_jacobian">
+<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.log_det_jacobian" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</dd></dl>
+
+</section>
+<section id="module-mc_test">
+<span id="mc-test-module"></span><h2>mc_test module<a class="headerlink" href="#module-mc_test" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.half_sphere_integrand">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">half_sphere_integrand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#half_sphere_integrand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.half_sphere_integrand" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.test_nothing">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">test_nothing</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#test_nothing"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.test_nothing" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.unit_circle_integrand">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">unit_circle_integrand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#unit_circle_integrand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.unit_circle_integrand" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-utils">
+<span id="utils-module"></span><h2>utils module<a class="headerlink" href="#module-utils" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="utils.RAvg">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">RAvg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weighted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">itn_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#RAvg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.RAvg" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">GVar</span></code></p>
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.RAvg.Q">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Q</span></span><a class="headerlink" href="#utils.RAvg.Q" title="Link to this definition">¶</a></dt>
+<dd><p><em>Q</em> or <em>p-value</em> of weighted average’s <em>chi**2</em>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.RAvg.add">
+<span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">res</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#RAvg.add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.RAvg.add" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.RAvg.avg_neval">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">avg_neval</span></span><a class="headerlink" href="#utils.RAvg.avg_neval" title="Link to this definition">¶</a></dt>
+<dd><p>Average number of integrand evaluations per iteration.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.RAvg.chi2">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">chi2</span></span><a class="headerlink" href="#utils.RAvg.chi2" title="Link to this definition">¶</a></dt>
+<dd><p><em>chi**2</em> of weighted average.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.RAvg.converged">
+<span class="sig-name descname"><span class="pre">converged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#RAvg.converged"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.RAvg.converged" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.RAvg.dof">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof</span></span><a class="headerlink" href="#utils.RAvg.dof" title="Link to this definition">¶</a></dt>
+<dd><p>Number of degrees of freedom in weighted average.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.RAvg.extend">
+<span class="sig-name descname"><span class="pre">extend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ravg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#RAvg.extend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.RAvg.extend" title="Link to this definition">¶</a></dt>
+<dd><p>Merge results from <a class="reference internal" href="#utils.RAvg" title="utils.RAvg"><code class="xref py py-class docutils literal notranslate"><span class="pre">RAvg</span></code></a> object <code class="docutils literal notranslate"><span class="pre">ravg</span></code> after results currently in <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="utils.RAvg.nitn">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">nitn</span></span><a class="headerlink" href="#utils.RAvg.nitn" title="Link to this definition">¶</a></dt>
+<dd><p>Number of iterations.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="utils.RAvg.summary">
+<span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weighted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#RAvg.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.RAvg.summary" title="Link to this definition">¶</a></dt>
+<dd><p>Assemble summary of results, iteration-by-iteration, into a string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>weighted</strong> (<em>bool</em>) – Display weighted averages of results from different
+iterations if <code class="docutils literal notranslate"><span class="pre">True</span></code>; otherwise show unweighted averages.
+Default behavior is determined by <a href="#id1"><span class="problematic" id="id2">|vegas|</span></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.get_device">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">get_device</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#get_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.get_device" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="utils.set_seed">
+<span class="sig-prename descclassname"><span class="pre">utils.</span></span><span class="sig-name descname"><span class="pre">set_seed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/utils.html#set_seed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#utils.set_seed" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
+<section id="module-contents">
+<h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">src package</a><ul>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-integrators">integrators module</a><ul>
+<li><a class="reference internal" href="#integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a></li>
+<li><a class="reference internal" href="#integrators.MCMC"><code class="docutils literal notranslate"><span class="pre">MCMC</span></code></a></li>
+<li><a class="reference internal" href="#integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-maps">maps module</a><ul>
+<li><a class="reference internal" href="#maps.AdaptiveMap"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a><ul>
+<li><a class="reference internal" href="#maps.AdaptiveMap.adapt"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap.adapt()</span></code></a></li>
+<li><a class="reference internal" href="#maps.AdaptiveMap.add_training_data"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap.add_training_data()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#maps.Affine"><code class="docutils literal notranslate"><span class="pre">Affine</span></code></a><ul>
+<li><a class="reference internal" href="#maps.Affine.forward"><code class="docutils literal notranslate"><span class="pre">Affine.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Affine.inverse"><code class="docutils literal notranslate"><span class="pre">Affine.inverse()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Affine.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Affine.log_det_jacobian()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#maps.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a><ul>
+<li><a class="reference internal" href="#maps.Map.forward"><code class="docutils literal notranslate"><span class="pre">Map.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Map.inverse"><code class="docutils literal notranslate"><span class="pre">Map.inverse()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Map.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Map.log_det_jacobian()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#maps.NormalizingFlow"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow</span></code></a><ul>
+<li><a class="reference internal" href="#maps.NormalizingFlow.forward"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.NormalizingFlow.inverse"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.inverse()</span></code></a></li>
+<li><a class="reference internal" href="#maps.NormalizingFlow.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.log_det_jacobian()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#maps.Vegas"><code class="docutils literal notranslate"><span class="pre">Vegas</span></code></a><ul>
+<li><a class="reference internal" href="#maps.Vegas.adapt"><code class="docutils literal notranslate"><span class="pre">Vegas.adapt()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.add_training_data"><code class="docutils literal notranslate"><span class="pre">Vegas.add_training_data()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.clear"><code class="docutils literal notranslate"><span class="pre">Vegas.clear()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.extract_grid"><code class="docutils literal notranslate"><span class="pre">Vegas.extract_grid()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.forward"><code class="docutils literal notranslate"><span class="pre">Vegas.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.inverse"><code class="docutils literal notranslate"><span class="pre">Vegas.inverse()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Vegas.log_det_jacobian()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-mc_test">mc_test module</a><ul>
+<li><a class="reference internal" href="#mc_test.half_sphere_integrand"><code class="docutils literal notranslate"><span class="pre">half_sphere_integrand()</span></code></a></li>
+<li><a class="reference internal" href="#mc_test.test_nothing"><code class="docutils literal notranslate"><span class="pre">test_nothing()</span></code></a></li>
+<li><a class="reference internal" href="#mc_test.unit_circle_integrand"><code class="docutils literal notranslate"><span class="pre">unit_circle_integrand()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-utils">utils module</a><ul>
+<li><a class="reference internal" href="#utils.RAvg"><code class="docutils literal notranslate"><span class="pre">RAvg</span></code></a><ul>
+<li><a class="reference internal" href="#utils.RAvg.Q"><code class="docutils literal notranslate"><span class="pre">RAvg.Q</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.add"><code class="docutils literal notranslate"><span class="pre">RAvg.add()</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.avg_neval"><code class="docutils literal notranslate"><span class="pre">RAvg.avg_neval</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.chi2"><code class="docutils literal notranslate"><span class="pre">RAvg.chi2</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.converged"><code class="docutils literal notranslate"><span class="pre">RAvg.converged()</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.dof"><code class="docutils literal notranslate"><span class="pre">RAvg.dof</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.extend"><code class="docutils literal notranslate"><span class="pre">RAvg.extend()</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.nitn"><code class="docutils literal notranslate"><span class="pre">RAvg.nitn</span></code></a></li>
+<li><a class="reference internal" href="#utils.RAvg.summary"><code class="docutils literal notranslate"><span class="pre">RAvg.summary()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#utils.get_device"><code class="docutils literal notranslate"><span class="pre">get_device()</span></code></a></li>
+<li><a class="reference internal" href="#utils.set_seed"><code class="docutils literal notranslate"><span class="pre">set_seed()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-contents">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/src.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<search id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="Related">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">src package</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+    &#169; Copyright 2024, Authors.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    </div>
+  </body>
+</html>

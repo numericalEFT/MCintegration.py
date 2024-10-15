@@ -1,0 +1,45 @@
+src package
+===========
+
+Submodules
+----------
+
+integrators module
+----------------------
+
+.. automodule:: integrators
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+maps module
+---------------
+
+.. automodule:: maps
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+mc\_test module
+-------------------
+
+.. automodule:: mc_test
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+utils module
+----------------
+
+.. automodule:: utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: src
+   :members:
+   :undoc-members:
+   :show-inheritance:
