@@ -7,6 +7,9 @@ set_seed(42)
 device = get_device()
 
 
+def test_nothing():
+    pass  
+
 def unit_circle_integrand(x):
     inside_circle = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
     # return {
