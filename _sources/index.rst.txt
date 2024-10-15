@@ -1,9 +1,9 @@
-.. y documentation master file, created by
+.. MCintegration documentation master file, created by
    sphinx-quickstart on Tue Oct 15 10:32:44 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-y documentation
+MCintegration documentation
 ===============
 
 Add your content using ``reStructuredText`` syntax. See the
