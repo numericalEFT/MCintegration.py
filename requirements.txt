@@ -4,3 +4,4 @@ normflows
 vegas
 mpmath
 matplotlib
+tqdm
