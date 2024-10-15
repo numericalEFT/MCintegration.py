@@ -8,6 +8,9 @@ on:
     branches:
       - master
 
+permissions:
+  contents: write
+
 jobs:
   test:
     name: Python ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
@@ -16,8 +19,6 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - "3.10"
-          - "3.11"
           - "3.12"
         os:
           - ubuntu-latest
