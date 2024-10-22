@@ -1,6 +1,6 @@
 import torch
 from integrators import MonteCarlo, MCMC
-from maps import Vegas, Affine
+from maps import Vegas, Linear
 from utils import set_seed, get_device
 
 set_seed(42)
@@ -31,7 +31,7 @@ def half_sphere_integrand(x):
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
 
-affine_map = Affine(bounds, device=device)
+affine_map = Linear(bounds, device=device)
 # vegas_map = Vegas(bounds, device=device)
 
 # Monte Carlo integration
