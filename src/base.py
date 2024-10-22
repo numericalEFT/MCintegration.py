@@ -9,11 +9,12 @@ class BaseDistribution(nn.Module):
     Parameters do not depend of target variable (as is the case for a VAE encoder)
     """
 
-    def __init__(self, bounds, device="cpu"):
+    def __init__(self, bounds, device="cpu", dtype=torch.float64):
         super().__init__()
+        self.dtype = dtype
         # self.bounds = bounds
         if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=torch.float64, device=device)
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
         else:
             raise ValueError("Unsupported map specification")
         self.dim = self.bounds.shape[0]
@@ -36,13 +37,14 @@ class Uniform(BaseDistribution):
     Multivariate uniform distribution
     """
 
-    def __init__(self, bounds, device="cpu"):
-        super().__init__(bounds, device)
+    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+        super().__init__(bounds, device, dtype)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, nsamples=1, **kwargs):
         u = (
-            torch.rand((nsamples, self.dim), device=self.device) * self._rangebounds
+            torch.rand((nsamples, self.dim), device=self.device, dtype=self.dtype)
+            * self._rangebounds
             + self.bounds[:, 0]
         )
         log_detJ = torch.log(self._rangebounds).sum().repeat(nsamples)

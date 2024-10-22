@@ -4,14 +4,15 @@ from torch import nn
 
 
 class Map(nn.Module):
-    def __init__(self, bounds, device="cpu"):
+    def __init__(self, bounds, device="cpu", dtype=torch.float64):
         super().__init__()
         if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=torch.float64, device=device)
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
         else:
             raise ValueError("Unsupported map specification")
         self.dim = self.bounds.shape[0]
         self.device = device
+        self.dtype = dtype
 
     def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
@@ -21,30 +22,30 @@ class Map(nn.Module):
 
 
 class CompositeMap(Map):
-    def __init__(self, maps, device="cpu"):
+    def __init__(self, maps, device="cpu", dtype=torch.float64):
         if not maps:
             raise ValueError("Maps can not be empty.")
-        super().__init__(maps[-1].bounds, device)
+        super().__init__(maps[-1].bounds, device, dtype)
         self.maps = maps
 
     def forward(self, u):
-        log_detJ = torch.zeros(len(u), device=u.device)
+        log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
         for map in self.maps:
             u, log_detj = map.forward(u)
             log_detJ += log_detj
         return u, log_detJ
 
     def inverse(self, x):
-        log_detJ = torch.zeros(len(x), device=x.device)
+        log_detJ = torch.zeros(len(x), device=x.device, dtype=self.dtype)
         for i in range(len(self.maps) - 1, -1, -1):
             x, log_detj = self.maps[i].inverse(x)
             log_detJ += log_detj
         return x, log_detJ
 
 
-class Affine(Map):
-    def __init__(self, bounds, device="cpu"):
-        super().__init__(bounds, device)
+class Linear(Map):
+    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+        super().__init__(bounds, device, dtype)
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jac1 = torch.prod(self._A)
 
@@ -58,8 +59,8 @@ class Affine(Map):
 
 
 class Vegas(Map):
-    def __init__(self, bounds, ninc=1000, alpha=0.5, device="cpu"):
-        super().__init__(bounds, device)
+    def __init__(self, bounds, ninc=1000, alpha=0.5, device="cpu", dtype=torch.float64):
+        super().__init__(bounds, device, dtype)
         # self.nbin = nbin
         self.alpha = alpha
         if isinstance(ninc, int):
@@ -68,10 +69,10 @@ class Vegas(Map):
             self.ninc = torch.tensor(ninc, dtype=torch.int32, device=device)
 
         self.inc = torch.empty(
-            self.dim, self.ninc.max(), dtype=torch.float64, device=self.device
+            self.dim, self.ninc.max(), dtype=self.dtype, device=self.device
         )
         self.grid = torch.empty(
-            self.dim, self.ninc.max() + 1, dtype=torch.float64, device=self.device
+            self.dim, self.ninc.max() + 1, dtype=self.dtype, device=self.device
         )
 
         for d in range(self.dim):
@@ -79,7 +80,7 @@ class Vegas(Map):
                 self.bounds[d, 0],
                 self.bounds[d, 1],
                 self.ninc[d] + 1,
-                dtype=torch.float64,
+                dtype=self.dtype,
                 device=self.device,
             )
             self.inc[d, : self.ninc[d]] = (
