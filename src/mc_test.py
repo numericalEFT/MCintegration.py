@@ -50,14 +50,13 @@ print(f"pi = {torch.pi} \n")
 
 # Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
 mc_integrator = MonteCarlo(
-    bounds,
+    bounds=bounds,
     neval=n_eval,
     nbatch=n_batch,
-    # nbatch=n_eval,
     device=device,
 )
 mcmc_integrator = MCMC(
-    bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
+    bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
 )
 
 print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2...")
@@ -69,7 +68,6 @@ print("MCMC Integral results: ", res)
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
-    bounds,
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,
@@ -80,7 +78,6 @@ res = vegas_integrator(unit_circle_integrand)
 print("VEGAS Integral results: ", res)
 
 vegasmcmc_integrator = MCMC(
-    bounds,
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,
@@ -102,7 +99,7 @@ res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5)
 print("MCMC Integral results:", res)
 
 # train the vegas map
-vegas_map.train(20000, half_sphere_integrand, nitn=10, alpha=0.5)
+vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5)
 
 res = vegas_integrator(half_sphere_integrand)
 print("VEGAS Integral results: ", res)
@@ -124,7 +121,7 @@ print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
-vegas_map.train(20000, integrand_list, nitn=10, alpha=0.5)
+vegas_map.train(20000, integrand_list, epoch=10, alpha=0.5)
 res = vegas_integrator(integrand_list)
 print("VEGAS Integral results:")
 print("  Integral 1: ", res[0])
@@ -140,14 +137,14 @@ print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
 bounds = [(0, 1)] * 4
 mc_integrator = MonteCarlo(
-    bounds,
+    bounds=bounds,
     neval=n_eval,
     nbatch=n_batch,
     # nbatch=n_eval,
     device=device,
 )
 mcmc_integrator = MCMC(
-    bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
+    bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
 )
 print("Plain MC Integral results:")
 res = mc_integrator(integrand_list1)
@@ -176,12 +173,11 @@ print(
 
 vegas_map = Vegas(bounds, device=device)
 print("train VEGAS map for h(X)...")
-# vegas_map.train(20000, sharp_peak, nitn=10, alpha=0.5)
-vegas_map.train(20000, integrand_list1, nitn=10, alpha=0.5)
+# vegas_map.train(20000, sharp_peak, epoch=10, alpha=0.5)
+vegas_map.train(20000, integrand_list1, epoch=10, alpha=0.5)
 
 print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
-    bounds,
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,
@@ -202,7 +198,6 @@ print(
 
 print("VEGAS-MCMC Integral results:")
 vegasmcmc_integrator = MCMC(
-    bounds,
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,

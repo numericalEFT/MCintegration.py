@@ -16,25 +16,28 @@ class Integrator:
 
     def __init__(
         self,
-        bounds,
-        q0=None,
         maps=None,
+        bounds=None,
+        q0=None,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
         dtype=torch.float64,
     ):
-        if not isinstance(bounds, (list, np.ndarray)):
-            raise TypeError("bounds must be a list or a NumPy array.")
         self.dtype = dtype
-        self.dim = len(bounds)
-        if not q0:
-            q0 = Uniform(bounds, device=device, dtype=dtype)
-        self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
-        self.q0 = q0
         if maps:
             if not self.dtype == maps.dtype:
                 raise ValueError("Float type of maps should be same as integrator.")
+            self.bounds = maps.bounds
+        else:
+            if not isinstance(bounds, (list, np.ndarray)):
+                raise TypeError("bounds must be a list or a NumPy array.")
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
+
+        self.dim = len(self.bounds)
+        if not q0:
+            q0 = Uniform(self.bounds, device=device, dtype=dtype)
+        self.q0 = q0
         self.maps = maps
         self.neval = neval
         if nbatch is None:
@@ -61,43 +64,47 @@ class Integrator:
 class MonteCarlo(Integrator):
     def __init__(
         self,
-        bounds,
-        q0=None,
         maps=None,
+        bounds=None,
+        q0=None,
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
         dtype=torch.float64,
     ):
-        super().__init__(bounds, q0, maps, neval, nbatch, device, dtype)
+        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
 
     def __call__(self, f: Callable, **kwargs):
         x, _ = self.sample(1)
         f_values = f(x)
-        f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
-        type_fval = f_values.dtype if f_size == 1 else f_values[0].dtype
+        if isinstance(f_values, (list, tuple)) and isinstance(
+            f_values[0], torch.Tensor
+        ):
+            f_size = len(f_values)
+            type_fval = f_values[0].dtype
+        elif isinstance(f_values, torch.Tensor):
+            f_size = 1
+            type_fval = f_values.dtype
+        else:
+            raise TypeError(
+                "f must return a torch.Tensor or a list/tuple of torch.Tensor."
+            )
 
         epoch = self.neval // self.nbatch
-        mean_values = torch.zeros((f_size, epoch), dtype=type_fval, device=self.device)
-        std_values = torch.zeros_like(mean_values)
+        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
 
         for iepoch in range(epoch):
             x, log_detJ = self.sample(self.nbatch)
             f_values = f(x)
             batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
 
-            mean_values[:, iepoch] = torch.mean(batch_results, dim=-1)
-            std_values[:, iepoch] = torch.std(batch_results, dim=-1) / self.nbatch**0.5
+            values += batch_results / epoch
 
         results = np.array([RAvg() for _ in range(f_size)])
-        for iepoch in range(epoch):
-            for j in range(f_size):
-                results[j].sum_neval += self.nbatch
-                results[j].add(
-                    gvar.gvar(
-                        mean_values[j, iepoch].item(), std_values[j, iepoch].item()
-                    )
-                )
+        for i in range(f_size):
+            _mean = values[:, i].mean().item()
+            _std = values[:, i].std().item() / self.nbatch**0.5
+            results[i].add(gvar.gvar(_mean, _std))
         if f_size == 1:
             return results[0]
         else:
@@ -107,9 +114,9 @@ class MonteCarlo(Integrator):
         # if isinstance(values, dict):
         #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
         if isinstance(values, (list, tuple)):
-            return torch.stack([v * jac for v in values])
+            return torch.stack([v * jac for v in values], dim=-1)
         else:
-            return values * jac
+            return torch.stack([values * jac], dim=-1)
 
 
 def random_walk(dim, bounds, device, dtype, u, **kwargs):
@@ -135,16 +142,16 @@ def gaussian(dim, bounds, device, dtype, u, **kwargs):
 class MCMC(MonteCarlo):
     def __init__(
         self,
-        bounds,
-        q0=None,
         maps=None,
+        bounds=None,
+        q0=None,
         neval=10000,
         nbatch=None,
         nburnin=500,
         device="cpu",
         dtype=torch.float64,
     ):
-        super().__init__(bounds, q0, maps, neval, nbatch, device, dtype)
+        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
         self.nburnin = nburnin
         if maps is None:
             self.maps = Linear([(0, 1)] * self.dim, device=device)
@@ -160,34 +167,34 @@ class MCMC(MonteCarlo):
     ):
         epsilon = 1e-16  # Small value to ensure numerical stability
         epoch = self.neval // self.nbatch
-        # vars_shape = (self.nbatch, self.dim)
         current_y, current_jac = self.q0.sample(self.nbatch)
         current_x, detJ = self.maps.forward(current_y)
         current_jac += detJ
         current_jac = torch.exp(current_jac)
         current_fval = f(current_x)
-        f_size = len(current_fval) if isinstance(current_fval, (list, tuple)) else 1
-
-        if f_size > 1:
+        if isinstance(current_fval, (list, tuple)) and isinstance(
+            current_fval[0], torch.Tensor
+        ):
+            f_size = len(current_fval)
             current_fval = sum(current_fval)
 
             def _integrand(x):
                 return sum(f(x))
-        else:
+        elif isinstance(current_fval, torch.Tensor):
+            f_size = 1
 
             def _integrand(x):
                 return f(x)
-
+        else:
+            raise TypeError(
+                "f must return a torch.Tensor or a list/tuple of torch.Tensor."
+            )
         type_fval = current_fval.dtype
 
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
         current_weight.masked_fill_(current_weight < epsilon, epsilon)
 
         n_meas = epoch // thinning
-        mean_values = torch.zeros((f_size, n_meas), dtype=type_fval, device=self.device)
-        std_values = torch.zeros_like(mean_values)
-        mean_refvalues = torch.zeros(n_meas, dtype=type_fval, device=self.device)
-        std_refvalues = torch.zeros_like(mean_refvalues)
 
         def one_step(current_y, current_x, current_weight, current_jac):
             proposed_y = proposal_dist(
@@ -219,6 +226,9 @@ class MCMC(MonteCarlo):
                 current_y, current_x, current_weight, current_jac
             )
 
+        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
+        refvalues = torch.zeros(self.nbatch, dtype=type_fval, device=self.device)
+
         for imeas in range(n_meas):
             for j in range(thinning):
                 current_y, current_x, current_weight, current_jac = one_step(
@@ -230,26 +240,21 @@ class MCMC(MonteCarlo):
             )
             batch_results_ref = 1 / (current_jac * current_weight)
 
-            mean_values[:, imeas] = torch.mean(batch_results, dim=-1)
-            std_values[:, imeas] = torch.std(batch_results, dim=-1) / self.nbatch**0.5
-
-            mean_refvalues[imeas] = torch.mean(batch_results_ref, dim=-1)
-            std_refvalues[imeas] = (
-                torch.std(batch_results_ref, dim=-1) / self.nbatch**0.5
-            )
+            values += batch_results / n_meas
+            refvalues += batch_results_ref / n_meas
 
         results = np.array([RAvg() for _ in range(f_size)])
         results_ref = RAvg()
-        for imeas in range(n_meas):
-            results_ref.sum_neval += self.nbatch
-            results_ref.add(
-                gvar.gvar(mean_refvalues[imeas].item(), std_refvalues[imeas].item())
-            )
-            for j in range(f_size):
-                results[j].sum_neval += self.nbatch
-                results[j].add(
-                    gvar.gvar(mean_values[j, imeas].item(), std_values[j, imeas].item())
-                )
+
+        mean_ref = refvalues.mean().item()
+        std_ref = refvalues.std().item() / self.nbatch**0.5
+
+        results_ref.add(gvar.gvar(mean_ref, std_ref))
+        for i in range(f_size):
+            _mean = values[:, i].mean().item()
+            _std = values[:, i].std().item() / self.nbatch**0.5
+            results[i].add(gvar.gvar(_mean, _std))
+
         if f_size == 1:
             return results[0] / results_ref * self._rangebounds.prod()
         else:

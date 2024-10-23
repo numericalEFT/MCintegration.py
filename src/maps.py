@@ -95,7 +95,7 @@ class Vegas(Map):
             )
         self.clear()
 
-    def train(self, nsamples, f, nitn=5, alpha=0.5):
+    def train(self, nsamples, f, epoch=5, alpha=0.5):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         u, log_detJ0 = q0.sample(nsamples)
 
@@ -110,7 +110,7 @@ class Vegas(Map):
             def _integrand(x):
                 return f(x)
 
-        for _ in range(nitn):
+        for _ in range(epoch):
             x, log_detJ = self.forward(u)
             f2 = torch.exp(2 * (log_detJ + log_detJ0)) * _integrand(x) ** 2
             self.add_training_data(u, f2)
