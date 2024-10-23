@@ -1,0 +1,8 @@
+torch
+numpy
+normflows
+vegas
+mpmath
+matplotlib
+tqdm
+absl-py
