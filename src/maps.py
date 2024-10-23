@@ -1,6 +1,10 @@
-import torch
 import numpy as np
+import torch
 from torch import nn
+from base import Uniform
+import sys
+
+TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Map(nn.Module):
@@ -75,6 +79,9 @@ class Vegas(Map):
             self.dim, self.ninc.max() + 1, dtype=self.dtype, device=self.device
         )
 
+        self._A = self.bounds[:, 1] - self.bounds[:, 0]
+        self._jaclinear = torch.prod(self._A)
+
         for d in range(self.dim):
             self.grid[d, : self.ninc[d] + 1] = torch.linspace(
                 self.bounds[d, 0],
@@ -88,7 +95,28 @@ class Vegas(Map):
             )
         self.clear()
 
-    def add_training_data(self, u, f):
+    def train(self, nsamples, f, nitn=5, alpha=0.5):
+        q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
+        u, log_detJ0 = q0.sample(nsamples)
+
+        fval = f(u)
+        f_size = len(fval) if isinstance(fval, (list, tuple)) else 1
+        if f_size > 1:
+
+            def _integrand(x):
+                return sum(f(x))
+        else:
+
+            def _integrand(x):
+                return f(x)
+
+        for _ in range(nitn):
+            x, log_detJ = self.forward(u)
+            f2 = torch.exp(2 * (log_detJ + log_detJ0)) * _integrand(x) ** 2
+            self.add_training_data(u, f2)
+            self.adapt(alpha)
+
+    def add_training_data(self, u, fval):
         """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
@@ -106,11 +134,13 @@ class Vegas(Map):
         """
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
-            self.n_f = torch.zeros_like(self.inc) + 1e-10
-        iu = torch.floor(u * self.ninc).long()
+            self.n_f = torch.zeros_like(self.inc) + TINY
+        iu = (u - self.bounds[:, 0]) / self._A * self.ninc
+        iu = torch.floor(iu).long()
         for d in range(self.dim):
-            self.sum_f[d, iu[:, d]] += torch.abs(f)
-            self.n_f[d, iu[:, d]] += 1
+            indices = iu[:, d]
+            self.sum_f[d].scatter_add_(0, indices, fval.abs())
+            self.n_f[d].scatter_add_(0, indices, torch.ones_like(fval))
 
     def adapt(self, alpha=0.0):
         """Adapt grid to accumulated training data.
@@ -172,9 +202,9 @@ class Vegas(Map):
                     )
                     sum_f = torch.sum(tmp_f[:ninc])
                     if sum_f > 0:
-                        avg_f[:ninc] = tmp_f[:ninc] / sum_f + 1e-10
+                        avg_f[:ninc] = tmp_f[:ninc] / sum_f + TINY
                     else:
-                        avg_f[:ninc] = 1e-10
+                        avg_f[:ninc] = TINY
                     avg_f[:ninc] = (
                         -(1 - avg_f[:ninc]) / torch.log(avg_f[:ninc])
                     ) ** alpha
@@ -226,8 +256,10 @@ class Vegas(Map):
     def forward(self, u):
         u = u.to(self.device)
         u_ninc = u * self.ninc
-        iu = torch.floor(u_ninc).long()
-        du_ninc = u_ninc - iu
+        # iu = torch.floor(u_ninc).long()
+        iu = (u - self.bounds[:, 0]) / self._A * self.ninc
+        iu = torch.floor(iu).long()
+        du_ninc = u_ninc - torch.floor(u_ninc).long()
 
         x = torch.empty_like(u)
         jac = torch.ones(u.shape[0], device=x.device)
@@ -249,7 +281,7 @@ class Vegas(Map):
                 x[mask_inv, d] = self.grid[d, ninc]
                 jac[mask_inv] *= self.inc[d, ninc - 1] * ninc
 
-        return x, torch.log(jac)
+        return x, torch.log(jac / self._jaclinear)
 
     @torch.no_grad()
     def inverse(self, x):
@@ -285,7 +317,7 @@ class Vegas(Map):
                 u[mask_upper, d] = 1.0
                 jac[mask_upper] *= self.inc[d, ninc - 1] * ninc
 
-        return u, torch.log(jac)
+        return u, torch.log(jac / self._jaclinear)
 
 
 # class NormalizingFlow(Map):

@@ -15,6 +15,8 @@ class BaseDistribution(nn.Module):
         # self.bounds = bounds
         if isinstance(bounds, (list, np.ndarray)):
             self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
+        elif isinstance(bounds, torch.Tensor):
+            self.bounds = bounds
         else:
             raise ValueError("Unsupported map specification")
         self.dim = self.bounds.shape[0]
@@ -42,6 +44,7 @@ class Uniform(BaseDistribution):
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, nsamples=1, **kwargs):
+        # torch.manual_seed(0) # test seed
         u = (
             torch.rand((nsamples, self.dim), device=self.device, dtype=self.dtype)
             * self._rangebounds

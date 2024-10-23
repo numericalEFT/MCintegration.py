@@ -72,7 +72,7 @@ class MonteCarlo(Integrator):
         super().__init__(bounds, q0, maps, neval, nbatch, device, dtype)
 
     def __call__(self, f: Callable, **kwargs):
-        x, _ = self.sample(self.nbatch)
+        x, _ = self.sample(1)
         f_values = f(x)
         f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
         type_fval = f_values.dtype if f_size == 1 else f_values[0].dtype
@@ -189,7 +189,7 @@ class MCMC(MonteCarlo):
         mean_refvalues = torch.zeros(n_meas, dtype=type_fval, device=self.device)
         std_refvalues = torch.zeros_like(mean_refvalues)
 
-        def _propose(current_y, current_x, current_weight, current_jac):
+        def one_step(current_y, current_x, current_weight, current_jac):
             proposed_y = proposal_dist(
                 self.dim, self.bounds, self.device, self.dtype, current_y, **kwargs
             )
@@ -215,13 +215,13 @@ class MCMC(MonteCarlo):
             return current_y, current_x, current_weight, current_jac
 
         for i in range(self.nburnin):
-            current_y, current_x, current_weight, current_jac = _propose(
+            current_y, current_x, current_weight, current_jac = one_step(
                 current_y, current_x, current_weight, current_jac
             )
 
         for imeas in range(n_meas):
             for j in range(thinning):
-                current_y, current_x, current_weight, current_jac = _propose(
+                current_y, current_x, current_weight, current_jac = one_step(
                     current_y, current_x, current_weight, current_jac
                 )
 
