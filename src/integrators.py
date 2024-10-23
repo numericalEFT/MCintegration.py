@@ -75,28 +75,33 @@ class MonteCarlo(Integrator):
         x, _ = self.sample(self.nbatch)
         f_values = f(x)
         f_size = len(f_values) if isinstance(f_values, (list, tuple)) else 1
-        # type_fval = f_values.dtype if f_size == 1 else type(f_values[0].dtype)
-        # mean = torch.zeros(f_size, dtype=type_fval, device=self.device)
-        # var = torch.zeros(f_size, dtype=type_fval, device=self.device)
-        # var = torch.zeros((f_size, f_size), dtype=type_fval, device=self.device)
-        mean = torch.zeros(f_size, dtype=self.dtype, device=self.device)
-        var = torch.zeros(f_size, dtype=self.dtype, device=self.device)
-        result = RAvg()
-        epoch = self.neval // self.nbatch
+        type_fval = f_values.dtype if f_size == 1 else f_values[0].dtype
 
-        mean[:] = 0
-        var[:] = 0
-        for _ in range(epoch):
+        epoch = self.neval // self.nbatch
+        mean_values = torch.zeros((f_size, epoch), dtype=type_fval, device=self.device)
+        std_values = torch.zeros_like(mean_values)
+
+        for iepoch in range(epoch):
             x, log_detJ = self.sample(self.nbatch)
             f_values = f(x)
             batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
 
-            mean += torch.mean(batch_results, dim=-1) / epoch
-            var += torch.var(batch_results, dim=-1) / (self.neval * epoch)
+            mean_values[:, iepoch] = torch.mean(batch_results, dim=-1)
+            std_values[:, iepoch] = torch.std(batch_results, dim=-1) / self.nbatch**0.5
 
-        result.sum_neval += self.neval
-        result.add(gvar.gvar(mean.item(), (var**0.5).item()))
-        return result
+        results = np.array([RAvg() for _ in range(f_size)])
+        for iepoch in range(epoch):
+            for j in range(f_size):
+                results[j].sum_neval += self.nbatch
+                results[j].add(
+                    gvar.gvar(
+                        mean_values[j, iepoch].item(), std_values[j, iepoch].item()
+                    )
+                )
+        if f_size == 1:
+            return results[0]
+        else:
+            return results
 
     def _multiply_by_jacobian(self, values, jac):
         # if isinstance(values, dict):
@@ -150,52 +155,50 @@ class MCMC(MonteCarlo):
         f: Callable,
         proposal_dist: Callable = uniform,
         thinning=1,
-        mix_rate=0.0,
+        mix_rate=0.5,
         **kwargs,
     ):
         epsilon = 1e-16  # Small value to ensure numerical stability
+        epoch = self.neval // self.nbatch
         # vars_shape = (self.nbatch, self.dim)
         current_y, current_jac = self.q0.sample(self.nbatch)
-        # if self.maps:
         current_x, detJ = self.maps.forward(current_y)
         current_jac += detJ
-        # else:
-        #     current_x = current_y
         current_jac = torch.exp(current_jac)
         current_fval = f(current_x)
+        f_size = len(current_fval) if isinstance(current_fval, (list, tuple)) else 1
+
+        if f_size > 1:
+            current_fval = sum(current_fval)
+
+            def _integrand(x):
+                return sum(f(x))
+        else:
+
+            def _integrand(x):
+                return f(x)
+
+        type_fval = current_fval.dtype
+
         current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
         current_weight.masked_fill_(current_weight < epsilon, epsilon)
-        # current_fval.masked_fill_(current_fval.abs() < epsilon, epsilon)
 
-        # proposed_y = torch.empty_like(current_y)
-        # proposed_x = torch.empty_like(current_x)
-        # new_fval = torch.empty_like(current_fval)
-        # new_weight = torch.empty_like(current_weight)
+        n_meas = epoch // thinning
+        mean_values = torch.zeros((f_size, n_meas), dtype=type_fval, device=self.device)
+        std_values = torch.zeros_like(mean_values)
+        mean_refvalues = torch.zeros(n_meas, dtype=type_fval, device=self.device)
+        std_refvalues = torch.zeros_like(mean_refvalues)
 
-        f_size = len(current_fval) if isinstance(current_fval, (list, tuple)) else 1
-        # type_fval = current_fval.dtype if f_size == 1 else type(current_fval[0].dtype)
-        # mean = torch.zeros(f_size, dtype=type_fval, device=self.device)
-        mean = torch.zeros(f_size, dtype=self.dtype, device=self.device)
-        mean_ref = torch.zeros_like(mean)
-        # var = torch.zeros(f_size, dtype=type_fval, device=self.device)
-        var = torch.zeros(f_size, dtype=self.dtype, device=self.device)
-        var_ref = torch.zeros_like(mean)
-
-        result = RAvg()
-        result_ref = RAvg()
-
-        epoch = self.neval // self.nbatch
-        n_meas = 0
-
-        def _propose(current_y, current_fval, current_weight, current_jac):
+        def _propose(current_y, current_x, current_weight, current_jac):
             proposed_y = proposal_dist(
                 self.dim, self.bounds, self.device, self.dtype, current_y, **kwargs
             )
             proposed_x, new_jac = self.maps.forward(proposed_y)
             new_jac = torch.exp(new_jac)
 
-            new_fval = f(proposed_x)
+            new_fval = _integrand(proposed_x)
             new_weight = mix_rate / new_jac + (1 - mix_rate) * new_fval.abs()
+            new_weight.masked_fill_(new_weight < epsilon, epsilon)
 
             acceptance_probs = new_weight / current_weight * new_jac / current_jac
 
@@ -205,55 +208,49 @@ class MCMC(MonteCarlo):
             )
 
             current_y = torch.where(accept.unsqueeze(1), proposed_y, current_y)
-            current_fval = torch.where(accept, new_fval, current_fval)
+            # current_fval = torch.where(accept, new_fval, current_fval)
+            current_x = torch.where(accept.unsqueeze(1), proposed_x, current_x)
             current_weight = torch.where(accept, new_weight, current_weight)
             current_jac = torch.where(accept, new_jac, current_jac)
-            return current_y, current_fval, current_weight, current_jac
+            return current_y, current_x, current_weight, current_jac
 
         for i in range(self.nburnin):
-            current_y, current_fval, current_weight, current_jac = _propose(
-                current_y, current_fval, current_weight, current_jac
+            current_y, current_x, current_weight, current_jac = _propose(
+                current_y, current_x, current_weight, current_jac
             )
-        for i in range(epoch // thinning):
+
+        for imeas in range(n_meas):
             for j in range(thinning):
-                current_y, current_fval, current_weight, current_jac = _propose(
-                    current_y, current_fval, current_weight, current_jac
+                current_y, current_x, current_weight, current_jac = _propose(
+                    current_y, current_x, current_weight, current_jac
                 )
-            n_meas += 1
-            batch_results = current_fval / current_weight
 
-            mean += torch.mean(batch_results, dim=-1) / epoch
-            var += torch.var(batch_results, dim=-1) / epoch
-
+            batch_results = self._multiply_by_jacobian(
+                f(current_x), 1.0 / current_weight
+            )
             batch_results_ref = 1 / (current_jac * current_weight)
-            mean_ref += torch.mean(batch_results_ref, dim=-1) / epoch
-            var_ref += torch.var(batch_results_ref, dim=-1) / epoch
 
-        result.sum_neval += self.neval
-        result.add(gvar.gvar(mean.item(), ((var / n_meas) ** 0.5).item()))
-        result_ref.sum_neval += self.nbatch
-        result_ref.add(gvar.gvar(mean_ref.item(), ((var_ref / n_meas) ** 0.5).item()))
+            mean_values[:, imeas] = torch.mean(batch_results, dim=-1)
+            std_values[:, imeas] = torch.std(batch_results, dim=-1) / self.nbatch**0.5
 
-        return result / result_ref * self._rangebounds.prod()
+            mean_refvalues[imeas] = torch.mean(batch_results_ref, dim=-1)
+            std_refvalues[imeas] = (
+                torch.std(batch_results_ref, dim=-1) / self.nbatch**0.5
+            )
 
-    # def _propose(self, u, proposal_dist, **kwargs):
-    #     if proposal_dist == "random_walk":
-    #         step_size = kwargs.get("step_size", 0.2)
-    #         step_sizes = self._rangebounds * step_size
-    #         step = (
-    #             torch.empty(self.dim, device=self.device).uniform_(-1, 1) * step_sizes
-    #         )
-    #         new_u = (u + step - self.bounds[:, 0]) % self._rangebounds + self.bounds[
-    #             :, 0
-    #         ]
-    #         return new_u
-    #         # return (u + (torch.rand_like(u) - 0.5) * step_size) % 1.0
-    #     elif proposal_dist == "uniform":
-    #         # return torch.rand_like(u)
-    #         return torch.rand_like(u) * self._rangebounds + self.bounds[:, 0]
-    #     # elif proposal_dist == "gaussian":
-    #     #     mean = kwargs.get("mean", torch.zeros_like(u))
-    #     #     std = kwargs.get("std", torch.ones_like(u))
-    #     #     return torch.normal(mean, std)
-    #     else:
-    #         raise ValueError(f"Unknown proposal distribution: {proposal_dist}")
+        results = np.array([RAvg() for _ in range(f_size)])
+        results_ref = RAvg()
+        for imeas in range(n_meas):
+            results_ref.sum_neval += self.nbatch
+            results_ref.add(
+                gvar.gvar(mean_refvalues[imeas].item(), std_refvalues[imeas].item())
+            )
+            for j in range(f_size):
+                results[j].sum_neval += self.nbatch
+                results[j].add(
+                    gvar.gvar(mean_values[j, imeas].item(), std_values[j, imeas].item())
+                )
+        if f_size == 1:
+            return results[0] / results_ref * self._rangebounds.prod()
+        else:
+            return results / results_ref * self._rangebounds.prod().item()
