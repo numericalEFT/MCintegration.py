@@ -44,43 +44,69 @@
 <span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Union</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Dict</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">RAvg</span>
-<span class="kn">from</span> <span class="nn">maps</span> <span class="kn">import</span> <span class="n">Map</span><span class="p">,</span> <span class="n">Affine</span>
+<span class="kn">from</span> <span class="nn">maps</span> <span class="kn">import</span> <span class="n">Map</span><span class="p">,</span> <span class="n">Linear</span><span class="p">,</span> <span class="n">CompositeMap</span>
+<span class="kn">from</span> <span class="nn">base</span> <span class="kn">import</span> <span class="n">Uniform</span>
 <span class="kn">import</span> <span class="nn">gvar</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 
 
 <div class="viewcode-block" id="Integrator">
 <a class="viewcode-back" href="../src.html#integrators.Integrator">[docs]</a>
 <span class="k">class</span> <span class="nc">Integrator</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Base class for all integrators.</span>
+<span class="sd">    Base class for all integrators. This class is designed to handle integration tasks</span>
+<span class="sd">    over a specified domain (bounds) using a sampling method (q0) and optional</span>
+<span class="sd">    transformation maps.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="c1"># bounds: Union[List[Tuple[float, float]], np.ndarray],</span>
-        <span class="nb">map</span><span class="p">,</span>
+        <span class="n">maps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">q0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">neval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">nbatch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-        <span class="c1"># device=torch.device(&quot;cuda&quot; if torch.cuda.is_available() else &quot;cpu&quot;),</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="nb">map</span><span class="p">,</span> <span class="n">Map</span><span class="p">):</span>
-            <span class="nb">map</span> <span class="o">=</span> <span class="n">Affine</span><span class="p">(</span><span class="nb">map</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+        <span class="k">if</span> <span class="n">maps</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">==</span> <span class="n">maps</span><span class="o">.</span><span class="n">dtype</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Float type of maps should be same as integrator.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">maps</span><span class="o">.</span><span class="n">bounds</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="s2">&quot;bounds must be a list or a NumPy array.&quot;</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="nb">map</span><span class="o">.</span><span class="n">dim</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">map</span> <span class="o">=</span> <span class="nb">map</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">q0</span><span class="p">:</span>
+            <span class="n">q0</span> <span class="o">=</span> <span class="n">Uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">q0</span> <span class="o">=</span> <span class="n">q0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">maps</span> <span class="o">=</span> <span class="n">maps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">=</span> <span class="n">neval</span>
-        <span class="k">if</span> <span class="n">batch_size</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">neval</span>
+        <span class="k">if</span> <span class="n">nbatch</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span> <span class="o">=</span> <span class="n">neval</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">=</span> <span class="n">neval</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="n">neval</span> <span class="o">//</span> <span class="n">batch_size</span><span class="p">)</span> <span class="o">*</span> <span class="n">batch_size</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span> <span class="o">=</span> <span class="n">nbatch</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="n">neval</span> <span class="o">//</span> <span class="n">nbatch</span><span class="p">)</span> <span class="o">*</span> <span class="n">nbatch</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">device</span>
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method&quot;</span><span class="p">)</span></div>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method&quot;</span><span class="p">)</span>
+
+<div class="viewcode-block" id="Integrator.sample">
+<a class="viewcode-back" href="../src.html#integrators.Integrator.sample">[docs]</a>
+    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">nsample</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="n">u</span><span class="p">,</span> <span class="n">log_detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q0</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">nsample</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">log_detJ</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">u</span><span class="p">,</span> <span class="n">log_detj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">log_detJ</span> <span class="o">+</span> <span class="n">log_detj</span></div>
+</div>
 
 
 
@@ -89,65 +115,88 @@
 <span class="k">class</span> <span class="nc">MonteCarlo</span><span class="p">(</span><span class="n">Integrator</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="nb">map</span><span class="p">,</span>
-        <span class="n">nitn</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">maps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">q0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">neval</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">nbatch</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-        <span class="n">adapt</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="nb">map</span><span class="p">,</span> <span class="n">neval</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">adapt</span> <span class="o">=</span> <span class="n">adapt</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">alpha</span> <span class="o">=</span> <span class="n">alpha</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">nitn</span> <span class="o">=</span> <span class="n">nitn</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">maps</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">neval</span><span class="p">,</span> <span class="n">nbatch</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
+        <span class="n">x</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
         <span class="n">f_values</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">f_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">f_values</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f_values</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="mi">1</span>
-        <span class="n">type_fval</span> <span class="o">=</span> <span class="n">f_values</span><span class="o">.</span><span class="n">dtype</span> <span class="k">if</span> <span class="n">f_size</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">type</span><span class="p">(</span><span class="n">f_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f_values</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">f_values</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+        <span class="p">):</span>
+            <span class="n">f_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">f_values</span><span class="p">)</span>
+            <span class="n">type_fval</span> <span class="o">=</span> <span class="n">f_values</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">f_values</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">f_size</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">type_fval</span> <span class="o">=</span> <span class="n">f_values</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;f must return a torch.Tensor or a list/tuple of torch.Tensor.&quot;</span>
+            <span class="p">)</span>
 
-        <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">f_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">var</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">f_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="c1"># var = torch.zeros((f_size, f_size), dtype=type_fval, device=self.device)</span>
+        <span class="n">epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">,</span> <span class="n">f_size</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
 
-        <span class="n">result</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">(</span><span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">)</span>
-        <span class="n">epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
+        <span class="k">for</span> <span class="n">iepoch</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epoch</span><span class="p">):</span>
+            <span class="n">x</span><span class="p">,</span> <span class="n">log_detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">)</span>
+            <span class="n">f_values</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+            <span class="n">batch_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiply_by_jacobian</span><span class="p">(</span><span class="n">f_values</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">log_detJ</span><span class="p">))</span>
 
-        <span class="k">for</span> <span class="n">itn</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nitn</span><span class="p">):</span>
-            <span class="n">mean</span><span class="p">[:]</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="n">var</span><span class="p">[:]</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epoch</span><span class="p">):</span>
-                <span class="n">y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
-                <span class="p">)</span>
-                <span class="n">x</span><span class="p">,</span> <span class="n">jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+            <span class="n">values</span> <span class="o">+=</span> <span class="n">batch_results</span> <span class="o">/</span> <span class="n">epoch</span>
 
-                <span class="n">f_values</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-                <span class="n">batch_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiply_by_jacobian</span><span class="p">(</span><span class="n">f_values</span><span class="p">,</span> <span class="n">jac</span><span class="p">)</span>
-
-                <span class="n">mean</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">batch_results</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">epoch</span>
-                <span class="n">var</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">batch_results</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">*</span> <span class="n">epoch</span><span class="p">)</span>
-
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">add_training_data</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">batch_results</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-
-            <span class="n">result</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span>
-            <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="p">(</span><span class="n">var</span><span class="o">**</span><span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()))</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">adapt</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
-
-        <span class="k">return</span> <span class="n">result</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">RAvg</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f_size</span><span class="p">)])</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f_size</span><span class="p">):</span>
+            <span class="n">_mean</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="n">_std</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="o">**</span><span class="mf">0.5</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">_mean</span><span class="p">,</span> <span class="n">_std</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">f_size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span>
 
     <span class="k">def</span> <span class="nf">_multiply_by_jacobian</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">values</span><span class="p">,</span> <span class="n">jac</span><span class="p">):</span>
         <span class="c1"># if isinstance(values, dict):</span>
         <span class="c1">#     return {k: v * torch.exp(log_det_J) for k, v in values.items()}</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">values</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)):</span>
-            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">v</span> <span class="o">*</span> <span class="n">jac</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">v</span> <span class="o">*</span> <span class="n">jac</span> <span class="k">for</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">values</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">values</span> <span class="o">*</span> <span class="n">jac</span></div>
+            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">values</span> <span class="o">*</span> <span class="n">jac</span><span class="p">],</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="random_walk">
+<a class="viewcode-back" href="../src.html#integrators.random_walk">[docs]</a>
+<span class="k">def</span> <span class="nf">random_walk</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">rangebounds</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="n">step_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_size&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
+    <span class="n">step_sizes</span> <span class="o">=</span> <span class="n">rangebounds</span> <span class="o">*</span> <span class="n">step_size</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">step_sizes</span>
+    <span class="n">new_u</span> <span class="o">=</span> <span class="p">(</span><span class="n">u</span> <span class="o">+</span> <span class="n">step</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">])</span> <span class="o">%</span> <span class="n">rangebounds</span> <span class="o">+</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">new_u</span></div>
+
+
+
+<div class="viewcode-block" id="uniform">
+<a class="viewcode-back" href="../src.html#integrators.uniform">[docs]</a>
+<span class="k">def</span> <span class="nf">uniform</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">rangebounds</span> <span class="o">=</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">*</span> <span class="n">rangebounds</span> <span class="o">+</span> <span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span></div>
+
+
+
+<div class="viewcode-block" id="gaussian">
+<a class="viewcode-back" href="../src.html#integrators.gaussian">[docs]</a>
+<span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+    <span class="n">mean</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+    <span class="n">std</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span></div>
 
 
 
@@ -156,113 +205,123 @@
 <span class="k">class</span> <span class="nc">MCMC</span><span class="p">(</span><span class="n">MonteCarlo</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
-        <span class="nb">map</span><span class="p">:</span> <span class="n">Map</span><span class="p">,</span>
-        <span class="n">nitn</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="n">maps</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">bounds</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">q0</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">neval</span><span class="o">=</span><span class="mi">10000</span><span class="p">,</span>
-        <span class="n">batch_size</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="n">n_burnin</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
+        <span class="n">nbatch</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">nburnin</span><span class="o">=</span><span class="mi">500</span><span class="p">,</span>
         <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span>
-        <span class="n">adapt</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
-        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="nb">map</span><span class="p">,</span> <span class="n">nitn</span><span class="p">,</span> <span class="n">neval</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">adapt</span><span class="p">,</span> <span class="n">alpha</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_burnin</span> <span class="o">=</span> <span class="n">n_burnin</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">maps</span><span class="p">,</span> <span class="n">bounds</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">neval</span><span class="p">,</span> <span class="n">nbatch</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nburnin</span> <span class="o">=</span> <span class="n">nburnin</span>
+        <span class="k">if</span> <span class="n">maps</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">maps</span> <span class="o">=</span> <span class="n">Linear</span><span class="p">([(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">)]</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_rangebounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
 
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span>
-        <span class="n">proposal_dist</span><span class="o">=</span><span class="s2">&quot;global_uniform&quot;</span><span class="p">,</span>
+        <span class="n">proposal_dist</span><span class="p">:</span> <span class="n">Callable</span> <span class="o">=</span> <span class="n">uniform</span><span class="p">,</span>
         <span class="n">thinning</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
-        <span class="n">mix_rate</span><span class="o">=</span><span class="mf">0.0</span><span class="p">,</span>
+        <span class="n">mix_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
         <span class="n">epsilon</span> <span class="o">=</span> <span class="mf">1e-16</span>  <span class="c1"># Small value to ensure numerical stability</span>
-        <span class="n">vars_shape</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">)</span>
-        <span class="n">current_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="n">vars_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">current_x</span><span class="p">,</span> <span class="n">current_jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">current_y</span><span class="p">)</span>
+        <span class="n">epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span>
+        <span class="n">current_y</span><span class="p">,</span> <span class="n">current_jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q0</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">)</span>
+        <span class="n">current_x</span><span class="p">,</span> <span class="n">detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">current_y</span><span class="p">)</span>
+        <span class="n">current_jac</span> <span class="o">+=</span> <span class="n">detJ</span>
+        <span class="n">current_jac</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">current_jac</span><span class="p">)</span>
         <span class="n">current_fval</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">current_x</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current_fval</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="n">current_fval</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span>
+        <span class="p">):</span>
+            <span class="n">f_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_fval</span><span class="p">)</span>
+            <span class="n">current_fval</span> <span class="o">=</span> <span class="nb">sum</span><span class="p">(</span><span class="n">current_fval</span><span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">_integrand</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="k">return</span> <span class="nb">sum</span><span class="p">(</span><span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current_fval</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+            <span class="n">f_size</span> <span class="o">=</span> <span class="mi">1</span>
+
+            <span class="k">def</span> <span class="nf">_integrand</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+                <span class="k">return</span> <span class="n">f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span>
+                <span class="s2">&quot;f must return a torch.Tensor or a list/tuple of torch.Tensor.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">type_fval</span> <span class="o">=</span> <span class="n">current_fval</span><span class="o">.</span><span class="n">dtype</span>
+
         <span class="n">current_weight</span> <span class="o">=</span> <span class="n">mix_rate</span> <span class="o">/</span> <span class="n">current_jac</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">mix_rate</span><span class="p">)</span> <span class="o">*</span> <span class="n">current_fval</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
         <span class="n">current_weight</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">current_weight</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
-        <span class="c1"># current_fval.masked_fill_(current_fval.abs() &lt; epsilon, epsilon)</span>
 
-        <span class="n">proposed_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">current_y</span><span class="p">)</span>
-        <span class="n">proposed_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">proposed_y</span><span class="p">)</span>
-        <span class="n">new_fval</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">current_fval</span><span class="p">)</span>
-        <span class="n">new_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">current_weight</span><span class="p">)</span>
+        <span class="n">n_meas</span> <span class="o">=</span> <span class="n">epoch</span> <span class="o">//</span> <span class="n">thinning</span>
 
-        <span class="n">f_size</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">current_fval</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current_fval</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">))</span> <span class="k">else</span> <span class="mi">1</span>
-        <span class="n">type_fval</span> <span class="o">=</span> <span class="n">current_fval</span><span class="o">.</span><span class="n">dtype</span> <span class="k">if</span> <span class="n">f_size</span> <span class="o">==</span> <span class="mi">1</span> <span class="k">else</span> <span class="nb">type</span><span class="p">(</span><span class="n">current_fval</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="n">mean</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">f_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">mean_ref</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
-        <span class="n">var</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">f_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="n">var_ref</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="k">def</span> <span class="nf">one_step</span><span class="p">(</span><span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span><span class="p">):</span>
+            <span class="n">proposed_y</span> <span class="o">=</span> <span class="n">proposal_dist</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">current_y</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
+            <span class="n">proposed_x</span><span class="p">,</span> <span class="n">new_jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">proposed_y</span><span class="p">)</span>
+            <span class="n">new_jac</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">new_jac</span><span class="p">)</span>
 
-        <span class="n">result</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">(</span><span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">)</span>
-        <span class="n">result_ref</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">(</span><span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">)</span>
+            <span class="n">new_fval</span> <span class="o">=</span> <span class="n">_integrand</span><span class="p">(</span><span class="n">proposed_x</span><span class="p">)</span>
+            <span class="n">new_weight</span> <span class="o">=</span> <span class="n">mix_rate</span> <span class="o">/</span> <span class="n">new_jac</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">mix_rate</span><span class="p">)</span> <span class="o">*</span> <span class="n">new_fval</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
+            <span class="n">new_weight</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">new_weight</span> <span class="o">&lt;</span> <span class="n">epsilon</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">)</span>
 
-        <span class="n">epoch</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
-        <span class="n">n_meas</span> <span class="o">=</span> <span class="mi">0</span>
-        <span class="k">for</span> <span class="n">itn</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nitn</span><span class="p">):</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">epoch</span><span class="p">):</span>
-                <span class="n">proposed_y</span><span class="p">[:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_propose</span><span class="p">(</span><span class="n">current_y</span><span class="p">,</span> <span class="n">proposal_dist</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-                <span class="n">proposed_x</span><span class="p">[:],</span> <span class="n">new_jac</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">proposed_y</span><span class="p">)</span>
+            <span class="n">acceptance_probs</span> <span class="o">=</span> <span class="n">new_weight</span> <span class="o">/</span> <span class="n">current_weight</span> <span class="o">*</span> <span class="n">new_jac</span> <span class="o">/</span> <span class="n">current_jac</span>
 
-                <span class="n">new_fval</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">f</span><span class="p">(</span><span class="n">proposed_x</span><span class="p">)</span>
-                <span class="n">new_weight</span> <span class="o">=</span> <span class="n">mix_rate</span> <span class="o">/</span> <span class="n">new_jac</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">mix_rate</span><span class="p">)</span> <span class="o">*</span> <span class="n">new_fval</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span>
-
-                <span class="n">acceptance_probs</span> <span class="o">=</span> <span class="n">new_weight</span> <span class="o">/</span> <span class="n">current_weight</span> <span class="o">*</span> <span class="n">new_jac</span> <span class="o">/</span> <span class="n">current_jac</span>
-
-                <span class="n">accept</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-                    <span class="o">&lt;=</span> <span class="n">acceptance_probs</span>
-                <span class="p">)</span>
-
-                <span class="n">current_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">proposed_y</span><span class="p">,</span> <span class="n">current_y</span><span class="p">)</span>
-                <span class="n">current_fval</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">new_fval</span><span class="p">,</span> <span class="n">current_fval</span><span class="p">)</span>
-                <span class="n">current_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">new_weight</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">)</span>
-                <span class="n">current_jac</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">new_jac</span><span class="p">,</span> <span class="n">current_jac</span><span class="p">)</span>
-
-                <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_burnin</span> <span class="ow">and</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">adapt</span> <span class="ow">or</span> <span class="n">itn</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
-                    <span class="k">continue</span>
-                <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="n">thinning</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                    <span class="n">n_meas</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="n">batch_results</span> <span class="o">=</span> <span class="n">current_fval</span> <span class="o">/</span> <span class="n">current_weight</span>
-
-                    <span class="n">mean</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">batch_results</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">epoch</span>
-                    <span class="n">var</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">batch_results</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">epoch</span>
-
-                    <span class="n">batch_results_ref</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_jac</span> <span class="o">*</span> <span class="n">current_weight</span><span class="p">)</span>
-                    <span class="n">mean_ref</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">batch_results_ref</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">epoch</span>
-                    <span class="n">var_ref</span> <span class="o">+=</span> <span class="n">torch</span><span class="o">.</span><span class="n">var</span><span class="p">(</span><span class="n">batch_results_ref</span><span class="p">,</span> <span class="n">dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">epoch</span>
-
-                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">:</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">add_training_data</span><span class="p">(</span>
-                            <span class="n">current_y</span><span class="p">,</span> <span class="p">(</span><span class="n">current_fval</span> <span class="o">*</span> <span class="n">current_jac</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
-                        <span class="p">)</span>
-            <span class="n">result</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">neval</span>
-            <span class="n">result</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="p">((</span><span class="n">var</span> <span class="o">/</span> <span class="n">n_meas</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">()))</span>
-            <span class="n">result_ref</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
-            <span class="n">result_ref</span><span class="o">.</span><span class="n">add</span><span class="p">(</span>
-                <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean_ref</span><span class="o">.</span><span class="n">item</span><span class="p">(),</span> <span class="p">((</span><span class="n">var_ref</span> <span class="o">/</span> <span class="n">n_meas</span><span class="p">)</span> <span class="o">**</span> <span class="mf">0.5</span><span class="p">)</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+            <span class="n">accept</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+                <span class="o">&lt;=</span> <span class="n">acceptance_probs</span>
             <span class="p">)</span>
 
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">adapt</span><span class="p">:</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">map</span><span class="o">.</span><span class="n">adapt</span><span class="p">(</span><span class="n">alpha</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="n">current_y</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">proposed_y</span><span class="p">,</span> <span class="n">current_y</span><span class="p">)</span>
+            <span class="c1"># current_fval = torch.where(accept, new_fval, current_fval)</span>
+            <span class="n">current_x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="n">proposed_x</span><span class="p">,</span> <span class="n">current_x</span><span class="p">)</span>
+            <span class="n">current_weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">new_weight</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">)</span>
+            <span class="n">current_jac</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">accept</span><span class="p">,</span> <span class="n">new_jac</span><span class="p">,</span> <span class="n">current_jac</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span>
 
-        <span class="k">return</span> <span class="n">result</span> <span class="o">/</span> <span class="n">result_ref</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nburnin</span><span class="p">):</span>
+            <span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span> <span class="o">=</span> <span class="n">one_step</span><span class="p">(</span>
+                <span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span>
+            <span class="p">)</span>
 
-    <span class="k">def</span> <span class="nf">_propose</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="n">proposal_dist</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">if</span> <span class="n">proposal_dist</span> <span class="o">==</span> <span class="s2">&quot;random_walk&quot;</span><span class="p">:</span>
-            <span class="n">step_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_size&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">(</span><span class="n">u</span> <span class="o">+</span> <span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="n">step_size</span><span class="p">)</span> <span class="o">%</span> <span class="mf">1.0</span>
-        <span class="k">elif</span> <span class="n">proposal_dist</span> <span class="o">==</span> <span class="s2">&quot;global_uniform&quot;</span><span class="p">:</span>
-            <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
-        <span class="c1"># elif proposal_dist == &quot;gaussian&quot;:</span>
-        <span class="c1">#     mean = kwargs.get(&quot;mean&quot;, torch.zeros_like(u))</span>
-        <span class="c1">#     std = kwargs.get(&quot;std&quot;, torch.ones_like(u))</span>
-        <span class="c1">#     return torch.normal(mean, std)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">,</span> <span class="n">f_size</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">refvalues</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">type_fval</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">imeas</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_meas</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">thinning</span><span class="p">):</span>
+                <span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span> <span class="o">=</span> <span class="n">one_step</span><span class="p">(</span>
+                    <span class="n">current_y</span><span class="p">,</span> <span class="n">current_x</span><span class="p">,</span> <span class="n">current_weight</span><span class="p">,</span> <span class="n">current_jac</span>
+                <span class="p">)</span>
+
+            <span class="n">batch_results</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_multiply_by_jacobian</span><span class="p">(</span>
+                <span class="n">f</span><span class="p">(</span><span class="n">current_x</span><span class="p">),</span> <span class="mf">1.0</span> <span class="o">/</span> <span class="n">current_weight</span>
+            <span class="p">)</span>
+            <span class="n">batch_results_ref</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="n">current_jac</span> <span class="o">*</span> <span class="n">current_weight</span><span class="p">)</span>
+
+            <span class="n">values</span> <span class="o">+=</span> <span class="n">batch_results</span> <span class="o">/</span> <span class="n">n_meas</span>
+            <span class="n">refvalues</span> <span class="o">+=</span> <span class="n">batch_results_ref</span> <span class="o">/</span> <span class="n">n_meas</span>
+
+        <span class="n">results</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">RAvg</span><span class="p">()</span> <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f_size</span><span class="p">)])</span>
+        <span class="n">results_ref</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">()</span>
+
+        <span class="n">mean_ref</span> <span class="o">=</span> <span class="n">refvalues</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="n">std_ref</span> <span class="o">=</span> <span class="n">refvalues</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="o">**</span><span class="mf">0.5</span>
+
+        <span class="n">results_ref</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean_ref</span><span class="p">,</span> <span class="n">std_ref</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">f_size</span><span class="p">):</span>
+            <span class="n">_mean</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+            <span class="n">_std</span> <span class="o">=</span> <span class="n">values</span><span class="p">[:,</span> <span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">std</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nbatch</span><span class="o">**</span><span class="mf">0.5</span>
+            <span class="n">results</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">_mean</span><span class="p">,</span> <span class="n">_std</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">f_size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">results</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">results_ref</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rangebounds</span><span class="o">.</span><span class="n">prod</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Unknown proposal distribution: </span><span class="si">{</span><span class="n">proposal_dist</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="k">return</span> <span class="n">results</span> <span class="o">/</span> <span class="n">results_ref</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">_rangebounds</span><span class="o">.</span><span class="n">prod</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span></div>
 
 </pre></div>
 

@@ -4,6 +4,14 @@ src package
 Submodules
 ----------
 
+base module
+---------------
+
+.. automodule:: base
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 integrators module
 ----------------------
 
@@ -32,6 +40,14 @@ utils module
 ----------------
 
 .. automodule:: utils
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+vegas\_test module
+----------------------
+
+.. automodule:: vegas_test
    :members:
    :undoc-members:
    :show-inheritance:

@@ -45,113 +45,177 @@
 <section id="submodules">
 <h2>Submodules<a class="headerlink" href="#submodules" title="Link to this heading">¶</a></h2>
 </section>
+<section id="module-base">
+<span id="base-module"></span><h2>base module<a class="headerlink" href="#module-base" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="base.BaseDistribution">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">base.</span></span><span class="sig-name descname"><span class="pre">BaseDistribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/base.html#BaseDistribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#base.BaseDistribution" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Base distribution of a flow-based model
+Parameters do not depend of target variable (as is the case for a VAE encoder)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="base.BaseDistribution.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nsamples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/base.html#BaseDistribution.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#base.BaseDistribution.sample" title="Link to this definition">¶</a></dt>
+<dd><p>Samples from base distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num_samples</strong> – Number of samples to draw from the distriubtion</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Samples drawn from the distribution</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="base.Uniform">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">base.</span></span><span class="sig-name descname"><span class="pre">Uniform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/base.html#Uniform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#base.Uniform" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#base.BaseDistribution" title="base.BaseDistribution"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDistribution</span></code></a></p>
+<p>Multivariate uniform distribution</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="base.Uniform.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nsamples</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/base.html#Uniform.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#base.Uniform.sample" title="Link to this definition">¶</a></dt>
+<dd><p>Samples from base distribution</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>num_samples</strong> – Number of samples to draw from the distriubtion</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Samples drawn from the distribution</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
 <section id="module-integrators">
 <span id="integrators-module"></span><h2>integrators module<a class="headerlink" href="#module-integrators" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="integrators.Integrator">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">Integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#Integrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.Integrator" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">Integrator</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbatch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#Integrator"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.Integrator" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
-<p>Base class for all integrators.</p>
+<p>Base class for all integrators. This class is designed to handle integration tasks
+over a specified domain (bounds) using a sampling method (q0) and optional
+transformation maps.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="integrators.Integrator.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nsample</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#Integrator.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.Integrator.sample" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="integrators.MCMC">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MCMC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="#maps.Map" title="maps.Map"><span class="pre">Map</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">nitn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_burnin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adapt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MCMC"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MCMC" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MCMC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbatch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nburnin</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">500</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MCMC"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MCMC" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#integrators.MonteCarlo" title="integrators.MonteCarlo"><code class="xref py py-class docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></p>
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="integrators.MonteCarlo">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nitn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">adapt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MonteCarlo" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">MonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nbatch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#MonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.MonteCarlo" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#integrators.Integrator" title="integrators.Integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Integrator</span></code></a></p>
 </dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="integrators.gaussian">
+<span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#gaussian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.gaussian" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="integrators.random_walk">
+<span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">random_walk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#random_walk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.random_walk" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="integrators.uniform">
+<span class="sig-prename descclassname"><span class="pre">integrators.</span></span><span class="sig-name descname"><span class="pre">uniform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/integrators.html#uniform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#integrators.uniform" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </section>
 <section id="module-maps">
 <span id="maps-module"></span><h2>maps module<a class="headerlink" href="#module-maps" title="Link to this heading">¶</a></h2>
 <dl class="py class">
-<dt class="sig sig-object py" id="maps.AdaptiveMap">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">AdaptiveMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="maps.CompositeMap">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">CompositeMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#CompositeMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.CompositeMap" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#maps.Map" title="maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
 <dl class="py method">
-<dt class="sig sig-object py" id="maps.AdaptiveMap.adapt">
-<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap.adapt" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="maps.CompositeMap.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#CompositeMap.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.CompositeMap.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="maps.AdaptiveMap.add_training_data">
-<span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#AdaptiveMap.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.AdaptiveMap.add_training_data" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="maps.CompositeMap.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#CompositeMap.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.CompositeMap.inverse" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
-<dt class="sig sig-object py" id="maps.Affine">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Affine</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="maps.Linear">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Linear</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Linear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Linear" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#maps.Map" title="maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
 <dl class="py method">
-<dt class="sig sig-object py" id="maps.Affine.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.forward" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="maps.Linear.forward">
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Linear.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Linear.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="maps.Affine.inverse">
-<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="maps.Affine.log_det_jacobian">
-<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Affine.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Affine.log_det_jacobian" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="maps.Linear.inverse">
+<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Linear.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Linear.inverse" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="maps.Map">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Map.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.forward" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Map.inverse">
 <span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.inverse" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
-<dl class="py method">
-<dt class="sig sig-object py" id="maps.Map.log_det_jacobian">
-<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Map.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Map.log_det_jacobian" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-</dd></dl>
-
-<dl class="py class">
-<dt class="sig sig-object py" id="maps.NormalizingFlow">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">NormalizingFlow</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">flow_model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#maps.AdaptiveMap" title="maps.AdaptiveMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a></p>
-<dl class="py method">
-<dt class="sig sig-object py" id="maps.NormalizingFlow.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.forward" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="maps.NormalizingFlow.inverse">
-<span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="maps.NormalizingFlow.log_det_jacobian">
-<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#NormalizingFlow.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.NormalizingFlow.log_det_jacobian" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="maps.Vegas">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Vegas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">map_spec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ninc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas" title="Link to this definition">¶</a></dt>
-<dd><p>Bases: <a class="reference internal" href="#maps.AdaptiveMap" title="maps.AdaptiveMap"><code class="xref py py-class docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a></p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">maps.</span></span><span class="sig-name descname"><span class="pre">Vegas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ninc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float64</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#maps.Map" title="maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Vegas.adapt">
 <span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.adapt" title="Link to this definition">¶</a></dt>
@@ -184,8 +248,8 @@ data (usually not a good idea).</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Vegas.add_training_data">
-<span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.add_training_data" title="Link to this definition">¶</a></dt>
-<dd><p>Add training data <code class="docutils literal notranslate"><span class="pre">f</span></code> for <code class="docutils literal notranslate"><span class="pre">y</span></code>-space points <code class="docutils literal notranslate"><span class="pre">y</span></code>.</p>
+<span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fval</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.add_training_data" title="Link to this definition">¶</a></dt>
+<dd><p>Add training data <code class="docutils literal notranslate"><span class="pre">f</span></code> for <code class="docutils literal notranslate"><span class="pre">u</span></code>-space points <code class="docutils literal notranslate"><span class="pre">u</span></code>.</p>
 <p>Accumulates training data for later use by <code class="docutils literal notranslate"><span class="pre">self.adapt()</span></code>.
 Grid increments will be made smaller in regions where
 <code class="docutils literal notranslate"><span class="pre">f</span></code> is larger than average, and larger where <code class="docutils literal notranslate"><span class="pre">f</span></code>
@@ -194,11 +258,11 @@ when <code class="docutils literal notranslate"><span class="pre">f</span></code
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>y</strong> (<em>tensor</em>) – <code class="docutils literal notranslate"><span class="pre">y</span></code> values corresponding to the training data.
-<code class="docutils literal notranslate"><span class="pre">y</span></code> is a contiguous 2-d tensor, where <code class="docutils literal notranslate"><span class="pre">y[j,</span> <span class="pre">d]</span></code>
+<li><p><strong>u</strong> (<em>tensor</em>) – <code class="docutils literal notranslate"><span class="pre">u</span></code> values corresponding to the training data.
+<code class="docutils literal notranslate"><span class="pre">u</span></code> is a contiguous 2-d tensor, where <code class="docutils literal notranslate"><span class="pre">u[j,</span> <span class="pre">d]</span></code>
 is for points along direction <code class="docutils literal notranslate"><span class="pre">d</span></code>.</p></li>
 <li><p><strong>f</strong> (<em>tensor</em>) – Training function values. <code class="docutils literal notranslate"><span class="pre">f[j]</span></code> corresponds to
-point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <span class="pre">d]</span></code> in <code class="docutils literal notranslate"><span class="pre">y</span></code>-space.</p></li>
+point <code class="docutils literal notranslate"><span class="pre">u[j,</span> <span class="pre">d]</span></code> in <code class="docutils literal notranslate"><span class="pre">u</span></code>-space.</p></li>
 </ul>
 </dd>
 </dl>
@@ -207,7 +271,7 @@ point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Vegas.clear">
 <span class="sig-name descname"><span class="pre">clear</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.clear"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.clear" title="Link to this definition">¶</a></dt>
-<dd><p>Clear information accumulated by <a class="reference internal" href="#maps.AdaptiveMap.add_training_data" title="maps.AdaptiveMap.add_training_data"><code class="xref py py-meth docutils literal notranslate"><span class="pre">AdaptiveMap.add_training_data()</span></code></a>.</p>
+<dd><p>Clear information accumulated by <code class="xref py py-meth docutils literal notranslate"><span class="pre">AdaptiveMap.add_training_data()</span></code>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -218,8 +282,17 @@ point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <
 
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Vegas.forward">
-<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.forward" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.forward" title="Link to this definition">¶</a></dt>
+<dd><p>Define the computation performed at every call.</p>
+<p>Should be overridden by all subclasses.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Although the recipe for forward pass needs to be defined within
+this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
+instead of this since the former takes care of running the
+registered hooks while the latter silently ignores them.</p>
+</div>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="maps.Vegas.inverse">
@@ -227,9 +300,26 @@ point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <
 <dd></dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="maps.Vegas.log_det_jacobian">
-<span class="sig-name descname"><span class="pre">log_det_jacobian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.log_det_jacobian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.log_det_jacobian" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dt class="sig sig-object py" id="maps.Vegas.train">
+<span class="sig-name descname"><span class="pre">train</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">nsamples</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/maps.html#Vegas.train"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#maps.Vegas.train" title="Link to this definition">¶</a></dt>
+<dd><p>Set the module in training mode.</p>
+<p>This has any effect only on certain modules. See documentations of
+particular modules for details of their behaviors in training/evaluation
+mode, if they are affected, e.g. <code class="xref py py-class docutils literal notranslate"><span class="pre">Dropout</span></code>, <code class="xref py py-class docutils literal notranslate"><span class="pre">BatchNorm</span></code>,
+etc.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mode</strong> (<em>bool</em>) – whether to set training mode (<code class="docutils literal notranslate"><span class="pre">True</span></code>) or evaluation
+mode (<code class="docutils literal notranslate"><span class="pre">False</span></code>). Default: <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>self</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Module</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 
@@ -239,6 +329,21 @@ point <code class="docutils literal notranslate"><span class="pre">y[j,</span> <
 <dl class="py function">
 <dt class="sig sig-object py" id="mc_test.half_sphere_integrand">
 <span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">half_sphere_integrand</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#half_sphere_integrand"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.half_sphere_integrand" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.integrand_list">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">integrand_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#integrand_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.integrand_list" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.integrand_list1">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">integrand_list1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#integrand_list1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.integrand_list1" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="mc_test.sharp_peak">
+<span class="sig-prename descclassname"><span class="pre">mc_test.</span></span><span class="sig-name descname"><span class="pre">sharp_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/mc_test.html#sharp_peak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#mc_test.sharp_peak" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
@@ -330,6 +435,24 @@ Default behavior is determined by <a href="#id1"><span class="problematic" id="i
 <dd></dd></dl>
 
 </section>
+<section id="module-vegas_test">
+<span id="vegas-test-module"></span><h2>vegas_test module<a class="headerlink" href="#module-vegas_test" title="Link to this heading">¶</a></h2>
+<dl class="py function">
+<dt class="sig sig-object py" id="vegas_test.func">
+<span class="sig-prename descclassname"><span class="pre">vegas_test.</span></span><span class="sig-name descname"><span class="pre">func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/vegas_test.html#func"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#vegas_test.func" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vegas_test.integrand_list1">
+<span class="sig-prename descclassname"><span class="pre">vegas_test.</span></span><span class="sig-name descname"><span class="pre">integrand_list1</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/vegas_test.html#integrand_list1"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#vegas_test.integrand_list1" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="vegas_test.sharp_peak">
+<span class="sig-prename descclassname"><span class="pre">vegas_test.</span></span><span class="sig-name descname"><span class="pre">sharp_peak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/vegas_test.html#sharp_peak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#vegas_test.sharp_peak" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+</section>
 <section id="module-contents">
 <h2>Module contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 </section>
@@ -347,34 +470,43 @@ Default behavior is determined by <a href="#id1"><span class="problematic" id="i
     <ul>
 <li><a class="reference internal" href="#">src package</a><ul>
 <li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-base">base module</a><ul>
+<li><a class="reference internal" href="#base.BaseDistribution"><code class="docutils literal notranslate"><span class="pre">BaseDistribution</span></code></a><ul>
+<li><a class="reference internal" href="#base.BaseDistribution.sample"><code class="docutils literal notranslate"><span class="pre">BaseDistribution.sample()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#base.Uniform"><code class="docutils literal notranslate"><span class="pre">Uniform</span></code></a><ul>
+<li><a class="reference internal" href="#base.Uniform.sample"><code class="docutils literal notranslate"><span class="pre">Uniform.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
 <li><a class="reference internal" href="#module-integrators">integrators module</a><ul>
-<li><a class="reference internal" href="#integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a></li>
+<li><a class="reference internal" href="#integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a><ul>
+<li><a class="reference internal" href="#integrators.Integrator.sample"><code class="docutils literal notranslate"><span class="pre">Integrator.sample()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#integrators.MCMC"><code class="docutils literal notranslate"><span class="pre">MCMC</span></code></a></li>
 <li><a class="reference internal" href="#integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></li>
+<li><a class="reference internal" href="#integrators.gaussian"><code class="docutils literal notranslate"><span class="pre">gaussian()</span></code></a></li>
+<li><a class="reference internal" href="#integrators.random_walk"><code class="docutils literal notranslate"><span class="pre">random_walk()</span></code></a></li>
+<li><a class="reference internal" href="#integrators.uniform"><code class="docutils literal notranslate"><span class="pre">uniform()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-maps">maps module</a><ul>
-<li><a class="reference internal" href="#maps.AdaptiveMap"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap</span></code></a><ul>
-<li><a class="reference internal" href="#maps.AdaptiveMap.adapt"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap.adapt()</span></code></a></li>
-<li><a class="reference internal" href="#maps.AdaptiveMap.add_training_data"><code class="docutils literal notranslate"><span class="pre">AdaptiveMap.add_training_data()</span></code></a></li>
+<li><a class="reference internal" href="#maps.CompositeMap"><code class="docutils literal notranslate"><span class="pre">CompositeMap</span></code></a><ul>
+<li><a class="reference internal" href="#maps.CompositeMap.forward"><code class="docutils literal notranslate"><span class="pre">CompositeMap.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.CompositeMap.inverse"><code class="docutils literal notranslate"><span class="pre">CompositeMap.inverse()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#maps.Affine"><code class="docutils literal notranslate"><span class="pre">Affine</span></code></a><ul>
-<li><a class="reference internal" href="#maps.Affine.forward"><code class="docutils literal notranslate"><span class="pre">Affine.forward()</span></code></a></li>
-<li><a class="reference internal" href="#maps.Affine.inverse"><code class="docutils literal notranslate"><span class="pre">Affine.inverse()</span></code></a></li>
-<li><a class="reference internal" href="#maps.Affine.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Affine.log_det_jacobian()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Linear"><code class="docutils literal notranslate"><span class="pre">Linear</span></code></a><ul>
+<li><a class="reference internal" href="#maps.Linear.forward"><code class="docutils literal notranslate"><span class="pre">Linear.forward()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Linear.inverse"><code class="docutils literal notranslate"><span class="pre">Linear.inverse()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#maps.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a><ul>
 <li><a class="reference internal" href="#maps.Map.forward"><code class="docutils literal notranslate"><span class="pre">Map.forward()</span></code></a></li>
 <li><a class="reference internal" href="#maps.Map.inverse"><code class="docutils literal notranslate"><span class="pre">Map.inverse()</span></code></a></li>
-<li><a class="reference internal" href="#maps.Map.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Map.log_det_jacobian()</span></code></a></li>
-</ul>
-</li>
-<li><a class="reference internal" href="#maps.NormalizingFlow"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow</span></code></a><ul>
-<li><a class="reference internal" href="#maps.NormalizingFlow.forward"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.forward()</span></code></a></li>
-<li><a class="reference internal" href="#maps.NormalizingFlow.inverse"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.inverse()</span></code></a></li>
-<li><a class="reference internal" href="#maps.NormalizingFlow.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">NormalizingFlow.log_det_jacobian()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#maps.Vegas"><code class="docutils literal notranslate"><span class="pre">Vegas</span></code></a><ul>
@@ -384,13 +516,16 @@ Default behavior is determined by <a href="#id1"><span class="problematic" id="i
 <li><a class="reference internal" href="#maps.Vegas.extract_grid"><code class="docutils literal notranslate"><span class="pre">Vegas.extract_grid()</span></code></a></li>
 <li><a class="reference internal" href="#maps.Vegas.forward"><code class="docutils literal notranslate"><span class="pre">Vegas.forward()</span></code></a></li>
 <li><a class="reference internal" href="#maps.Vegas.inverse"><code class="docutils literal notranslate"><span class="pre">Vegas.inverse()</span></code></a></li>
-<li><a class="reference internal" href="#maps.Vegas.log_det_jacobian"><code class="docutils literal notranslate"><span class="pre">Vegas.log_det_jacobian()</span></code></a></li>
+<li><a class="reference internal" href="#maps.Vegas.train"><code class="docutils literal notranslate"><span class="pre">Vegas.train()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-mc_test">mc_test module</a><ul>
 <li><a class="reference internal" href="#mc_test.half_sphere_integrand"><code class="docutils literal notranslate"><span class="pre">half_sphere_integrand()</span></code></a></li>
+<li><a class="reference internal" href="#mc_test.integrand_list"><code class="docutils literal notranslate"><span class="pre">integrand_list()</span></code></a></li>
+<li><a class="reference internal" href="#mc_test.integrand_list1"><code class="docutils literal notranslate"><span class="pre">integrand_list1()</span></code></a></li>
+<li><a class="reference internal" href="#mc_test.sharp_peak"><code class="docutils literal notranslate"><span class="pre">sharp_peak()</span></code></a></li>
 <li><a class="reference internal" href="#mc_test.test_nothing"><code class="docutils literal notranslate"><span class="pre">test_nothing()</span></code></a></li>
 <li><a class="reference internal" href="#mc_test.unit_circle_integrand"><code class="docutils literal notranslate"><span class="pre">unit_circle_integrand()</span></code></a></li>
 </ul>
@@ -410,6 +545,12 @@ Default behavior is determined by <a href="#id1"><span class="problematic" id="i
 </li>
 <li><a class="reference internal" href="#utils.get_device"><code class="docutils literal notranslate"><span class="pre">get_device()</span></code></a></li>
 <li><a class="reference internal" href="#utils.set_seed"><code class="docutils literal notranslate"><span class="pre">set_seed()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#module-vegas_test">vegas_test module</a><ul>
+<li><a class="reference internal" href="#vegas_test.func"><code class="docutils literal notranslate"><span class="pre">func()</span></code></a></li>
+<li><a class="reference internal" href="#vegas_test.integrand_list1"><code class="docutils literal notranslate"><span class="pre">integrand_list1()</span></code></a></li>
+<li><a class="reference internal" href="#vegas_test.sharp_peak"><code class="docutils literal notranslate"><span class="pre">sharp_peak()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#module-contents">Module contents</a></li>
