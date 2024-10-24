@@ -8,6 +8,10 @@ set_seed(42)
 device = torch.device("cpu")
 
 
+def test_nothing():
+    pass
+
+
 def unit_circle_integrand(x):
     inside_circle = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
     return inside_circle
