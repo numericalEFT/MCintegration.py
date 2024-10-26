@@ -69,8 +69,9 @@ jobs:
         run: |
           cd docs
           sphinx-apidoc -o source ../src
-          python ../remove_prefix.py
+          python ../clean_src_rst.py
           make html
+          python ../clean_html_sidebar.py
 
       - name: Deploy documentation to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
