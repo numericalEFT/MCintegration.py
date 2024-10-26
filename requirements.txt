@@ -6,3 +6,4 @@ mpmath
 matplotlib
 tqdm
 absl-py
+beautifulsoup4
