@@ -41,7 +41,8 @@
           <div class="body" role="main">
             
   <h1>Source code for mc_test</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span></span><span class="c1"># Integration tests for MonteCarlo and MCMC integrators class.</span>
+<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">integrators</span> <span class="kn">import</span> <span class="n">MonteCarlo</span><span class="p">,</span> <span class="n">MCMC</span>
 <span class="kn">from</span> <span class="nn">maps</span> <span class="kn">import</span> <span class="n">Vegas</span><span class="p">,</span> <span class="n">Linear</span>
 <span class="kn">from</span> <span class="nn">utils</span> <span class="kn">import</span> <span class="n">set_seed</span><span class="p">,</span> <span class="n">get_device</span>
@@ -163,6 +164,7 @@
 <span class="n">res</span> <span class="o">=</span> <span class="n">mcmc_integrator</span><span class="p">(</span><span class="n">half_sphere_integrand</span><span class="p">,</span> <span class="n">mix_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;MCMC Integral results:&quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">)</span>
 
+<span class="n">vegas_map</span><span class="o">.</span><span class="n">make_uniform</span><span class="p">()</span>
 <span class="c1"># train the vegas map</span>
 <span class="n">vegas_map</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="mi">20000</span><span class="p">,</span> <span class="n">half_sphere_integrand</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 
@@ -186,6 +188,7 @@
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Integral 2: &quot;</span><span class="p">,</span> <span class="n">res</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
 
 <span class="c1"># print(&quot;VEAGS map is trained for g(x1, x2)&quot;)</span>
+<span class="n">vegas_map</span><span class="o">.</span><span class="n">make_uniform</span><span class="p">()</span>
 <span class="n">vegas_map</span><span class="o">.</span><span class="n">train</span><span class="p">(</span><span class="mi">20000</span><span class="p">,</span> <span class="n">integrand_list</span><span class="p">,</span> <span class="n">epoch</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
 <span class="n">res</span> <span class="o">=</span> <span class="n">vegas_integrator</span><span class="p">(</span><span class="n">integrand_list</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;VEGAS Integral results:&quot;</span><span class="p">)</span>

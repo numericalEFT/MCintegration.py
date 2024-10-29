@@ -42,7 +42,6 @@
             
   <h1>Source code for utils</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">torch</span>
-<span class="kn">import</span> <span class="nn">math</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">gvar</span>
 <span class="kn">import</span> <span class="nn">sys</span>
@@ -77,6 +76,14 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">=</span> <span class="n">sum_neval</span>
 
+<div class="viewcode-block" id="RAvg.update">
+<a class="viewcode-back" href="../src.html#utils.RAvg.update">[docs]</a>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">last_neval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="o">**</span><span class="mf">0.5</span><span class="p">))</span>
+        <span class="k">if</span> <span class="n">last_neval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="n">last_neval</span></div>
+
+
 <div class="viewcode-block" id="RAvg.add">
 <a class="viewcode-back" href="../src.html#utils.RAvg.add">[docs]</a>
     <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
@@ -107,6 +114,34 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="n">ravg</span><span class="o">.</span><span class="n">sum_neval</span></div>
 
+
+    <span class="k">def</span> <span class="nf">__reduce_ex__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">):</span>
+        <span class="k">return</span> <span class="p">(</span>
+            <span class="n">RAvg</span><span class="p">,</span>
+            <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                <span class="n">gvar</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span> <span class="n">protocol</span><span class="o">=</span><span class="n">protocol</span><span class="p">),</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+            <span class="p">),</span>
+        <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_remove_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
+        <span class="n">tmp</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">(</span>
+            <span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+            <span class="n">itn_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span>
+            <span class="n">sum_neval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">tmp</span><span class="o">.</span><span class="n">itn_results</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">remove_gvars</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">)</span>
+        <span class="n">tgvar</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar_factory</span><span class="p">()</span>  <span class="c1"># small cov matrix</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">RAvg</span><span class="p">,</span> <span class="n">tmp</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">tgvar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">internaldata</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">tmp</span>
+
+    <span class="k">def</span> <span class="nf">_distribute_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+            <span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+            <span class="n">itn_results</span><span class="o">=</span><span class="n">gvar</span><span class="o">.</span><span class="n">distribute_gvars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">),</span>
+            <span class="n">sum_neval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+        <span class="p">)</span>
 
     <span class="k">def</span> <span class="nf">_chi2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
