@@ -12,13 +12,13 @@ class BaseDistribution(nn.Module):
     def __init__(self, bounds, device="cpu", dtype=torch.float64):
         super().__init__()
         self.dtype = dtype
-        # self.bounds = bounds
         if isinstance(bounds, (list, np.ndarray)):
             self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
         elif isinstance(bounds, torch.Tensor):
-            self.bounds = bounds
+            self.bounds = bounds.to(dtype=dtype, device=device)
         else:
-            raise ValueError("Unsupported map specification")
+            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
+
         self.dim = self.bounds.shape[0]
         self.device = device
 

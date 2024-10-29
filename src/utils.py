@@ -1,5 +1,4 @@
 import torch
-import math
 import numpy as np
 import gvar
 import sys
@@ -32,6 +31,11 @@ class RAvg(gvar.GVar):
                 self.add(r)
         self.sum_neval = sum_neval
 
+    def update(self, mean, var, last_neval=None):
+        self.add(gvar.gvar(mean, var**0.5))
+        if last_neval is not None:
+            self.sum_neval += last_neval
+
     def add(self, res):
         self.itn_results.append(res)
         if isinstance(res, gvar.GVarRef):
@@ -56,6 +60,34 @@ class RAvg(gvar.GVar):
         for r in ravg.itn_results:
             self.add(r)
         self.sum_neval += ravg.sum_neval
+
+    def __reduce_ex__(self, protocol):
+        return (
+            RAvg,
+            (
+                self.weighted,
+                gvar.dumps(self.itn_results, protocol=protocol),
+                self.sum_neval,
+            ),
+        )
+
+    def _remove_gvars(self, gvlist):
+        tmp = RAvg(
+            weighted=self.weighted,
+            itn_results=self.itn_results,
+            sum_neval=self.sum_neval,
+        )
+        tmp.itn_results = gvar.remove_gvars(tmp.itn_results, gvlist)
+        tgvar = gvar.gvar_factory()  # small cov matrix
+        super(RAvg, tmp).__init__(*tgvar(0, 0).internaldata)
+        return tmp
+
+    def _distribute_gvars(self, gvlist):
+        return RAvg(
+            weighted=self.weighted,
+            itn_results=gvar.distribute_gvars(self.itn_results, gvlist),
+            sum_neval=self.sum_neval,
+        )
 
     def _chi2(self):
         if len(self.itn_results) <= 1:

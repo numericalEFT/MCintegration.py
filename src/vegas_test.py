@@ -1,3 +1,4 @@
+# Integration tests for VEGAS + MonteCarlo/MCMC integral methods.
 import torch
 from integrators import MonteCarlo, MCMC
 from maps import Vegas, Linear
@@ -56,6 +57,7 @@ vegasmcmc_integrator = MCMC(
 )
 res = vegasmcmc_integrator(func, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res)
+print(type(res))
 
 # Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
 print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
@@ -71,8 +73,7 @@ print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
     maps=vegas_map,
     neval=n_eval,
-    # nbatch=n_batch,
-    nbatch=n_eval,
+    nbatch=n_batch,
     device=device,
 )
 res = vegas_integrator(integrand_list1)
@@ -86,6 +87,12 @@ print(
     "  I[1]/I[0] =",
     res[1] / res[0],
 )
+print(type(res))
+print(type(res[0]))
+print(res[0].sum_neval)
+print(res[0].itn_results)
+print(res[0].nitn)
+
 
 print("VEGAS-MCMC Integral results:")
 vegasmcmc_integrator = MCMC(
