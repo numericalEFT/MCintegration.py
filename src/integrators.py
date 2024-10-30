@@ -6,6 +6,38 @@ from base import Uniform
 import gvar
 import numpy as np
 
+import os
+import torch.distributed as dist
+import socket
+
+
+def get_ip() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(("8.8.8.8", 80))  # Doesn't need to be reachable
+    return s.getsockname()[0]
+
+
+def get_open_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("", 0))
+        return s.getsockname()[1]
+
+
+def setup():
+    # get IDs of reserved GPU
+    distributed_init_method = f"tcp://{get_ip()}:{get_open_port()}"
+    dist.init_process_group(
+        backend="gloo"
+    )  # , init_method=distributed_init_method, world_size = int(os.environ["WORLD_SIZE"]), rank = int(os.environ["RANK"]))
+    # init_method='env://',
+    # world_size=int(os.environ["WORLD_SIZE"]),
+    # rank=int(os.environ['SLURM_PROCID']))
+    torch.cuda.set_device(int(os.environ["LOCAL_RANK"]))
+
+
+def cleanup():
+    dist.destroy_process_group()
+
 
 class Integrator:
     """
@@ -105,6 +137,54 @@ class MonteCarlo(Integrator):
             _mean = values[:, i].mean().item()
             _var = values[:, i].var().item() / self.nbatch
             results[i].update(_mean, _var, self.neval)
+        if f_size == 1:
+            return results[0]
+        else:
+            return results
+
+    def gpu_run(self, f: Callable, **kwargs):
+        x, _ = self.sample(1)
+        f_values = f(x)
+        if isinstance(f_values, (list, tuple)) and isinstance(
+            f_values[0], torch.Tensor
+        ):
+            f_size = len(f_values)
+            type_fval = f_values[0].dtype
+        elif isinstance(f_values, torch.Tensor):
+            f_size = 1
+            type_fval = f_values.dtype
+        else:
+            raise TypeError(
+                "f must return a torch.Tensor or a list/tuple of torch.Tensor."
+            )
+
+        epoch = self.neval // self.nbatch
+        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
+
+        for iepoch in range(epoch):
+            x, log_detJ = self.sample(self.nbatch)
+            f_values = f(x)
+            batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
+
+            values += batch_results / epoch
+
+        results = np.array([RAvg() for _ in range(f_size)])
+        for i in range(f_size):
+            _total_mean = values[:, i].mean()
+            _mean = _total_mean.detach().clone()
+            dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
+            _total_mean /= dist.get_world_size()
+
+            _var_between_batch = torch.square(_mean - _total_mean)
+            dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
+            _var_between_batch /= dist.get_world_size()
+
+            _var = values[:, i].var() / self.nbatch
+            dist.all_reduce(_var, op=dist.ReduceOp.SUM)
+            _var /= dist.get_world_size()
+            results[i].update(
+                _mean.item(), (_var + _var_between_batch).item(), self.neval
+            )
         if f_size == 1:
             return results[0]
         else:
