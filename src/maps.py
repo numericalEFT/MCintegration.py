@@ -12,8 +12,11 @@ class Map(nn.Module):
         super().__init__()
         if isinstance(bounds, (list, np.ndarray)):
             self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
+        elif isinstance(bounds, torch.Tensor):
+            self.bounds = bounds.to(dtype=dtype, device=device)
         else:
-            raise ValueError("Unsupported map specification")
+            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
+
         self.dim = self.bounds.shape[0]
         self.device = device
         self.dtype = dtype
@@ -65,35 +68,25 @@ class Linear(Map):
 class Vegas(Map):
     def __init__(self, bounds, ninc=1000, alpha=0.5, device="cpu", dtype=torch.float64):
         super().__init__(bounds, device, dtype)
-        # self.nbin = nbin
-        self.alpha = alpha
+
+        # Ensure ninc is a tensor of appropriate shape and type
         if isinstance(ninc, int):
-            self.ninc = torch.ones(self.dim, dtype=torch.int32, device=device) * ninc
-        else:
+            self.ninc = torch.full((self.dim,), ninc, dtype=torch.int32, device=device)
+        elif isinstance(ninc, (list, np.ndarray)):
             self.ninc = torch.tensor(ninc, dtype=torch.int32, device=device)
+        elif isinstance(ninc, torch.Tensor):
+            self.ninc = ninc.to(dtype=torch.int32, device=device)
+        else:
+            raise ValueError("'ninc' must be an int, list, numpy array, or torch tensor.")
+        
+        # Ensure ninc has the correct shape
+        if self.ninc.shape != (self.dim,):
+            raise ValueError(f"'ninc' must be a scalar or a 1D array of length {self.dim}.")
 
-        self.inc = torch.empty(
-            self.dim, self.ninc.max(), dtype=self.dtype, device=self.device
-        )
-        self.grid = torch.empty(
-            self.dim, self.ninc.max() + 1, dtype=self.dtype, device=self.device
-        )
-
+        self.make_uniform()
+        self.alpha = alpha
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jaclinear = torch.prod(self._A)
-
-        for d in range(self.dim):
-            self.grid[d, : self.ninc[d] + 1] = torch.linspace(
-                self.bounds[d, 0],
-                self.bounds[d, 1],
-                self.ninc[d] + 1,
-                dtype=self.dtype,
-                device=self.device,
-            )
-            self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
-            )
-        self.clear()
 
     def train(self, nsamples, f, epoch=5, alpha=0.5):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
@@ -234,6 +227,27 @@ class Vegas(Map):
             (self.dim, self.grid.shape[1] - 1), dtype=torch.float64, device=self.device
         )
         for d in range(self.dim):
+            self.inc[d, : self.ninc[d]] = (
+                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
+            )
+        self.clear()
+
+    def make_uniform(self):
+        self.inc = torch.empty(
+            self.dim, self.ninc.max(), dtype=self.dtype, device=self.device
+        )
+        self.grid = torch.empty(
+            self.dim, self.ninc.max() + 1, dtype=self.dtype, device=self.device
+        )
+
+        for d in range(self.dim):
+            self.grid[d, : self.ninc[d] + 1] = torch.linspace(
+                self.bounds[d, 0],
+                self.bounds[d, 1],
+                self.ninc[d] + 1,
+                dtype=self.dtype,
+                device=self.device,
+            )
             self.inc[d, : self.ninc[d]] = (
                 self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
             )

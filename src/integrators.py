@@ -103,8 +103,8 @@ class MonteCarlo(Integrator):
         results = np.array([RAvg() for _ in range(f_size)])
         for i in range(f_size):
             _mean = values[:, i].mean().item()
-            _std = values[:, i].std().item() / self.nbatch**0.5
-            results[i].add(gvar.gvar(_mean, _std))
+            _var = values[:, i].var().item() / self.nbatch
+            results[i].update(_mean, _var, self.neval)
         if f_size == 1:
             return results[0]
         else:
@@ -247,15 +247,17 @@ class MCMC(MonteCarlo):
         results_ref = RAvg()
 
         mean_ref = refvalues.mean().item()
-        std_ref = refvalues.std().item() / self.nbatch**0.5
+        var_ref = refvalues.var().item() / self.nbatch
 
-        results_ref.add(gvar.gvar(mean_ref, std_ref))
+        results_ref.update(mean_ref, var_ref, self.neval)
         for i in range(f_size):
             _mean = values[:, i].mean().item()
-            _std = values[:, i].std().item() / self.nbatch**0.5
-            results[i].add(gvar.gvar(_mean, _std))
+            _var = values[:, i].var().item() / self.nbatch
+            results[i].update(_mean, _var, self.neval)
 
         if f_size == 1:
-            return results[0] / results_ref * self._rangebounds.prod()
+            res = results[0] / results_ref * self._rangebounds.prod()
+            result = RAvg(itn_results=[res], sum_neval=self.neval)
+            return result
         else:
             return results / results_ref * self._rangebounds.prod().item()

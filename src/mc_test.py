@@ -1,3 +1,4 @@
+# Integration tests for MonteCarlo and MCMC integrators class.
 import torch
 from integrators import MonteCarlo, MCMC
 from maps import Vegas, Linear
@@ -102,6 +103,7 @@ print("Plain MC Integral results: ", res)
 res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5)
 print("MCMC Integral results:", res)
 
+vegas_map.make_uniform()
 # train the vegas map
 vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5)
 
@@ -125,6 +127,7 @@ print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
+vegas_map.make_uniform()
 vegas_map.train(20000, integrand_list, epoch=10, alpha=0.5)
 res = vegas_integrator(integrand_list)
 print("VEGAS Integral results:")
