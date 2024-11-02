@@ -82,7 +82,6 @@ class MonteCarlo(Integrator):
     def __call__(self, f: Callable, f_dim: int = 1, **kwargs):
         x, _ = self.sample(self.nbatch)
         fx = torch.empty((self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device)
-        f(x, fx)
 
         epoch = self.neval // self.nbatch
         integ_values = torch.zeros(
@@ -92,7 +91,6 @@ class MonteCarlo(Integrator):
         for _ in range(epoch):
             x, log_detJ = self.sample(self.nbatch)
             f(x, fx)
-            # batch_results = self._multiply_by_jacobian(fx, torch.exp(log_detJ))
             fx.mul_(log_detJ.exp_().unsqueeze_(1))
             integ_values += fx / epoch
 
@@ -105,14 +103,6 @@ class MonteCarlo(Integrator):
             return results[0]
         else:
             return results
-
-    def _multiply_by_jacobian(self, values, jac):
-        # if isinstance(values, dict):
-        #     return {k: v * torch.exp(log_det_J) for k, v in values.items()}
-        if isinstance(values, (list, tuple)):
-            return torch.stack([v * jac for v in values], dim=-1)
-        else:
-            return torch.stack([values * jac], dim=-1)
 
 
 def random_walk(dim, bounds, device, dtype, u, **kwargs):
@@ -170,7 +160,8 @@ class MCMC(MonteCarlo):
         current_jac += detJ
         current_jac.exp_()
         fx = torch.empty((self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device)
-        fx_weight = f(current_x, fx)
+        fx_weight = torch.empty(self.nbatch, dtype=self.fx_dtype, device=self.device)
+        fx_weight[:] = f(current_x, fx)
         fx_weight.abs_()
 
         current_weight = mix_rate / current_jac + (1 - mix_rate) * fx_weight
@@ -185,7 +176,7 @@ class MCMC(MonteCarlo):
             proposed_x, new_jac = self.maps.forward(proposed_y)
             new_jac.exp_()
 
-            fx_weight = f(proposed_x, fx)
+            fx_weight[:] = f(proposed_x, fx)
             fx_weight.abs_()
             new_weight = mix_rate / new_jac + (1 - mix_rate) * fx_weight
             new_weight.masked_fill_(new_weight < epsilon, epsilon)
@@ -198,13 +189,12 @@ class MCMC(MonteCarlo):
             )
 
             current_y = torch.where(accept.unsqueeze(1), proposed_y, current_y)
-            # fx = torch.where(accept, new_fval, fx)
             current_x = torch.where(accept.unsqueeze(1), proposed_x, current_x)
             current_weight = torch.where(accept, new_weight, current_weight)
             current_jac = torch.where(accept, new_jac, current_jac)
             return current_y, current_x, current_weight, current_jac
 
-        for i in range(self.nburnin):
+        for _ in range(self.nburnin):
             current_y, current_x, current_weight, current_jac = one_step(
                 current_y, current_x, current_weight, current_jac
             )

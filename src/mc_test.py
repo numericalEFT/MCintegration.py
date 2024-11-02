@@ -25,16 +25,14 @@ def half_sphere_integrand(x, f):
 
 def two_integrands(x, f):
     f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
-    f[:, 1] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
+    f[:, 1] = -torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0)
     return f.mean(dim=-1)
 
 
 def sharp_integrands(x, f, dim=4):
-    # dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
+    f.zero_()
     for d in range(dim):
         f[:, 0] += (x[:, d] - 0.5) ** 2
-        # dx2 += (x[:, d] - 0.5) ** 2
-    # f[:, 0] = torch.exp(-200 * dx2)
     f[:, 0] *= -200
     f[:, 0].exp_()
     f[:, 1] = f[:, 0] * x[:, 0]
@@ -181,7 +179,6 @@ print(
 
 vegas_map = Vegas(bounds, device=device)
 print("train VEGAS map for h(X)...")
-# vegas_map.train(20000, sharp_peak, epoch=10, alpha=0.5)
 vegas_map.train(20000, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 
 print("VEGAS Integral results:")
