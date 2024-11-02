@@ -68,7 +68,7 @@ jobs:
       - name: Build documentation
         run: |
           cd docs
-          sphinx-apidoc -o source ../src
+          sphinx-apidoc -o source ../src ../src/*_test.py
           python ../clean_src_rst.py
           make html
           python ../clean_html_sidebar.py
