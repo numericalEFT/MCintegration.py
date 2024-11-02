@@ -77,35 +77,31 @@ class Vegas(Map):
         elif isinstance(ninc, torch.Tensor):
             self.ninc = ninc.to(dtype=torch.int32, device=device)
         else:
-            raise ValueError("'ninc' must be an int, list, numpy array, or torch tensor.")
-        
+            raise ValueError(
+                "'ninc' must be an int, list, numpy array, or torch tensor."
+            )
+
         # Ensure ninc has the correct shape
         if self.ninc.shape != (self.dim,):
-            raise ValueError(f"'ninc' must be a scalar or a 1D array of length {self.dim}.")
+            raise ValueError(
+                f"'ninc' must be a scalar or a 1D array of length {self.dim}."
+            )
 
         self.make_uniform()
         self.alpha = alpha
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jaclinear = torch.prod(self._A)
 
-    def train(self, nsamples, f, epoch=5, alpha=0.5):
+    def train(self, nsamples, f, f_dim=1, fx_dtype=torch.float64, epoch=5, alpha=0.5):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         u, log_detJ0 = q0.sample(nsamples)
 
-        fval = f(u)
-        f_size = len(fval) if isinstance(fval, (list, tuple)) else 1
-        if f_size > 1:
-
-            def _integrand(x):
-                return sum(f(x))
-        else:
-
-            def _integrand(x):
-                return f(x)
+        fx = torch.empty(nsamples, f_dim, device=self.device, dtype=fx_dtype)
 
         for _ in range(epoch):
             x, log_detJ = self.forward(u)
-            f2 = torch.exp(2 * (log_detJ + log_detJ0)) * _integrand(x) ** 2
+            fx_weight = f(x, fx)
+            f2 = torch.exp(2 * (log_detJ + log_detJ0)) * fx_weight**2
             self.add_training_data(u, f2)
             self.adapt(alpha)
 

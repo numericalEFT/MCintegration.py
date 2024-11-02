@@ -5,40 +5,41 @@ from maps import Vegas, Linear
 from utils import set_seed, get_device
 
 set_seed(42)
-# device = get_device()
-device = torch.device("cpu")
+device = get_device()
+# device = torch.device("cpu")
 
 
 def test_nothing():
     pass
 
 
-def unit_circle_integrand(x):
-    inside_circle = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
-    return inside_circle
+def unit_circle_integrand(x, f):
+    f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
+    return f[:, 0]
 
 
-def half_sphere_integrand(x):
-    return torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
+def half_sphere_integrand(x, f):
+    f[:, 0] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
+    return f[:, 0]
 
 
-def integrand_list(x):
-    return [unit_circle_integrand(x), half_sphere_integrand(x) / 2]
+def two_integrands(x, f):
+    f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
+    f[:, 1] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
+    return f.mean(dim=-1)
 
 
-def integrand_list1(x):
-    dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
-    for d in range(4):
-        dx2 += (x[:, d] - 0.5) ** 2
-    f = torch.exp(-200 * dx2)
-    return [f, f * x[:, 0], f * x[:, 0] ** 2]
-
-
-def sharp_peak(x):
-    dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
-    for d in range(4):
-        dx2 += (x[:, d] - 0.5) ** 2
-    return torch.exp(-200 * dx2)
+def sharp_integrands(x, f, dim=4):
+    # dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
+    for d in range(dim):
+        f[:, 0] += (x[:, d] - 0.5) ** 2
+        # dx2 += (x[:, d] - 0.5) ** 2
+    # f[:, 0] = torch.exp(-200 * dx2)
+    f[:, 0] *= -200
+    f[:, 0].exp_()
+    f[:, 1] = f[:, 0] * x[:, 0]
+    f[:, 2] = f[:, 0] * x[:, 0] ** 2
+    return f.mean(dim=-1)
 
 
 dim = 2
@@ -116,25 +117,25 @@ print("VEGAS-MCMC Integral results: ", res)
 
 print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2")
 # Two integrands
-res = mc_integrator(integrand_list)
+res = mc_integrator(two_integrands, f_dim=2)
 print("Plain MC Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 
-res = mcmc_integrator(integrand_list, mix_rate=0.5)
+res = mcmc_integrator(two_integrands, f_dim=2, mix_rate=0.5)
 print("MCMC Integral results:")
 print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
 vegas_map.make_uniform()
-vegas_map.train(20000, integrand_list, epoch=10, alpha=0.5)
-res = vegas_integrator(integrand_list)
+vegas_map.train(20000, two_integrands, f_dim=2, epoch=10, alpha=0.5)
+res = vegas_integrator(two_integrands, f_dim=2)
 print("VEGAS Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 
-res = vegasmcmc_integrator(integrand_list, mix_rate=0.5)
+res = vegasmcmc_integrator(two_integrands, f_dim=2, mix_rate=0.5)
 print("VEGAS-MCMC Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
@@ -154,7 +155,7 @@ mcmc_integrator = MCMC(
     bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
 )
 print("Plain MC Integral results:")
-res = mc_integrator(integrand_list1)
+res = mc_integrator(sharp_integrands, f_dim=3)
 print(
     "  I[0] =",
     res[0],
@@ -166,7 +167,7 @@ print(
     res[1] / res[0],
 )
 print("MCMC Integral results:")
-res = mcmc_integrator(integrand_list1, mix_rate=0.5)
+res = mcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],
@@ -181,7 +182,7 @@ print(
 vegas_map = Vegas(bounds, device=device)
 print("train VEGAS map for h(X)...")
 # vegas_map.train(20000, sharp_peak, epoch=10, alpha=0.5)
-vegas_map.train(20000, integrand_list1, epoch=10, alpha=0.5)
+vegas_map.train(20000, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 
 print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
@@ -191,7 +192,7 @@ vegas_integrator = MonteCarlo(
     # nbatch=n_eval,
     device=device,
 )
-res = vegas_integrator(integrand_list1)
+res = vegas_integrator(sharp_integrands, f_dim=3)
 print(
     "  I[0] =",
     res[0],
@@ -211,7 +212,7 @@ vegasmcmc_integrator = MCMC(
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(integrand_list1, mix_rate=0.5)
+res = vegasmcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],
