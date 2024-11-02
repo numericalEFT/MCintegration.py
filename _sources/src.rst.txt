@@ -12,26 +12,10 @@ base module
    :undoc-members:
    :show-inheritance:
 
-base\_test module
----------------------
-
-.. automodule:: base_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 integrators module
 ----------------------
 
 .. automodule:: integrators
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-integrators\_test module
-----------------------------
-
-.. automodule:: integrators_test
    :members:
    :undoc-members:
    :show-inheritance:
@@ -44,42 +28,10 @@ maps module
    :undoc-members:
    :show-inheritance:
 
-maps\_test module
----------------------
-
-.. automodule:: maps_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-mc\_test module
--------------------
-
-.. automodule:: mc_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 utils module
 ----------------
 
 .. automodule:: utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-utils\_test module
-----------------------
-
-.. automodule:: utils_test
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
-vegas\_test module
-----------------------
-
-.. automodule:: vegas_test
    :members:
    :undoc-members:
    :show-inheritance:
