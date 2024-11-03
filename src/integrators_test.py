@@ -16,14 +16,14 @@ class TestIntegrator(unittest.TestCase):
 
     def test_init_with_bounds(self):
         integrator = Integrator(
-            bounds=self.bounds, device=self.device, x_dtype=self.dtype
+            bounds=self.bounds, device=self.device, dtype=self.dtype
         )
         self.assertEqual(integrator.bounds.tolist(), self.bounds)
         self.assertEqual(integrator.dim, 2)
         self.assertEqual(integrator.neval, self.neval)
         self.assertEqual(integrator.nbatch, self.neval)
         self.assertEqual(integrator.device, self.device)
-        self.assertEqual(integrator.x_dtype, self.dtype)
+        self.assertEqual(integrator.dtype, self.dtype)
 
     def test_init_with_maps(self):
         class MockMaps:
@@ -32,13 +32,13 @@ class TestIntegrator(unittest.TestCase):
                 self.dtype = dtype
 
         maps = MockMaps(bounds=self.bounds, dtype=self.dtype)
-        integrator = Integrator(maps=maps, device=self.device, x_dtype=self.dtype)
+        integrator = Integrator(maps=maps, device=self.device, dtype=self.dtype)
         self.assertEqual(integrator.bounds.tolist(), self.bounds)
         self.assertEqual(integrator.dim, 2)
         self.assertEqual(integrator.neval, self.neval)
         self.assertEqual(integrator.nbatch, self.neval)
         self.assertEqual(integrator.device, self.device)
-        self.assertEqual(integrator.x_dtype, self.dtype)
+        self.assertEqual(integrator.dtype, self.dtype)
 
     def test_init_with_mismatched_dtype(self):
         class MockMaps:
@@ -48,15 +48,15 @@ class TestIntegrator(unittest.TestCase):
 
         maps = MockMaps(bounds=self.bounds, dtype=torch.float32)
         with self.assertRaises(ValueError):
-            Integrator(maps=maps, device=self.device, x_dtype=self.dtype)
+            Integrator(maps=maps, device=self.device, dtype=self.dtype)
 
     def test_init_with_invalid_bounds(self):
         with self.assertRaises(TypeError):
-            Integrator(bounds=123, device=self.device, x_dtype=self.dtype)
+            Integrator(bounds=123, device=self.device, dtype=self.dtype)
 
     def test_sample_without_maps(self):
         integrator = Integrator(
-            bounds=self.bounds, device=self.device, x_dtype=self.dtype
+            bounds=self.bounds, device=self.device, dtype=self.dtype
         )
         u, log_detJ = integrator.sample(100)
         self.assertEqual(u.shape, (100, 2))
@@ -72,7 +72,7 @@ class TestIntegrator(unittest.TestCase):
                 return u, torch.zeros(u.shape[0], dtype=self.dtype)
 
         maps = MockMaps(bounds=self.bounds, dtype=self.dtype)
-        integrator = Integrator(maps=maps, device=self.device, x_dtype=self.dtype)
+        integrator = Integrator(maps=maps, device=self.device, dtype=self.dtype)
         u, log_detJ = integrator.sample(100)
         self.assertEqual(u.shape, (100, 2))
         self.assertEqual(log_detJ.shape, (100,))
@@ -117,7 +117,7 @@ class TestMonteCarlo(unittest.TestCase):
         self.assertEqual(self.monte_carlo.neval, self.neval)
         self.assertEqual(self.monte_carlo.nbatch, self.nbatch)
         self.assertEqual(self.monte_carlo.device, self.device)
-        self.assertEqual(self.monte_carlo.x_dtype, self.dtype)
+        self.assertEqual(self.monte_carlo.dtype, self.dtype)
         self.assertTrue(
             torch.equal(
                 self.monte_carlo.bounds,
@@ -264,7 +264,7 @@ class TestMCMC(unittest.TestCase):
         self.assertEqual(self.mcmc.nbatch, self.nbatch)
         self.assertEqual(self.mcmc.nburnin, self.nburnin)
         self.assertEqual(self.mcmc.device, self.device)
-        self.assertEqual(self.mcmc.x_dtype, self.dtype)
+        self.assertEqual(self.mcmc.dtype, self.dtype)
         self.assertTrue(
             torch.equal(
                 self.mcmc.bounds,

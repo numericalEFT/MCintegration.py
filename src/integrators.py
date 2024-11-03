@@ -22,13 +22,12 @@ class Integrator:
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
-        x_dtype=torch.float64,
-        fx_dtype=torch.float64,
+        dtype=torch.float64,
     ):
-        self.x_dtype = x_dtype
-        self.fx_dtype = fx_dtype
+        self.dtype = dtype
+        self.dtype = dtype
         if maps:
-            if not self.x_dtype == maps.dtype:
+            if not self.dtype == maps.dtype:
                 raise ValueError(
                     "Data type of the variables of integrator should be same as maps."
                 )
@@ -36,11 +35,11 @@ class Integrator:
         else:
             if not isinstance(bounds, (list, np.ndarray)):
                 raise TypeError("bounds must be a list or a NumPy array.")
-            self.bounds = torch.tensor(bounds, dtype=x_dtype, device=device)
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
 
         self.dim = len(self.bounds)
         if not q0:
-            q0 = Uniform(self.bounds, device=device, dtype=x_dtype)
+            q0 = Uniform(self.bounds, device=device, dtype=dtype)
         self.q0 = q0
         self.maps = maps
         self.neval = neval
@@ -74,18 +73,17 @@ class MonteCarlo(Integrator):
         neval: int = 1000,
         nbatch: int = None,
         device="cpu",
-        x_dtype=torch.float64,
-        fx_dtype=torch.float64,
+        dtype=torch.float64,
     ):
-        super().__init__(maps, bounds, q0, neval, nbatch, device, x_dtype, fx_dtype)
+        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
 
     def __call__(self, f: Callable, f_dim: int = 1, **kwargs):
         x, _ = self.sample(self.nbatch)
-        fx = torch.empty((self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device)
+        fx = torch.empty((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
 
         epoch = self.neval // self.nbatch
         integ_values = torch.zeros(
-            (self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device
+            (self.nbatch, f_dim), dtype=self.dtype, device=self.device
         )
 
         for _ in range(epoch):
@@ -135,10 +133,9 @@ class MCMC(MonteCarlo):
         nbatch: int = None,
         nburnin: int = 500,
         device="cpu",
-        x_dtype=torch.float64,
-        fx_dtype=torch.float64,
+        dtype=torch.float64,
     ):
-        super().__init__(maps, bounds, q0, neval, nbatch, device, x_dtype, fx_dtype)
+        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
         self.nburnin = nburnin
         if maps is None:
             self.maps = Linear([(0, 1)] * self.dim, device=device)
@@ -159,8 +156,8 @@ class MCMC(MonteCarlo):
         current_x, detJ = self.maps.forward(current_y)
         current_jac += detJ
         current_jac.exp_()
-        fx = torch.empty((self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device)
-        fx_weight = torch.empty(self.nbatch, dtype=self.fx_dtype, device=self.device)
+        fx = torch.empty((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
+        fx_weight = torch.empty(self.nbatch, dtype=self.dtype, device=self.device)
         fx_weight[:] = f(current_x, fx)
         fx_weight.abs_()
 
@@ -171,7 +168,7 @@ class MCMC(MonteCarlo):
 
         def one_step(current_y, current_x, current_weight, current_jac):
             proposed_y = proposal_dist(
-                self.dim, self.bounds, self.device, self.x_dtype, current_y, **kwargs
+                self.dim, self.bounds, self.device, self.dtype, current_y, **kwargs
             )
             proposed_x, new_jac = self.maps.forward(proposed_y)
             new_jac.exp_()
@@ -199,10 +196,8 @@ class MCMC(MonteCarlo):
                 current_y, current_x, current_weight, current_jac
             )
 
-        values = torch.zeros(
-            (self.nbatch, f_dim), dtype=self.fx_dtype, device=self.device
-        )
-        refvalues = torch.zeros(self.nbatch, dtype=self.fx_dtype, device=self.device)
+        values = torch.zeros((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
+        refvalues = torch.zeros(self.nbatch, dtype=self.dtype, device=self.device)
 
         for _ in range(n_meas):
             for _ in range(meas_freq):

@@ -92,11 +92,11 @@ class Vegas(Map):
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jaclinear = torch.prod(self._A)
 
-    def train(self, nsamples, f, f_dim=1, fx_dtype=torch.float64, epoch=5, alpha=0.5):
+    def train(self, nsamples, f, f_dim=1, dtype=torch.float64, epoch=5, alpha=0.5):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         u, log_detJ0 = q0.sample(nsamples)
 
-        fx = torch.empty(nsamples, f_dim, device=self.device, dtype=fx_dtype)
+        fx = torch.empty(nsamples, f_dim, device=self.device, dtype=dtype)
 
         for _ in range(epoch):
             x, log_detJ = self.forward(u)
