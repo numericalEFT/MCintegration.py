@@ -25,7 +25,6 @@ class Integrator:
         dtype=torch.float64,
     ):
         self.dtype = dtype
-        self.dtype = dtype
         if maps:
             if not self.dtype == maps.dtype:
                 raise ValueError(
