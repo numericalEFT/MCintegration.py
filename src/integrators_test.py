@@ -98,6 +98,15 @@ class TestMonteCarlo(unittest.TestCase):
             self.dtype,
         )
 
+    def f(self, x, fx):
+        fx[:, 0] = x.sum(dim=1)
+        return fx[:, 0]
+
+    def f2(self, x, fx):
+        fx[:, 0] = x.sum(dim=1)
+        fx[:, 1] = x.prod(dim=1)
+        return fx.mean(dim=1)
+
     def tearDown(self):
         # Teardown after tests
         pass
@@ -119,10 +128,7 @@ class TestMonteCarlo(unittest.TestCase):
 
     def test_call_single_tensor_output(self):
         # Test the __call__ method with a function that returns a single tensor
-        def f(x):
-            return x.sum(dim=1)
-
-        result = self.monte_carlo(f)
+        result = self.monte_carlo(self.f)
         self.assertIsInstance(result, RAvg)
         self.assertEqual(result.shape, ())
         self.assertIsInstance(result.mean, float)
@@ -130,10 +136,7 @@ class TestMonteCarlo(unittest.TestCase):
 
     def test_call_multiple_tensor_output(self):
         # Test the __call__ method with a function that returns a list of tensors
-        def f(x):
-            return [x.sum(dim=1), x.prod(dim=1)]
-
-        result = self.monte_carlo(f)
+        result = self.monte_carlo(self.f2, f_dim=2)
         self.assertIsInstance(result, np.ndarray)
         self.assertEqual(result.shape, (2,))
         self.assertEqual(result.dtype, RAvg)
@@ -146,25 +149,6 @@ class TestMonteCarlo(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.monte_carlo(f)
 
-    def test_multiply_by_jacobian_single_tensor(self):
-        # Test the _multiply_by_jacobian method with a single tensor
-        values = torch.tensor([1.0, 2.0, 3.0], dtype=self.dtype)
-        jac = torch.tensor([0.5, 0.5, 0.5], dtype=self.dtype)
-        result = self.monte_carlo._multiply_by_jacobian(values, jac)
-        expected = torch.tensor([[0.5], [1.0], [1.5]], dtype=self.dtype)
-        self.assertTrue(torch.allclose(result, expected))
-
-    def test_multiply_by_jacobian_multiple_tensors(self):
-        # Test the _multiply_by_jacobian method with a list of tensors
-        values = [
-            torch.tensor([1.0, 2.0, 3.0], dtype=self.dtype),
-            torch.tensor([4.0, 5.0, 6.0], dtype=self.dtype),
-        ]
-        jac = torch.tensor([0.5, 0.5, 0.5], dtype=self.dtype)
-        result = self.monte_carlo._multiply_by_jacobian(values, jac)
-        expected = torch.tensor([[0.5, 2.0], [1.0, 2.5], [1.5, 3.0]], dtype=self.dtype)
-        self.assertTrue(torch.allclose(result, expected))
-
     def test_sample_method(self):
         # Test the sample method to ensure it returns the correct shape
         x, log_detJ = self.monte_carlo.sample(self.nbatch)
@@ -172,11 +156,7 @@ class TestMonteCarlo(unittest.TestCase):
         self.assertEqual(log_detJ.shape, (self.nbatch,))
 
     def test_call_with_cuda(self):
-        # Test the __call__ method with different device values
-        def f(x):
-            return x.sum(dim=1)
-
-        # Test with device = "cuda" if available
+        # Test the __call__ method with device = "cuda" if available
         if torch.cuda.is_available():
             monte_carlo_cuda = MonteCarlo(
                 self.maps,
@@ -187,7 +167,7 @@ class TestMonteCarlo(unittest.TestCase):
                 "cuda",
                 self.dtype,
             )
-            result_cuda = monte_carlo_cuda(f)
+            result_cuda = monte_carlo_cuda(self.f)
             self.assertIsInstance(result_cuda, RAvg)
             self.assertIsInstance(result_cuda.mean, float)
             self.assertIsInstance(result_cuda.sdev, float)
@@ -195,9 +175,6 @@ class TestMonteCarlo(unittest.TestCase):
 
     def test_call_with_different_dtype(self):
         # Test the __call__ method with different dtype values
-        def f(x):
-            return x.sum(dim=1)
-
         # Test with dtype = torch.float32
         monte_carlo_float32 = MonteCarlo(
             self.maps,
@@ -208,7 +185,7 @@ class TestMonteCarlo(unittest.TestCase):
             self.device,
             torch.float32,
         )
-        result_float32 = monte_carlo_float32(f)
+        result_float32 = monte_carlo_float32(self.f)
         self.assertIsInstance(result_float32, RAvg)
         self.assertIsInstance(result_float32.mean, float)
         self.assertIsInstance(result_float32.sdev, float)
@@ -216,9 +193,6 @@ class TestMonteCarlo(unittest.TestCase):
 
     def test_call_with_different_bounds(self):
         # Test the __call__ method with different bounds values
-        def f(x):
-            return x.sum(dim=1)
-
         # Test with bounds = [0, 2]
         monte_carlo_bounds_0_2 = MonteCarlo(
             self.maps,
@@ -229,7 +203,7 @@ class TestMonteCarlo(unittest.TestCase):
             self.device,
             self.dtype,
         )
-        result_bounds_0_2 = monte_carlo_bounds_0_2(f)
+        result_bounds_0_2 = monte_carlo_bounds_0_2(self.f)
         self.assertIsInstance(result_bounds_0_2, RAvg)
         self.assertEqual(result_bounds_0_2.shape, ())
 
@@ -243,7 +217,7 @@ class TestMonteCarlo(unittest.TestCase):
             self.device,
             self.dtype,
         )
-        result_bounds_minus1_1 = monte_carlo_bounds_minus1_1(f)
+        result_bounds_minus1_1 = monte_carlo_bounds_minus1_1(self.f)
         self.assertIsInstance(result_bounds_minus1_1, RAvg)
         self.assertEqual(result_bounds_minus1_1.shape, ())
 
@@ -270,6 +244,15 @@ class TestMCMC(unittest.TestCase):
             self.dtype,
         )
 
+    def f(self, x, fx):
+        fx[:, 0] = x.sum(dim=1)
+        return fx[:, 0]
+
+    def f2(self, x, fx):
+        fx[:, 0] = x.sum(dim=1)
+        fx[:, 1] = x.prod(dim=1)
+        return fx.mean(dim=1)
+
     def tearDown(self):
         # Teardown after tests
         pass
@@ -292,10 +275,7 @@ class TestMCMC(unittest.TestCase):
 
     def test_call_single_tensor_output(self):
         # Test the __call__ method with a function that returns a single tensor
-        def f(x):
-            return x.sum(dim=1)
-
-        result = self.mcmc(f)
+        result = self.mcmc(self.f)
         self.assertIsInstance(result, RAvg)
         self.assertEqual(result.shape, ())
         self.assertIsInstance(result.mean, float)
@@ -303,10 +283,7 @@ class TestMCMC(unittest.TestCase):
 
     def test_call_multiple_tensor_output(self):
         # Test the __call__ method with a function that returns a list of tensors
-        def f(x):
-            return [x.sum(dim=1), x.prod(dim=1)]
-
-        result = self.mcmc(f)
+        result = self.mcmc(self.f2, f_dim=2)
         self.assertIsInstance(result, np.ndarray)
         self.assertEqual(result.shape, (2,))
         self.assertEqual(result.dtype, RAvg)
@@ -320,11 +297,7 @@ class TestMCMC(unittest.TestCase):
             self.mcmc(f)
 
     def test_call_with_different_device(self):
-        # Test the __call__ method with different device values
-        def f(x):
-            return x.sum(dim=1)
-
-        # Test with device = "cuda" if available
+        # Test the __call__ method with device = "cuda" if available
         if torch.cuda.is_available():
             mcmc_cuda = MCMC(
                 self.maps,
@@ -336,15 +309,12 @@ class TestMCMC(unittest.TestCase):
                 "cuda",
                 self.dtype,
             )
-            result_cuda = mcmc_cuda(f)
+            result_cuda = mcmc_cuda(self.f)
             self.assertIsInstance(result_cuda, RAvg)
             self.assertEqual(result_cuda.shape, ())
 
     def test_call_with_different_dtype(self):
         # Test the __call__ method with different dtype values
-        def f(x):
-            return x.sum(dim=1)
-
         # Test with dtype = torch.float32
         mcmc_float32 = MCMC(
             self.maps,
@@ -356,7 +326,7 @@ class TestMCMC(unittest.TestCase):
             self.device,
             torch.float32,
         )
-        result_float32 = mcmc_float32(f)
+        result_float32 = mcmc_float32(self.f)
         self.assertIsInstance(result_float32, RAvg)
         self.assertEqual(result_float32.shape, ())
         self.assertIsInstance(result_float32.mean, float)
@@ -364,9 +334,6 @@ class TestMCMC(unittest.TestCase):
 
     def test_call_with_different_bounds(self):
         # Test the __call__ method with different bounds values
-        def f(x):
-            return x.sum(dim=1)
-
         # Test with bounds = [0, 2]
         mcmc_bounds = MCMC(
             self.maps,
@@ -378,24 +345,21 @@ class TestMCMC(unittest.TestCase):
             self.device,
             self.dtype,
         )
-        result_bounds = mcmc_bounds(f)
+        result_bounds = mcmc_bounds(self.f)
         self.assertIsInstance(result_bounds, RAvg)
         self.assertEqual(result_bounds.shape, ())
 
     def test_call_with_different_proposal_dist(self):
         # Test the __call__ method with different proposal distributions
-        def f(x):
-            return x.sum(dim=1)
-
         from integrators import random_walk, gaussian
 
         # Test with uniform proposal distribution
-        result_rw = self.mcmc(f, proposal_dist=random_walk)
+        result_rw = self.mcmc(self.f, proposal_dist=random_walk)
         self.assertIsInstance(result_rw, RAvg)
         self.assertEqual(result_rw.shape, ())
 
         # Test with normal proposal distribution
-        result_normal = self.mcmc(f, proposal_dist=gaussian)
+        result_normal = self.mcmc(self.f, proposal_dist=gaussian)
         self.assertIsInstance(result_normal, RAvg)
         self.assertEqual(result_normal.shape, ())
 
