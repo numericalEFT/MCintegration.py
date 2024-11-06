@@ -106,7 +106,7 @@ class MonteCarlo(Integrator):
     ):
         super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
 
-    def __call__(self, f: Callable, **kwargs):
+    def __call__(self, f: Callable, multigpu=False, **kwargs):
         x, _ = self.sample(1)
         f_values = f(x)
         if isinstance(f_values, (list, tuple)) and isinstance(
@@ -131,64 +131,40 @@ class MonteCarlo(Integrator):
             batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
 
             values += batch_results / epoch
-
-        results = np.array([RAvg() for _ in range(f_size)])
-        for i in range(f_size):
-            _mean = values[:, i].mean().item()
-            _var = values[:, i].var().item() / self.nbatch
-            results[i].update(_mean, _var, self.neval)
+        if multigpu:
+            results = self.multigpu_statistic(values, f_size)
+        else:
+            results = np.array([RAvg() for _ in range(f_size)])
+            for i in range(f_size):
+                _mean = values[:, i].mean().item()
+                _var = values[:, i].var().item() / self.nbatch
+                results[i].update(_mean, _var, self.neval)
         if f_size == 1:
             return results[0]
         else:
             return results
 
-    def gpu_run(self, f: Callable, **kwargs):
-        x, _ = self.sample(1)
-        f_values = f(x)
-        if isinstance(f_values, (list, tuple)) and isinstance(
-            f_values[0], torch.Tensor
-        ):
-            f_size = len(f_values)
-            type_fval = f_values[0].dtype
-        elif isinstance(f_values, torch.Tensor):
-            f_size = 1
-            type_fval = f_values.dtype
-        else:
-            raise TypeError(
-                "f must return a torch.Tensor or a list/tuple of torch.Tensor."
-            )
-
-        epoch = self.neval // self.nbatch
-        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
-
-        for iepoch in range(epoch):
-            x, log_detJ = self.sample(self.nbatch)
-            f_values = f(x)
-            batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
-
-            values += batch_results / epoch
-
+    def multi_gpu_statistic(self, values, f_size):
         results = np.array([RAvg() for _ in range(f_size)])
+        _mean = torch.zeros(f_size)
+        _total_mean = torch.zeros(f_size)
+        _var = torch.zeros(f_size)
         for i in range(f_size):
-            _total_mean = values[:, i].mean()
-            _mean = _total_mean.detach().clone()
-            dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
-            _total_mean /= dist.get_world_size()
-
-            _var_between_batch = torch.square(_mean - _total_mean)
-            dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
-            _var_between_batch /= dist.get_world_size()
-
+            _total_mean[i] = values[:, i].mean()
+            _mean[i] = _total_mean[i]
             _var = values[:, i].var() / self.nbatch
-            dist.all_reduce(_var, op=dist.ReduceOp.SUM)
-            _var /= dist.get_world_size()
-            results[i].update(
-                _mean.item(), (_var + _var_between_batch).item(), self.neval
-            )
-        if f_size == 1:
-            return results[0]
-        else:
-            return results
+
+        dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
+        _total_mean /= dist.get_world_size()
+        _var_between_batch = torch.square(_mean - _total_mean)
+        dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
+        _var_between_batch /= dist.get_world_size()
+        dist.all_reduce(_var, op=dist.ReduceOp.SUM)
+        _var /= dist.get_world_size()
+        _var += _var_between_batch
+        for i in range(f_size):
+            results[i].update(_total_mean[i], _var[i], self.neval)
+        return results
 
     def _multiply_by_jacobian(self, values, jac):
         # if isinstance(values, dict):
@@ -243,6 +219,7 @@ class MCMC(MonteCarlo):
         proposal_dist: Callable = uniform,
         thinning=1,
         mix_rate=0.5,
+        multigpu=False,
         **kwargs,
     ):
         epsilon = 1e-16  # Small value to ensure numerical stability
@@ -323,17 +300,19 @@ class MCMC(MonteCarlo):
             values += batch_results / n_meas
             refvalues += batch_results_ref / n_meas
 
-        results = np.array([RAvg() for _ in range(f_size)])
-        results_ref = RAvg()
+        if multigpu:
+            results, results_ref = self.multi_gpu_statistic(values, refvalues, f_size)
+        else:
+            results = np.array([RAvg() for _ in range(f_size)])
+            results_ref = RAvg()
 
-        mean_ref = refvalues.mean().item()
-        var_ref = refvalues.var().item() / self.nbatch
-
-        results_ref.update(mean_ref, var_ref, self.neval)
-        for i in range(f_size):
-            _mean = values[:, i].mean().item()
-            _var = values[:, i].var().item() / self.nbatch
-            results[i].update(_mean, _var, self.neval)
+            mean_ref = refvalues.mean().item()
+            var_ref = refvalues.var().item() / self.nbatch
+            results_ref.update(mean_ref, var_ref, self.neval)
+            for i in range(f_size):
+                _mean = values[:, i].mean().item()
+                _var = values[:, i].var().item() / self.nbatch
+                results[i].update(_mean, _var, self.neval)
 
         if f_size == 1:
             res = results[0] / results_ref * self._rangebounds.prod()
@@ -341,3 +320,41 @@ class MCMC(MonteCarlo):
             return result
         else:
             return results / results_ref * self._rangebounds.prod().item()
+
+    def multi_gpu_statistic(self, values, refvalues, f_size):
+        # collect multigpu statistics for values
+        results = np.array([RAvg() for _ in range(f_size)])
+        _mean = torch.zeros(f_size)
+        _total_mean = torch.zeros(f_size)
+        _var = torch.zeros(f_size)
+        for i in range(f_size):
+            _total_mean[i] = values[:, i].mean()
+            _mean[i] = _total_mean[i]
+            _var = values[:, i].var() / self.nbatch
+
+        dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
+        _total_mean /= dist.get_world_size()
+        _var_between_batch = torch.square(_mean - _total_mean)
+        dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
+        _var_between_batch /= dist.get_world_size()
+        dist.all_reduce(_var, op=dist.ReduceOp.SUM)
+        _var /= dist.get_world_size()
+        _var += _var_between_batch
+        for i in range(f_size):
+            results[i].update(_total_mean[i], _var[i], self.neval)
+
+        # collect multigpu statistics for refvalues
+        results_ref = RAvg()
+        _mean_ref = refvalues.mean().item()
+        _total_mean_ref = _mean_ref.clone().detach()
+        _var_ref = refvalues.var().item() / self.nbatch
+        dist.all_reduce(_total_mean_ref, op=dist.ReduceOp.SUM)
+        _total_mean_ref /= dist.get_world_size()
+        _var_ref_between_batch = torch.square(_mean_ref - _total_mean_ref)
+        dist.all_reduce(_var_ref_between_batch, op=dist.ReduceOp.SUM)
+        _var_ref_between_batch /= dist.get_world_size()
+        dist.all_reduce(_var_ref, op=dist.ReduceOp.SUM)
+        _var_ref /= dist.get_world_size()
+        _var += _var_between_batch
+        results_ref.update(_mean_ref, _var_ref, self.neval)
+        return results, results_ref
