@@ -4,28 +4,34 @@ from integrators import MonteCarlo, MCMC
 from maps import Vegas, Linear
 from utils import set_seed, get_device
 
-# set_seed(42)
-# device = get_device()
-device = torch.device("cpu")
+set_seed(42)
+device = get_device()
+# device = torch.device("cpu")
 
 
-def integrand_list1(x):
-    dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
-    for d in range(4):
-        dx2 += (x[:, d] - 0.5) ** 2
-    f = torch.exp(-200 * dx2)
-    return [f, f * x[:, 0], f * x[:, 0] ** 2]
+def sharp_peak(x, f, dim=4):
+    f.zero_()
+    for d in range(dim):
+        f[:, 0] += (x[:, d] - 0.5) ** 2
+    f[:, 0] *= -200
+    f[:, 0].exp_()
+    return f[:, 0]
 
 
-def sharp_peak(x):
-    dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
-    for d in range(4):
-        dx2 += (x[:, d] - 0.5) ** 2
-    return torch.exp(-200 * dx2)
+def sharp_integrands(x, f, dim=4):
+    f.zero_()
+    for d in range(dim):
+        f[:, 0] += (x[:, d] - 0.5) ** 2
+    f[:, 0] *= -200
+    f[:, 0].exp_()
+    f[:, 1] = f[:, 0] * x[:, 0]
+    f[:, 2] = f[:, 0] * x[:, 0] ** 2
+    return f.mean(dim=-1)
 
 
-def func(x):
-    return torch.log(x[:, 0]) / torch.sqrt(x[:, 0])
+def func(x, f):
+    f[:, 0] = torch.log(x[:, 0]) / torch.sqrt(x[:, 0])
+    return f[:, 0]
 
 
 ninc = 1000
@@ -76,7 +82,7 @@ vegas_integrator = MonteCarlo(
     nbatch=n_batch,
     device=device,
 )
-res = vegas_integrator(integrand_list1)
+res = vegas_integrator(sharp_integrands, f_dim=3)
 print(
     "  I[0] =",
     res[0],
@@ -102,7 +108,7 @@ vegasmcmc_integrator = MCMC(
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(integrand_list1, mix_rate=0.5)
+res = vegasmcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],

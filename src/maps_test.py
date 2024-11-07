@@ -170,8 +170,9 @@ class TestVegas(unittest.TestCase):
 
     def test_train(self):
         # Test training the Vegas class
-        def f(x):
-            return torch.sum(x, dim=1)
+        def f(x, fx):
+            fx[:, 0] = torch.sum(x, dim=1)
+            return fx[:, 0]
 
         nsamples = 100
         epoch = 5
