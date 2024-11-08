@@ -92,7 +92,16 @@ class Vegas(Map):
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._jaclinear = torch.prod(self._A)
 
-    def train(self, nsamples, f, f_dim=1, dtype=torch.float64, epoch=5, alpha=0.5):
+    def train(
+        self,
+        nsamples,
+        f,
+        f_dim=1,
+        dtype=torch.float64,
+        epoch=5,
+        alpha=0.5,
+        multigpu=False,
+    ):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         u, log_detJ0 = q0.sample(nsamples)
 
@@ -105,7 +114,7 @@ class Vegas(Map):
             self.add_training_data(u, f2)
             self.adapt(alpha)
 
-    def add_training_data(self, u, fval):
+    def add_training_data(self, u, fval, multigpu=False):
         """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
@@ -130,6 +139,9 @@ class Vegas(Map):
             indices = iu[:, d]
             self.sum_f[d].scatter_add_(0, indices, fval.abs())
             self.n_f[d].scatter_add_(0, indices, torch.ones_like(fval))
+        if multigpu:
+            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
 
     def adapt(self, alpha=0.0):
         """Adapt grid to accumulated training data.
