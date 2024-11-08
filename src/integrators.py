@@ -136,11 +136,11 @@ class MonteCarlo(Integrator):
         else:
             return results
 
-    def multi_gpu_statistic(self, values, f_size, results):
-        _mean = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        _total_mean = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        _var = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        for i in range(f_size):
+    def multi_gpu_statistic(self, values, f_dim, results):
+        _mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        _total_mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        _var = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        for i in range(f_dim):
             _total_mean[i] = values[:, i].mean()
             _mean[i] = _total_mean[i]
             _var = values[:, i].var() / self.nbatch
@@ -153,7 +153,7 @@ class MonteCarlo(Integrator):
         dist.all_reduce(_var, op=dist.ReduceOp.SUM)
         _var /= dist.get_world_size()
         _var = _var + _var_between_batch
-        for i in range(f_size):
+        for i in range(f_dim):
             results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
 
 
@@ -285,12 +285,12 @@ class MCMC(MonteCarlo):
         else:
             return results / results_ref * self._rangebounds.prod().item()
 
-    def multi_gpu_statistic(self, values, refvalues, results, results_ref, f_size):
+    def multi_gpu_statistic(self, values, refvalues, results, results_ref, f_dim):
         # collect multigpu statistics for values
-        _mean = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        _total_mean = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        _var = torch.zeros(f_size, device=self.device, dtype=self.dtype)
-        for i in range(f_size):
+        _mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        _total_mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        _var = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
+        for i in range(f_dim):
             _total_mean[i] = values[:, i].mean()
             _mean[i] = _total_mean[i]
             _var = values[:, i].var() / self.nbatch
@@ -303,7 +303,7 @@ class MCMC(MonteCarlo):
         dist.all_reduce(_var, op=dist.ReduceOp.SUM)
         _var /= dist.get_world_size()
         _var = _var + _var_between_batch
-        for i in range(f_size):
+        for i in range(f_dim):
             results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
 
         # collect multigpu statistics for refvalues
