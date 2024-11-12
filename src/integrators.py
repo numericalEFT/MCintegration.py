@@ -317,6 +317,6 @@ class MCMC(MonteCarlo):
         _var_ref_between_batch /= dist.get_world_size()
         dist.all_reduce(_var_ref, op=dist.ReduceOp.SUM)
         _var_ref /= dist.get_world_size()
-        _var_ref = _var_ref + _var_between_batch
-        results_ref.update(_mean_ref.item(), _var_ref.item(), self.neval)
+        _var_ref = _var_ref + _var_ref_between_batch
+        results_ref.update(_total_mean_ref.item(), _var_ref.item(), self.neval)
         # return results, results_ref
