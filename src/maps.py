@@ -1,7 +1,8 @@
 import numpy as np
 import torch
 from torch import nn
-from base import Uniform
+from base import Uniform, EPSILON
+from integrators import MCMC, random_walk, uniform, gaussian
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
@@ -98,7 +99,7 @@ class Vegas(Map):
         f,
         f_dim=1,
         dtype=torch.float64,
-        epoch=5,
+        epoch=10,
         alpha=0.5,
         multigpu=False,
     ):
@@ -111,7 +112,48 @@ class Vegas(Map):
             x, log_detJ = self.forward(u)
             fx_weight = f(x, fx)
             f2 = torch.exp(2 * (log_detJ + log_detJ0)) * fx_weight**2
-            self.add_training_data(u, f2)
+            self.add_training_data(u, f2, multigpu)
+            self.adapt(alpha)
+
+    def train_mcmc(
+        self,
+        nsamples,
+        f,
+        f_dim=1,
+        dtype=torch.float64,
+        epoch=10,
+        alpha=0.5,
+        interv_step=1,
+        proposal_dist=uniform,
+        mix_rate=0.5,
+        multigpu=False,
+    ):
+        mcmc = MCMC(
+            maps=self,
+            bounds=self.bounds,
+            nbatch=nsamples,
+            device=self.device,
+            dtype=dtype,
+        )
+        fx = torch.empty((nsamples, f_dim), dtype=self.dtype, device=self.device)
+        fx_weight = torch.empty(nsamples, dtype=self.dtype, device=self.device)
+        fx_weight[:] = f(mcmc.x, fx)
+        fx_weight.abs_()
+        mcmc.weight = mix_rate / mcmc.jac + (1 - mix_rate) * fx_weight
+        mcmc.weight.masked_fill_(mcmc.weight < EPSILON, EPSILON)
+
+        for _ in range(epoch):
+            for _ in range(interv_step):
+                mcmc.metropolis_hastings(
+                    proposal_dist,
+                    f,
+                    fx_weight,
+                    fx,
+                    mix_rate,
+                )
+            fx_weight[:] = f(mcmc.x, fx)
+            f2 = (mcmc.jac * fx_weight) ** 2
+            self.add_training_data(mcmc.u, f2, multigpu)
             self.adapt(alpha)
 
     def add_training_data(self, u, fval, multigpu=False):

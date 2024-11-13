@@ -1,6 +1,11 @@
 import torch
 from torch import nn
 import numpy as np
+import sys
+
+MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
+MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)
+EPSILON = 1e-16
 
 
 class BaseDistribution(nn.Module):
@@ -52,3 +57,28 @@ class Uniform(BaseDistribution):
         )
         log_detJ = torch.log(self._rangebounds).sum().repeat(nsamples)
         return u, log_detJ
+
+
+class Linear(nn.Module):
+    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+        super().__init__()
+        if isinstance(bounds, (list, np.ndarray)):
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
+        elif isinstance(bounds, torch.Tensor):
+            self.bounds = bounds.to(dtype=dtype, device=device)
+        else:
+            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
+
+        self.dim = self.bounds.shape[0]
+        self.device = device
+        self.dtype = dtype
+        self._A = self.bounds[:, 1] - self.bounds[:, 0]
+        self._jac1 = torch.prod(self._A)
+
+    def forward(self, u):
+        return u * self._A + self.bounds[:, 0], torch.log(self._jac1.repeat(u.shape[0]))
+
+    def inverse(self, x):
+        return (x - self.bounds[:, 0]) / self._A, torch.log(
+            self._jac1.repeat(x.shape[0])
+        )

@@ -1,9 +1,9 @@
 from typing import Callable
 import torch
 from utils import RAvg
-from maps import Linear
-from base import Uniform
-import gvar
+
+# from maps import Linear
+from base import Uniform, Linear, EPSILON
 import numpy as np
 
 import os
@@ -188,7 +188,6 @@ class MCMC(MonteCarlo):
         nburnin: int = 500,
         device="cpu",
         dtype=torch.float64,
-        rtol=1e-16,
     ):
         super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
         if maps is None:
@@ -199,7 +198,6 @@ class MCMC(MonteCarlo):
         self.jac += detJ
         self.jac.exp_()
         self.weight = torch.zeros_like(self.jac)
-        self.rtol = rtol
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def metropolis_hastings(self, proposal_dist, f, fx_weight, fx, mix_rate, **kwargs):
@@ -212,7 +210,7 @@ class MCMC(MonteCarlo):
         fx_weight[:] = f(proposed_x, fx)
         fx_weight.abs_()
         new_weight = mix_rate / new_jac + (1 - mix_rate) * fx_weight
-        new_weight.masked_fill_(new_weight < self.rtol, self.rtol)
+        new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
 
         acceptance_probs = new_weight / self.weight * new_jac / self.jac
 
@@ -243,7 +241,7 @@ class MCMC(MonteCarlo):
         fx_weight.abs_()
 
         self.weight = mix_rate / self.jac + (1 - mix_rate) * fx_weight
-        self.weight.masked_fill_(self.weight < self.rtol, self.rtol)
+        self.weight.masked_fill_(self.weight < EPSILON, EPSILON)
 
         n_meas = epoch // meas_freq
 

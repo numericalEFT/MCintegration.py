@@ -1,10 +1,7 @@
 import torch
 import numpy as np
 import gvar
-import sys
-
-MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
-MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)
+from base import MAXVAL, MINVAL
 
 
 class RAvg(gvar.GVar):

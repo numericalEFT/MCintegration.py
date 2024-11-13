@@ -1,7 +1,7 @@
 # Integration tests for MonteCarlo and MCMC integrators class.
 import torch
 from integrators import MonteCarlo, MCMC
-from maps import Vegas, Linear
+from maps import Vegas
 from utils import set_seed, get_device
 
 set_seed(42)
