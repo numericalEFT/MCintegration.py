@@ -143,7 +143,7 @@ class MonteCarlo(Integrator):
         for i in range(f_dim):
             _total_mean[i] = values[:, i].mean()
             _mean[i] = _total_mean[i]
-            _var = values[:, i].var() / self.nbatch
+            _var[i] = values[:, i].var() * (self.nbatch - 1) / self.nbatch
 
         dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
         _total_mean /= dist.get_world_size()
@@ -153,6 +153,7 @@ class MonteCarlo(Integrator):
         dist.all_reduce(_var, op=dist.ReduceOp.SUM)
         _var /= dist.get_world_size()
         _var = _var + _var_between_batch
+        _var /= self.nbatch * dist.get_world_size() - 1
         for i in range(f_dim):
             results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
 
@@ -293,7 +294,7 @@ class MCMC(MonteCarlo):
         for i in range(f_dim):
             _total_mean[i] = values[:, i].mean()
             _mean[i] = _total_mean[i]
-            _var = values[:, i].var() / self.nbatch
+            _var[i] = values[:, i].var() * (self.nbatch - 1) / self.nbatch
 
         dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
         _total_mean /= dist.get_world_size()
@@ -303,13 +304,14 @@ class MCMC(MonteCarlo):
         dist.all_reduce(_var, op=dist.ReduceOp.SUM)
         _var /= dist.get_world_size()
         _var = _var + _var_between_batch
+        _var /= self.nbatch * dist.get_world_size() - 1
         for i in range(f_dim):
             results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
 
         # collect multigpu statistics for refvalues
         _mean_ref = refvalues.mean()
         _total_mean_ref = _mean_ref.clone().detach()
-        _var_ref = refvalues.var() / self.nbatch
+        _var_ref = refvalues.var() * (self.nbatch - 1) / self.nbatch
         dist.all_reduce(_total_mean_ref, op=dist.ReduceOp.SUM)
         _total_mean_ref /= dist.get_world_size()
         _var_ref_between_batch = torch.square(_mean_ref - _total_mean_ref)
@@ -318,5 +320,6 @@ class MCMC(MonteCarlo):
         dist.all_reduce(_var_ref, op=dist.ReduceOp.SUM)
         _var_ref /= dist.get_world_size()
         _var_ref = _var_ref + _var_ref_between_batch
+        _var_ref /= self.nbatch * dist.get_world_size() - 1
         results_ref.update(_total_mean_ref.item(), _var_ref.item(), self.neval)
         # return results, results_ref
