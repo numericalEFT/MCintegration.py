@@ -109,6 +109,13 @@ class MonteCarlo(Integrator):
         super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
 
     def __call__(self, f: Callable, f_dim: int = 1, multigpu=False, **kwargs):
+        if multigpu:
+            rank = dist.get_rank()
+            world_size = dist.get_world_size()
+        else:
+            rank = 0
+            world_size = 1
+
         x, _ = self.sample(self.nbatch)
         fx = torch.empty((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
 
@@ -116,6 +123,7 @@ class MonteCarlo(Integrator):
         integ_values = torch.zeros(
             (self.nbatch, f_dim), dtype=self.dtype, device=self.device
         )
+        results = np.array([RAvg() for _ in range(f_dim)])
 
         for _ in range(epoch):
             x, log_detJ = self.sample(self.nbatch)
@@ -123,38 +131,52 @@ class MonteCarlo(Integrator):
             fx.mul_(log_detJ.exp_().unsqueeze_(1))
             integ_values += fx / epoch
 
-        results = np.array([RAvg() for _ in range(f_dim)])
-        if multigpu:
-            self.multi_gpu_statistic(integ_values, f_dim, results)
-        else:
-            for i in range(f_dim):
-                _mean = integ_values[:, i].mean().item()
-                _var = integ_values[:, i].var().item() / self.nbatch
-                results[i].update(_mean, _var, self.neval)
-        if f_dim == 1:
-            return results[0]
-        else:
+        results = self.statistics(integ_values, results, rank, world_size)
+        if rank == 0:
             return results
 
-    def multi_gpu_statistic(self, values, f_dim, results):
-        _mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        _total_mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        _var = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        for i in range(f_dim):
-            _total_mean[i] = values[:, i].mean()
-            _mean[i] = _total_mean[i]
-            _var = values[:, i].var() / self.nbatch
+    def statistics(
+        self,
+        values,
+        results,
+        rank=0,
+        world_size=1,
+    ):
+        f_dim = values.shape[1]
+        _mean = values.mean(dim=0)
+        _var = values.var(dim=0) / self.nbatch
 
-        dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
-        _total_mean /= dist.get_world_size()
-        _var_between_batch = torch.square(_mean - _total_mean)
-        dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
-        _var_between_batch /= dist.get_world_size()
-        dist.all_reduce(_var, op=dist.ReduceOp.SUM)
-        _var /= dist.get_world_size()
-        _var = _var + _var_between_batch
-        for i in range(f_dim):
-            results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
+        if world_size > 1:
+            # Gather mean and variance statistics to rank 0
+            if rank == 0:
+                gathered_means = [
+                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+                gathered_vars = [
+                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+            dist.gather(_mean, gathered_means if rank == 0 else None, dst=0)
+            dist.gather(_var, gathered_vars if rank == 0 else None, dst=0)
+
+            if rank == 0:
+                for ngpu in range(world_size):
+                    for i in range(f_dim):
+                        results[i].update(
+                            gathered_means[ngpu][i].item(),
+                            gathered_vars[ngpu][i].item(),
+                            self.neval,
+                        )
+        else:
+            for i in range(f_dim):
+                results[i].update(_mean[i].item(), _var[i].item(), self.neval)
+
+        if rank == 0:
+            if f_dim == 1:
+                return results[0]
+            else:
+                return results
 
 
 def random_walk(dim, bounds, device, dtype, u, **kwargs):
@@ -205,6 +227,13 @@ class MCMC(MonteCarlo):
         multigpu=False,
         **kwargs,
     ):
+        if multigpu:
+            rank = dist.get_rank()
+            world_size = dist.get_world_size()
+        else:
+            rank = 0
+            world_size = 1
+
         epsilon = 1e-16  # Small value to ensure numerical stability
         epoch = self.neval // self.nbatch
         current_y, current_jac = self.q0.sample(self.nbatch)
@@ -212,11 +241,10 @@ class MCMC(MonteCarlo):
         current_jac += detJ
         current_jac.exp_()
         fx = torch.empty((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
-        fx_weight = torch.empty(self.nbatch, dtype=self.dtype, device=self.device)
-        fx_weight[:] = f(current_x, fx)
-        fx_weight.abs_()
 
-        current_weight = mix_rate / current_jac + (1 - mix_rate) * fx_weight
+        current_weight = (
+            mix_rate / current_jac + (1 - mix_rate) * f(current_x, fx).abs_()
+        )
         current_weight.masked_fill_(current_weight < epsilon, epsilon)
 
         n_meas = epoch // meas_freq
@@ -228,9 +256,7 @@ class MCMC(MonteCarlo):
             proposed_x, new_jac = self.maps.forward(proposed_y)
             new_jac.exp_()
 
-            fx_weight[:] = f(proposed_x, fx)
-            fx_weight.abs_()
-            new_weight = mix_rate / new_jac + (1 - mix_rate) * fx_weight
+            new_weight = mix_rate / new_jac + (1 - mix_rate) * f(proposed_x, fx).abs_()
             new_weight.masked_fill_(new_weight < epsilon, epsilon)
 
             acceptance_probs = new_weight / current_weight * new_jac / current_jac
@@ -244,79 +270,91 @@ class MCMC(MonteCarlo):
             current_x = torch.where(accept.unsqueeze(1), proposed_x, current_x)
             current_weight = torch.where(accept, new_weight, current_weight)
             current_jac = torch.where(accept, new_jac, current_jac)
-            return current_y, current_x, current_weight, current_jac
 
         for _ in range(self.nburnin):
-            current_y, current_x, current_weight, current_jac = one_step(
-                current_y, current_x, current_weight, current_jac
-            )
+            one_step(current_y, current_x, current_weight, current_jac)
 
         values = torch.zeros((self.nbatch, f_dim), dtype=self.dtype, device=self.device)
         refvalues = torch.zeros(self.nbatch, dtype=self.dtype, device=self.device)
+        results_unnorm = np.array([RAvg() for _ in range(f_dim)])
+        results_ref = RAvg()
 
         for _ in range(n_meas):
             for _ in range(meas_freq):
-                current_y, current_x, current_weight, current_jac = one_step(
-                    current_y, current_x, current_weight, current_jac
-                )
+                one_step(current_y, current_x, current_weight, current_jac)
             f(current_x, fx)
 
             fx.div_(current_weight.unsqueeze(1))
             values += fx / n_meas
             refvalues += 1 / (current_jac * current_weight) / n_meas
 
-        results = np.array([RAvg() for _ in range(f_dim)])
-        results_ref = RAvg()
-        if multigpu:
-            self.multi_gpu_statistic(values, refvalues, results, results_ref, f_dim)
-        else:
-            mean_ref = refvalues.mean().item()
-            var_ref = refvalues.var().item() / self.nbatch
-            results_ref.update(mean_ref, var_ref, self.neval)
-            for i in range(f_dim):
-                _mean = values[:, i].mean().item()
-                _var = values[:, i].var().item() / self.nbatch
-                results[i].update(_mean, _var, self.neval)
+        results = self.statistics(
+            values, refvalues, results_unnorm, results_ref, rank, world_size
+        )
+        if rank == 0:
+            return results
 
-        if f_dim == 1:
-            res = results[0] / results_ref * self._rangebounds.prod()
-            result = RAvg(itn_results=[res], sum_neval=self.neval)
-            return result
-        else:
-            return results / results_ref * self._rangebounds.prod().item()
-
-    def multi_gpu_statistic(self, values, refvalues, results, results_ref, f_dim):
-        # collect multigpu statistics for values
-        _mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        _total_mean = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        _var = torch.zeros(f_dim, device=self.device, dtype=self.dtype)
-        for i in range(f_dim):
-            _total_mean[i] = values[:, i].mean()
-            _mean[i] = _total_mean[i]
-            _var = values[:, i].var() / self.nbatch
-
-        dist.all_reduce(_total_mean, op=dist.ReduceOp.SUM)
-        _total_mean /= dist.get_world_size()
-        _var_between_batch = torch.square(_mean - _total_mean)
-        dist.all_reduce(_var_between_batch, op=dist.ReduceOp.SUM)
-        _var_between_batch /= dist.get_world_size()
-        dist.all_reduce(_var, op=dist.ReduceOp.SUM)
-        _var /= dist.get_world_size()
-        _var = _var + _var_between_batch
-        for i in range(f_dim):
-            results[i].update(_total_mean[i].item(), _var[i].item(), self.neval)
-
-        # collect multigpu statistics for refvalues
+    def statistics(
+        self,
+        values,
+        refvalues,
+        results_unnorm,
+        results_ref,
+        rank=0,
+        world_size=1,
+    ):
+        f_dim = values.shape[1]
         _mean_ref = refvalues.mean()
-        _total_mean_ref = _mean_ref.clone().detach()
         _var_ref = refvalues.var() / self.nbatch
-        dist.all_reduce(_total_mean_ref, op=dist.ReduceOp.SUM)
-        _total_mean_ref /= dist.get_world_size()
-        _var_ref_between_batch = torch.square(_mean_ref - _total_mean_ref)
-        dist.all_reduce(_var_ref_between_batch, op=dist.ReduceOp.SUM)
-        _var_ref_between_batch /= dist.get_world_size()
-        dist.all_reduce(_var_ref, op=dist.ReduceOp.SUM)
-        _var_ref /= dist.get_world_size()
-        _var_ref = _var_ref + _var_ref_between_batch
-        results_ref.update(_total_mean_ref.item(), _var_ref.item(), self.neval)
-        # return results, results_ref
+        _mean = values.mean(dim=0)
+        _var = values.var(dim=0) / self.nbatch
+
+        if world_size > 1:
+            # Gather mean and variance statistics to rank 0
+            if rank == 0:
+                gathered_means = [
+                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+                gathered_vars = [
+                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+                gathered_means_ref = [
+                    torch.zeros(1, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+                gathered_vars_ref = [
+                    torch.zeros(1, dtype=self.dtype, device=self.device)
+                    for _ in range(world_size)
+                ]
+            dist.gather(_mean, gathered_means if rank == 0 else None, dst=0)
+            dist.gather(_var, gathered_vars if rank == 0 else None, dst=0)
+            dist.gather(_mean_ref, gathered_means_ref if rank == 0 else None, dst=0)
+            dist.gather(_var_ref, gathered_vars_ref if rank == 0 else None, dst=0)
+
+            if rank == 0:
+                for ngpu in range(world_size):
+                    for i in range(f_dim):
+                        results_unnorm[i].update(
+                            gathered_means[ngpu][i].item(),
+                            gathered_vars[ngpu][i].item(),
+                            self.neval,
+                        )
+                    results_ref.update(
+                        gathered_means_ref[ngpu].item(),
+                        gathered_vars_ref[ngpu].item(),
+                        self.neval,
+                    )
+        else:
+            for i in range(f_dim):
+                results_unnorm[i].update(_mean[i].item(), _var[i].item(), self.neval)
+            results_ref.update(_mean_ref.item(), _var_ref.item(), self.neval)
+
+        if rank == 0:
+            if f_dim == 1:
+                res = results_unnorm[0] / results_ref * self._rangebounds.prod()
+                result = RAvg(itn_results=[res], sum_neval=self.neval)
+                return result
+            else:
+                return results_unnorm / results_ref * self._rangebounds.prod().item()
