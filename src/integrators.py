@@ -2,8 +2,7 @@ from typing import Callable
 import torch
 from utils import RAvg
 from maps import Linear
-from base import Uniform
-import gvar
+from base import Uniform, EPSILON
 import numpy as np
 
 import os
@@ -234,7 +233,6 @@ class MCMC(MonteCarlo):
             rank = 0
             world_size = 1
 
-        epsilon = 1e-16  # Small value to ensure numerical stability
         epoch = self.neval // self.nbatch
         current_y, current_jac = self.q0.sample(self.nbatch)
         current_x, detJ = self.maps.forward(current_y)
@@ -245,7 +243,7 @@ class MCMC(MonteCarlo):
         current_weight = (
             mix_rate / current_jac + (1 - mix_rate) * f(current_x, fx).abs_()
         )
-        current_weight.masked_fill_(current_weight < epsilon, epsilon)
+        current_weight.masked_fill_(current_weight < EPSILON, EPSILON)
 
         n_meas = epoch // meas_freq
 
@@ -257,7 +255,7 @@ class MCMC(MonteCarlo):
             new_jac.exp_()
 
             new_weight = mix_rate / new_jac + (1 - mix_rate) * f(proposed_x, fx).abs_()
-            new_weight.masked_fill_(new_weight < epsilon, epsilon)
+            new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
 
             acceptance_probs = new_weight / current_weight * new_jac / current_jac
 

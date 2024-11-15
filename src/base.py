@@ -1,6 +1,11 @@
 import torch
 from torch import nn
 import numpy as np
+import sys
+
+MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
+MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)
+EPSILON = 1e-16  # Small value to ensure numerical stability
 
 
 class BaseDistribution(nn.Module):
