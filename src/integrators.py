@@ -266,10 +266,11 @@ class MCMC(MonteCarlo):
                 <= acceptance_probs
             )
 
-            current_y = torch.where(accept.unsqueeze(1), proposed_y, current_y)
-            current_x = torch.where(accept.unsqueeze(1), proposed_x, current_x)
-            current_weight = torch.where(accept, new_weight, current_weight)
-            current_jac = torch.where(accept, new_jac, current_jac)
+            accept_expanded = accept.unsqueeze(1)
+            current_y.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
+            current_x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
+            current_weight.mul_(~accept).add_(new_weight * accept)
+            current_jac.mul_(~accept).add_(new_jac * accept)
 
         for _ in range(self.nburnin):
             one_step(current_y, current_x, current_weight, current_jac)
@@ -345,10 +346,8 @@ class MCMC(MonteCarlo):
 
         if rank == 0:
             if f_dim == 1:
-                # res = results_unnorm[0] / results_ref * self._rangebounds.prod()
-                res = results_unnorm[0] / results_ref
+                res = results_unnorm[0] / results_ref * self._rangebounds.prod()
                 result = RAvg(itn_results=[res], sum_neval=self.neval)
                 return result
             else:
-                # return results_unnorm / results_ref * self._rangebounds.prod().item()
-                return results_unnorm / results_ref
+                return results_unnorm / results_ref * self._rangebounds.prod().item()

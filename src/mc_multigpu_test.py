@@ -68,10 +68,12 @@ mcmc_integrator = MCMC(
 
 print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2...")
 res = mc_integrator(unit_circle_integrand, multigpu=True)
-print("Plain MC Integral results: ", res)
+if res is not None:
+    print("Plain MC Integral results: ", res)
 
 res = mcmc_integrator(unit_circle_integrand, mix_rate=0.5, multigpu=True)
-print("MCMC Integral results: ", res)
+if res is not None:
+    print("MCMC Integral results: ", res)
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5, multigpu=True)
 vegas_integrator = MonteCarlo(
@@ -82,7 +84,8 @@ vegas_integrator = MonteCarlo(
     device=device,
 )
 res = vegas_integrator(unit_circle_integrand, multigpu=True)
-print("VEGAS Integral results: ", res)
+if res is not None:
+    print("VEGAS Integral results: ", res)
 
 vegasmcmc_integrator = MCMC(
     maps=vegas_map,
@@ -92,7 +95,8 @@ vegasmcmc_integrator = MCMC(
     device=device,
 )
 res = vegasmcmc_integrator(unit_circle_integrand, mix_rate=0.5, multigpu=True)
-print("VEGAS-MCMC Integral results: ", res, "\n")
+if res is not None:
+    print("VEGAS-MCMC Integral results: ", res, "\n")
 
 
 print(
@@ -100,20 +104,24 @@ print(
 )
 
 res = mc_integrator(half_sphere_integrand, multigpu=True)
-print("Plain MC Integral results: ", res)
+if res is not None:
+    print("Plain MC Integral results: ", res)
 
 res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5, multigpu=True)
-print("MCMC Integral results:", res)
+if res is not None:
+    print("MCMC Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
 vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5, multigpu=True)
 
 res = vegas_integrator(half_sphere_integrand, multigpu=True)
-print("VEGAS Integral results: ", res)
+if res is not None:
+    print("VEGAS Integral results: ", res)
 
 res = vegasmcmc_integrator(half_sphere_integrand, mix_rate=0.5, multigpu=True)
-print("VEGAS-MCMC Integral results: ", res)
+if res is not None:
+    print("VEGAS-MCMC Integral results: ", res)
 
 
 print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2")
@@ -127,8 +135,8 @@ if res is not None:
 res = mcmc_integrator(two_integrands, f_dim=2, mix_rate=0.5, multigpu=True)
 if res is not None:
     print("MCMC Integral results:")
-    print(f"  Integral 1: ", res[0])
-    print(f"  Integral 2: ", res[1])
+    print("  Integral 1: ", res[0])
+    print("  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
 vegas_map.make_uniform()
