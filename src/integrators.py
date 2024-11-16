@@ -212,6 +212,8 @@ class MCMC(MonteCarlo):
     ):
         super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
         self.nburnin = nburnin
+
+        # If no transformation maps are provided, use a linear map as default
         if maps is None:
             self.maps = Linear([(0, 1)] * self.dim, device=device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
@@ -310,21 +312,13 @@ class MCMC(MonteCarlo):
         if world_size > 1:
             # Gather mean and variance statistics to rank 0
             if rank == 0:
-                gathered_means = [
-                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
-                    for _ in range(world_size)
-                ]
-                gathered_vars = [
-                    torch.zeros(f_dim, dtype=self.dtype, device=self.device)
-                    for _ in range(world_size)
-                ]
+                gathered_means = [torch.zeros_like(_mean) for _ in range(world_size)]
+                gathered_vars = [torch.zeros_like(_var) for _ in range(world_size)]
                 gathered_means_ref = [
-                    torch.zeros(1, dtype=self.dtype, device=self.device)
-                    for _ in range(world_size)
+                    torch.zeros_like(_mean_ref) for _ in range(world_size)
                 ]
                 gathered_vars_ref = [
-                    torch.zeros(1, dtype=self.dtype, device=self.device)
-                    for _ in range(world_size)
+                    torch.zeros_like(_var_ref) for _ in range(world_size)
                 ]
             dist.gather(_mean, gathered_means if rank == 0 else None, dst=0)
             dist.gather(_var, gathered_vars if rank == 0 else None, dst=0)
@@ -351,8 +345,10 @@ class MCMC(MonteCarlo):
 
         if rank == 0:
             if f_dim == 1:
-                res = results_unnorm[0] / results_ref * self._rangebounds.prod()
+                # res = results_unnorm[0] / results_ref * self._rangebounds.prod()
+                res = results_unnorm[0] / results_ref
                 result = RAvg(itn_results=[res], sum_neval=self.neval)
                 return result
             else:
-                return results_unnorm / results_ref * self._rangebounds.prod().item()
+                # return results_unnorm / results_ref * self._rangebounds.prod().item()
+                return results_unnorm / results_ref
