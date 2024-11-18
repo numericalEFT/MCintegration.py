@@ -9,19 +9,15 @@ device = get_device()
 # device = torch.device("cpu")
 
 
-def sharp_peak(x, f, dim=4):
-    f.zero_()
-    for d in range(dim):
-        f[:, 0] += (x[:, d] - 0.5) ** 2
+def sharp_peak(x, f):
+    f[:, 0] = torch.sum((x - 0.5) ** 2, dim=-1)
     f[:, 0] *= -200
     f[:, 0].exp_()
     return f[:, 0]
 
 
-def sharp_integrands(x, f, dim=4):
-    f.zero_()
-    for d in range(dim):
-        f[:, 0] += (x[:, d] - 0.5) ** 2
+def sharp_integrands(x, f):
+    f[:, 0] = torch.sum((x - 0.5) ** 2, dim=-1)
     f[:, 0] *= -200
     f[:, 0].exp_()
     f[:, 1] = f[:, 0] * x[:, 0]
