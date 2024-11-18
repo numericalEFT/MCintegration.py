@@ -3,9 +3,11 @@ from integrators import MonteCarlo, MCMC, setup
 from maps import Vegas, Linear
 from utils import set_seed, get_device
 
+# backend = "nccl"
+backend = "gloo"
 # set_seed(42)
 # device = get_device()
-setup()
+setup(backend=backend)
 # device = torch.device("cpu")
 device = torch.cuda.current_device()
 print(device)

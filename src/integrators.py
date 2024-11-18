@@ -22,11 +22,11 @@ def get_open_port() -> int:
         return s.getsockname()[1]
 
 
-def setup():
+def setup(backend="gloo"):
     # get IDs of reserved GPU
     distributed_init_method = f"tcp://{get_ip()}:{get_open_port()}"
     dist.init_process_group(
-        backend="gloo"
+        backend=backend
     )  # , init_method=distributed_init_method, world_size = int(os.environ["WORLD_SIZE"]), rank = int(os.environ["RANK"]))
     # init_method='env://',
     # world_size=int(os.environ["WORLD_SIZE"]),
