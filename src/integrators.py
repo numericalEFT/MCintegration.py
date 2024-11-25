@@ -1,7 +1,7 @@
 from typing import Callable
 import torch
 from utils import RAvg
-from maps import Linear
+from maps import Linear, Sample
 from base import Uniform, EPSILON
 import numpy as np
 
@@ -38,16 +38,6 @@ def cleanup():
     dist.destroy_process_group()
 
 
-class Sample:
-    def __init__(self, nsample, dim, device="cpu", dtype=torch.float64):
-        self.dim = dim
-        self.nsample = nsample
-        self.u = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.x = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.weight = torch.empty(nsample, dtype=dtype, device=device)
-        self.jac = torch.empty((nsample, dim), dtype=dtype, device=device)
-
-
 class Integrator:
     """
     Base class for all integrators. This class is designed to handle integration tasks
@@ -57,6 +47,8 @@ class Integrator:
 
     def __init__(
         self,
+        f: Callable,
+        f_dim=1,
         maps=None,
         bounds=None,
         q0=None,
@@ -65,6 +57,8 @@ class Integrator:
         device="cpu",
         dtype=torch.float64,
     ):
+        self.f = f
+        self.f_dim = f_dim
         self.dtype = dtype
         if maps:
             if not self.dtype == maps.dtype:
@@ -92,7 +86,7 @@ class Integrator:
 
         self.device = device
 
-    def __call__(self, f: Callable, **kwargs):
+    def __call__(self, **kwargs):
         raise NotImplementedError("Subclasses must implement this method")
 
     def sample(self, sample, **kwargs):
@@ -102,6 +96,7 @@ class Integrator:
         else:
             sample.x[:], log_detj = self.maps.forward(sample.u)
             sample.jac += log_detj
+        self.f(sample.x, sample.fx)
         sample.jac.exp_()
 
 
@@ -118,7 +113,7 @@ class MonteCarlo(Integrator):
         device="cpu",
         dtype=torch.float64,
     ):
-        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
+        super().__init__(f, f_dim, maps, bounds, q0, neval, nbatch, device, dtype)
         self.f = f
         self.f_dim = f_dim
 
@@ -129,11 +124,8 @@ class MonteCarlo(Integrator):
         else:
             rank = 0
             world_size = 1
-        sample = Sample(self.nbatch, self.dim, self.device, self.dtype)
-        self.sample(sample)
-        fx = torch.empty(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-        )
+        sample = Sample(self.nbatch, self.dim, self.f_dim, self.device, self.dtype)
+        # self.sample(sample)
 
         epoch = self.neval // self.nbatch
         integ_values = torch.zeros(
@@ -143,9 +135,8 @@ class MonteCarlo(Integrator):
 
         for _ in range(epoch):
             self.sample(sample)
-            self.f(sample.x, fx)
-            fx.mul_(sample.jac.unsqueeze_(1))
-            integ_values += fx / epoch
+            sample.fx.mul_(sample.jac.unsqueeze_(1))
+            integ_values += sample.fx / epoch
 
         results = self.statistics(integ_values, results, rank, world_size)
         if rank == 0:
@@ -230,13 +221,9 @@ class MCMC(Integrator):
         device="cpu",
         dtype=torch.float64,
     ):
-        super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
+        super().__init__(f, f_dim, maps, bounds, q0, neval, nbatch, device, dtype)
         self.nburnin = nburnin
-        self.f = f
-        self.f_dim = f_dim
-        self.fx = torch.empty(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-        )
+
         if not proposal_dist:
             self.proposal_dist = uniform
         else:
@@ -247,16 +234,6 @@ class MCMC(Integrator):
         if maps is None:
             self.maps = Linear([(0, 1)] * self.dim, device=device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
-
-    def __setattr__(self, __name, __value):
-        super().__setattr__(__name, __value)
-        if __name == "f_dim":
-            super().__setattr__(
-                "fx",
-                torch.empty(
-                    (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-                ),
-            )
 
     def sample(self, sample, niter=10, mix_rate=0, **kwargs):
         for _ in range(niter):
@@ -270,10 +247,9 @@ class MCMC(Integrator):
         new_jac.exp_()
 
         new_weight = (
-            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, self.fx).abs_()
+            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, sample.fx).abs()
         )
         new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
-
         acceptance_probs = new_weight / sample.weight * new_jac / sample.jac
 
         accept = (
@@ -286,9 +262,6 @@ class MCMC(Integrator):
         sample.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
         sample.weight.mul_(~accept).add_(new_weight * accept)
         sample.jac.mul_(~accept).add_(new_jac * accept)
-
-    # def sample(self, nsample, **kwargs):
-    #     return
 
     def __call__(
         self,
@@ -310,14 +283,14 @@ class MCMC(Integrator):
         # self.fx = torch.empty(
         #     (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
         # )
-        sample = Sample(self.nbatch, self.dim, self.device, self.dtype)
+        sample = Sample(self.nbatch, self.dim, self.f_dim, self.device, self.dtype)
         epoch = self.neval // self.nbatch
         sample.u, sample.jac = self.q0.sample(self.nbatch)
         sample.x, detJ = self.maps.forward(sample.u)
         sample.jac += detJ
         sample.jac.exp_()
         sample.weight = (
-            mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, self.fx).abs_()
+            mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, sample.fx).abs_()
         )
         sample.weight.masked_fill_(sample.weight < EPSILON, EPSILON)
 
@@ -336,10 +309,10 @@ class MCMC(Integrator):
         for _ in range(n_meas):
             for _ in range(meas_freq):
                 self.metropolis_hastings(sample, mix_rate, **kwargs)
-            self.f(sample.x, self.fx)
+            self.f(sample.x, sample.fx)
 
-            self.fx.div_(sample.weight.unsqueeze(1))
-            values += self.fx / n_meas
+            sample.fx.div_(sample.weight.unsqueeze(1))
+            values += sample.fx / n_meas
             refvalues += 1 / (sample.jac * sample.weight) / n_meas
 
         results = self.statistics(

@@ -7,6 +7,18 @@ import sys
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
+class Sample:
+    def __init__(self, nsample, dim, f_dim, device="cpu", dtype=torch.float64):
+        self.dim = dim
+        self.f_dim = f_dim
+        self.nsample = nsample
+        self.u = torch.empty((nsample, dim), dtype=dtype, device=device)
+        self.x = torch.empty((nsample, dim), dtype=dtype, device=device)
+        self.fx = torch.empty((nsample, f_dim), dtype=dtype, device=device)
+        self.weight = torch.empty((nsample,), dtype=dtype, device=device)
+        self.jac = torch.empty((nsample,), dtype=dtype, device=device)
+
+
 class Map(nn.Module):
     def __init__(self, bounds, device="cpu", dtype=torch.float64):
         super().__init__()
@@ -94,7 +106,7 @@ class Vegas(Map):
 
     def train(
         self,
-        nsamples,
+        nsample,
         f,
         f_dim=1,
         dtype=torch.float64,
@@ -103,18 +115,19 @@ class Vegas(Map):
         multigpu=False,
     ):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
-        u, log_detJ0 = q0.sample(nsamples)
+        sample = Sample(nsample, self.dim, f_dim, device=self.device, dtype=dtype)
 
-        fx = torch.empty(nsamples, f_dim, device=self.device, dtype=dtype)
+        # fx = torch.empty(nsample, f_dim, device=self.device, dtype=dtype)
 
         for _ in range(epoch):
-            x, log_detJ = self.forward(u)
-            fx_weight = f(x, fx)
-            f2 = torch.exp(2 * (log_detJ + log_detJ0)) * fx_weight**2
-            self.add_training_data(u, f2)
+            sample.u, log_detJ0 = q0.sample(nsample)
+            sample.x[:], log_detJ = self.forward(sample.u)
+            sample.weight = f(sample.x, sample.fx)
+            sample.jac = torch.exp(log_detJ0 + log_detJ)
+            self.add_training_data(sample, multigpu=multigpu)
             self.adapt(alpha)
 
-    def add_training_data(self, u, fval, multigpu=False):
+    def add_training_data(self, sample, multigpu=False):
         """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
@@ -130,10 +143,11 @@ class Vegas(Map):
             f (tensor): Training function values. ``f[j]`` corresponds to
                 point ``u[j, d]`` in ``u``-space.
         """
+        fval = (sample.jac * sample.weight) ** 2
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
             self.n_f = torch.zeros_like(self.inc) + TINY
-        iu = (u - self.bounds[:, 0]) / self._A * self.ninc
+        iu = (sample.u - self.bounds[:, 0]) / self._A * self.ninc
         iu = torch.floor(iu).long()
         for d in range(self.dim):
             indices = iu[:, d]
