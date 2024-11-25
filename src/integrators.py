@@ -98,9 +98,9 @@ class Integrator:
     def sample(self, sample, **kwargs):
         sample.u, sample.jac = self.q0.sample(sample.nsample)
         if not self.maps:
-            sample.x = sample.u
+            sample.x[:] = sample.u
         else:
-            sample.x, log_detj = self.maps.forward(sample.u)
+            sample.x[:], log_detj = self.maps.forward(sample.u)
             sample.jac += log_detj
         sample.jac.exp_()
 
@@ -248,6 +248,16 @@ class MCMC(Integrator):
             self.maps = Linear([(0, 1)] * self.dim, device=device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
+    def __setattr__(self, __name, __value):
+        super().__setattr__(__name, __value)
+        if __name == "f_dim":
+            super().__setattr__(
+                "fx",
+                torch.empty(
+                    (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
+                ),
+            )
+
     def sample(self, sample, niter=10, mix_rate=0, **kwargs):
         for _ in range(niter):
             self.metropolis_hastings(sample, mix_rate, **kwargs)
@@ -297,19 +307,15 @@ class MCMC(Integrator):
             rank = 0
             world_size = 1
 
-        self.fx = torch.empty(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-        )
+        # self.fx = torch.empty(
+        #     (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
+        # )
         sample = Sample(self.nbatch, self.dim, self.device, self.dtype)
         epoch = self.neval // self.nbatch
         sample.u, sample.jac = self.q0.sample(self.nbatch)
         sample.x, detJ = self.maps.forward(sample.u)
         sample.jac += detJ
         sample.jac.exp_()
-        # self.fx = torch.empty(
-        #     (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-        # )
-
         sample.weight = (
             mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, self.fx).abs_()
         )
