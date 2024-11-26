@@ -40,7 +40,7 @@ def sharp_integrands(x, f):
 
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
-n_eval = 400000
+n_eval = 6400000
 n_batch = 10000
 n_therm = 10
 
@@ -54,47 +54,42 @@ print(f"pi = {torch.pi} \n")
 mc_integrator = MonteCarlo(
     f=unit_circle_integrand,
     bounds=bounds,
-    neval=n_eval,
     nbatch=n_batch,
     device=device,
 )
 mcmc_integrator = MCMC(
     f=unit_circle_integrand,
     bounds=bounds,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
 
 print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2...")
-res = mc_integrator()
+res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 
-res = mcmc_integrator(mix_rate=0.5)
+res = mcmc_integrator(n_eval, mix_rate=0.5)
 print("MCMC Integral results: ", res)
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
     f=unit_circle_integrand,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
-    # nbatch=n_eval,
     device=device,
 )
-res = vegas_integrator()
+res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 
 vegasmcmc_integrator = MCMC(
     f=unit_circle_integrand,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(mix_rate=0.5)
+res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res, "\n")
 
 
@@ -102,20 +97,20 @@ print(
     r"Calculate the integral g(x1, x2) = $2 \max(1-(x_1^2+x_2^2), 0)$ in the bounds [-1, 1]^2..."
 )
 mc_integrator.f = half_sphere_integrand
-res = mc_integrator()
+res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 mcmc_integrator.f = half_sphere_integrand
-res = mcmc_integrator(mix_rate=0.5)
+res = mcmc_integrator(n_eval, mix_rate=0.5)
 print("MCMC Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
 vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5)
 vegas_integrator.f = half_sphere_integrand
-res = vegas_integrator()
+res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 vegasmcmc_integrator.f = half_sphere_integrand
-res = vegasmcmc_integrator(mix_rate=0.5)
+res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res)
 
 
@@ -123,13 +118,13 @@ print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2
 # Two integrands
 mc_integrator.f = two_integrands
 mc_integrator.f_dim = 2
-res = mc_integrator()
+res = mc_integrator(n_eval)
 print("Plain MC Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 mcmc_integrator.f = two_integrands
 mcmc_integrator.f_dim = 2
-res = mcmc_integrator(mix_rate=0.5)
+res = mcmc_integrator(n_eval, mix_rate=0.5)
 print("MCMC Integral results:")
 print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
@@ -139,13 +134,13 @@ vegas_map.make_uniform()
 vegas_map.train(20000, two_integrands, f_dim=2, epoch=10, alpha=0.5)
 vegas_integrator.f = two_integrands
 vegas_integrator.f_dim = 2
-res = vegas_integrator()
+res = vegas_integrator(n_eval)
 print("VEGAS Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 vegasmcmc_integrator.f = two_integrands
 vegasmcmc_integrator.f_dim = 2
-res = vegasmcmc_integrator(mix_rate=0.5)
+res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MCMC Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
@@ -158,22 +153,19 @@ mc_integrator = MonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    neval=n_eval,
     nbatch=n_batch,
-    # nbatch=n_eval,
     device=device,
 )
 mcmc_integrator = MCMC(
     f=sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
 print("Plain MC Integral results:")
-res = mc_integrator()
+res = mc_integrator(n_eval)
 print(
     "  I[0] =",
     res[0],
@@ -185,7 +177,7 @@ print(
     res[1] / res[0],
 )
 print("MCMC Integral results:")
-res = mcmc_integrator(mix_rate=0.5)
+res = mcmc_integrator(n_eval, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],
@@ -206,12 +198,10 @@ vegas_integrator = MonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
-    # nbatch=n_eval,
     device=device,
 )
-res = vegas_integrator()
+res = vegas_integrator(n_eval)
 print(
     "  I[0] =",
     res[0],
@@ -228,12 +218,11 @@ vegasmcmc_integrator = MCMC(
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(mix_rate=0.5)
+res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],
