@@ -1,7 +1,7 @@
 from typing import Callable
 import torch
 from utils import RAvg
-from maps import Linear
+from maps import Linear, Configuration
 from base import Uniform, EPSILON
 import numpy as np
 
@@ -36,16 +36,6 @@ def setup(backend="gloo"):
 
 def cleanup():
     dist.destroy_process_group()
-
-
-class Sample:
-    def __init__(self, nsample, dim, device="cpu", dtype=torch.float64):
-        self.dim = dim
-        self.nsample = nsample
-        self.u = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.x = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.weight = torch.empty(nsample, dtype=dtype, device=device)
-        self.jac = torch.empty((nsample, dim), dtype=dtype, device=device)
 
 
 class Integrator:
@@ -114,6 +104,7 @@ class Integrator:
         else:
             sample.x[:], log_detj = self.maps.forward(sample.u)
             sample.jac += log_detj
+        self.f(sample.x, sample.fx)
         sample.jac.exp_()
 
     def statistics(self, values, neval, results=None):
@@ -172,10 +163,8 @@ class MonteCarlo(Integrator):
             nsteps_perblock > 0
         ), f"neval ({neval}) should be larger than nbatch * nblock ({self.nbatch} * {nblock})"
 
-        sample = Sample(self.nbatch, self.dim, self.device, self.dtype)
-        self.sample(sample)
-        fx = torch.empty(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
+        sample = Configuration(
+            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
         )
 
         epoch = neval // self.nbatch
@@ -187,10 +176,9 @@ class MonteCarlo(Integrator):
         for _ in range(nblock):
             for _ in range(nsteps_perblock):
                 self.sample(sample)
-                self.f(sample.x, fx)
-                fx.mul_(sample.jac.unsqueeze_(1))
-                integ_values += fx / nsteps_perblock
-            self.statistics(integ_values, nsteps_perblock, results)
+                sample.fx.mul_(sample.jac.unsqueeze_(1))
+                integ_values += sample.fx / nsteps_perblock
+            self.statistics(integ_values, nsteps_perblock * self.nbatch, results)
             integ_values.zero_()
 
         if self.rank == 0:
@@ -220,7 +208,7 @@ def gaussian(dim, bounds, device, dtype, u, **kwargs):
     return torch.normal(mean, std)
 
 
-class MCMC(Integrator):
+class MarkovChainMonteCarlo(Integrator):
     def __init__(
         self,
         f: Callable,
@@ -229,7 +217,6 @@ class MCMC(Integrator):
         bounds=None,
         q0=None,
         proposal_dist=None,
-        neval: int = 10000,
         nbatch: int = None,
         nburnin: int = 500,
         device=None,
@@ -237,9 +224,6 @@ class MCMC(Integrator):
     ):
         super().__init__(f, f_dim, maps, bounds, q0, nbatch, device, dtype)
         self.nburnin = nburnin
-        self.fx = torch.empty(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-        )
         if not proposal_dist:
             self.proposal_dist = uniform
         else:
@@ -250,16 +234,6 @@ class MCMC(Integrator):
         if maps is None:
             self.maps = Linear([(0, 1)] * self.dim, device=self.device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
-
-    def __setattr__(self, __name, __value):
-        super().__setattr__(__name, __value)
-        if __name == "f_dim":
-            super().__setattr__(
-                "fx",
-                torch.empty(
-                    (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
-                ),
-            )
 
     def sample(self, sample, niter=10, mix_rate=0, **kwargs):
         for _ in range(niter):
@@ -273,7 +247,7 @@ class MCMC(Integrator):
         new_jac.exp_()
 
         new_weight = (
-            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, self.fx).abs_()
+            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, sample.fx).abs_()
         )
         new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
 
@@ -310,13 +284,15 @@ class MCMC(Integrator):
             f"epoch = {epoch}, nblock = {nblock}, nsteps_perblock = {nsteps_perblock}, meas_freq = {meas_freq}"
         )
 
-        sample = Sample(self.nbatch, self.dim, self.device, self.dtype)
+        sample = Configuration(
+            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
+        )
         sample.u, sample.jac = self.q0.sample(self.nbatch)
         sample.x, detJ = self.maps.forward(sample.u)
         sample.jac += detJ
         sample.jac.exp_()
         sample.weight = (
-            mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, self.fx).abs_()
+            mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, sample.fx).abs_()
         )
         sample.weight.masked_fill_(sample.weight < EPSILON, EPSILON)
 
@@ -334,13 +310,15 @@ class MCMC(Integrator):
             for _ in range(n_meas_perblock):
                 for _ in range(meas_freq):
                     self.metropolis_hastings(sample, mix_rate, **kwargs)
-                self.f(sample.x, self.fx)
+                self.f(sample.x, sample.fx)
 
-                self.fx.div_(sample.weight.unsqueeze(1))
-                values += self.fx / n_meas_perblock
+                sample.fx.div_(sample.weight.unsqueeze(1))
+                values += sample.fx / n_meas_perblock
                 refvalues += 1 / (sample.jac * sample.weight) / n_meas_perblock
-            self.statistics(values, nsteps_perblock, results_unnorm)
-            self.statistics(refvalues.unsqueeze(1), nsteps_perblock, results_ref)
+            self.statistics(values, nsteps_perblock * self.nbatch, results_unnorm)
+            self.statistics(
+                refvalues.unsqueeze(1), nsteps_perblock * self.nbatch, results_ref
+            )
             values.zero_()
             refvalues.zero_()
         if self.rank == 0:

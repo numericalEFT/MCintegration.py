@@ -1,6 +1,6 @@
-# Integration tests for MonteCarlo and MCMC integrators class.
+# Integration tests for MonteCarlo and MarkovChainMonteCarlo integrators class.
 import torch
-from integrators import MonteCarlo, MCMC
+from integrators import MonteCarlo, MarkovChainMonteCarlo
 from maps import Vegas, Linear
 from utils import set_seed, get_device
 
@@ -50,14 +50,14 @@ vegas_map = Vegas(bounds, device=device, ninc=10)
 # True value of pi
 print(f"pi = {torch.pi} \n")
 
-# Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
+# Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
 mc_integrator = MonteCarlo(
     f=unit_circle_integrand,
     bounds=bounds,
     nbatch=n_batch,
     device=device,
 )
-mcmc_integrator = MCMC(
+mcmc_integrator = MarkovChainMonteCarlo(
     f=unit_circle_integrand,
     bounds=bounds,
     nbatch=n_batch,
@@ -70,7 +70,7 @@ res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MCMC Integral results: ", res)
+print("MarkovChainMonteCarlo Integral results: ", res)
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
@@ -82,7 +82,7 @@ vegas_integrator = MonteCarlo(
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 
-vegasmcmc_integrator = MCMC(
+vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=unit_circle_integrand,
     maps=vegas_map,
     nbatch=n_batch,
@@ -90,7 +90,7 @@ vegasmcmc_integrator = MCMC(
     device=device,
 )
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MCMC Integral results: ", res, "\n")
+print("VEGAS-MarkovChainMonteCarlo Integral results: ", res, "\n")
 
 
 print(
@@ -101,7 +101,7 @@ res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 mcmc_integrator.f = half_sphere_integrand
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MCMC Integral results:", res)
+print("MarkovChainMonteCarlo Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
@@ -111,7 +111,7 @@ res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 vegasmcmc_integrator.f = half_sphere_integrand
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MCMC Integral results: ", res)
+print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
 
 
 print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2")
@@ -125,7 +125,7 @@ print("  Integral 2: ", res[1])
 mcmc_integrator.f = two_integrands
 mcmc_integrator.f_dim = 2
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MCMC Integral results:")
+print("MarkovChainMonteCarlo Integral results:")
 print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
 
@@ -141,7 +141,7 @@ print("  Integral 2: ", res[1])
 vegasmcmc_integrator.f = two_integrands
 vegasmcmc_integrator.f_dim = 2
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MCMC Integral results:")
+print("VEGAS-MarkovChainMonteCarlo Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 
@@ -156,7 +156,7 @@ mc_integrator = MonteCarlo(
     nbatch=n_batch,
     device=device,
 )
-mcmc_integrator = MCMC(
+mcmc_integrator = MarkovChainMonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     bounds=bounds,
@@ -176,7 +176,7 @@ print(
     "  I[1]/I[0] =",
     res[1] / res[0],
 )
-print("MCMC Integral results:")
+print("MarkovChainMonteCarlo Integral results:")
 res = mcmc_integrator(n_eval, mix_rate=0.5)
 print(
     "  I[0] =",
@@ -213,8 +213,8 @@ print(
     res[1] / res[0],
 )
 
-print("VEGAS-MCMC Integral results:")
-vegasmcmc_integrator = MCMC(
+print("VEGAS-MarkovChainMonteCarlo Integral results:")
+vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
