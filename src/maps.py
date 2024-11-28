@@ -16,7 +16,7 @@ class Configuration:
         self.x = torch.empty((nsample, dim), dtype=dtype, device=device)
         self.fx = torch.empty((nsample, f_dim), dtype=dtype, device=device)
         self.weight = torch.empty((nsample,), dtype=dtype, device=device)
-        self.jac = torch.empty((nsample,), dtype=dtype, device=device)
+        self.jac = torch.empty((nsample, dim), dtype=dtype, device=device)
 
 
 class Map(nn.Module):
@@ -112,24 +112,22 @@ class Vegas(Map):
         dtype=torch.float64,
         epoch=5,
         alpha=0.5,
-        multigpu=False,
     ):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
+        # u, log_detJ0 = q0.sample(nsample)
         sample = Configuration(
             nsample, self.dim, f_dim, device=self.device, dtype=dtype
         )
-
-        # fx = torch.empty(nsample, f_dim, device=self.device, dtype=dtype)
 
         for _ in range(epoch):
             sample.u, log_detJ0 = q0.sample(nsample)
             sample.x[:], log_detJ = self.forward(sample.u)
             sample.weight = f(sample.x, sample.fx)
             sample.jac = torch.exp(log_detJ0 + log_detJ)
-            self.add_training_data(sample, multigpu=multigpu)
+            self.add_training_data(sample)
             self.adapt(alpha)
 
-    def add_training_data(self, sample, multigpu=False):
+    def add_training_data(self, sample):
         """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
@@ -155,9 +153,6 @@ class Vegas(Map):
             indices = iu[:, d]
             self.sum_f[d].scatter_add_(0, indices, fval.abs())
             self.n_f[d].scatter_add_(0, indices, torch.ones_like(fval))
-        if multigpu:
-            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
-            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
 
     def adapt(self, alpha=0.0):
         """Adapt grid to accumulated training data.
@@ -187,6 +182,9 @@ class Vegas(Map):
                 ``alpha<0`` causes adaptation to the unmodified training
                 data (usually not a good idea).
         """
+        if torch.distributed.is_initialized():
+            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
         new_grid = torch.empty(
             (self.dim, torch.max(self.ninc) + 1),
             dtype=torch.float64,

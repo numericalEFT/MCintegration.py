@@ -1,5 +1,5 @@
 import torch
-from integrators import MonteCarlo, MCMC, setup
+from integrators import MonteCarlo, MarkovChainMonteCarlo, setup
 from maps import Vegas, Linear
 from utils import set_seed, get_device
 
@@ -55,14 +55,14 @@ vegas_map = Vegas(bounds, device=device, ninc=10)
 # True value of pi
 print(f"pi = {torch.pi} \n")
 
-# Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
+# Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
 mc_integrator = MonteCarlo(
     bounds=bounds,
     neval=n_eval,
     nbatch=n_batch,
     device=device,
 )
-mcmc_integrator = MCMC(
+mcmc_integrator = MarkovChainMonteCarlo(
     bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
 )
 
@@ -73,7 +73,7 @@ if res is not None:
 
 res = mcmc_integrator(unit_circle_integrand, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("MCMC Integral results: ", res)
+    print("MarkovChainMonteCarlo Integral results: ", res)
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5, multigpu=True)
 vegas_integrator = MonteCarlo(
@@ -87,7 +87,7 @@ res = vegas_integrator(unit_circle_integrand, multigpu=True)
 if res is not None:
     print("VEGAS Integral results: ", res)
 
-vegasmcmc_integrator = MCMC(
+vegasmcmc_integrator = MarkovChainMonteCarlo(
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,
@@ -96,7 +96,7 @@ vegasmcmc_integrator = MCMC(
 )
 res = vegasmcmc_integrator(unit_circle_integrand, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("VEGAS-MCMC Integral results: ", res, "\n")
+    print("VEGAS-MarkovChainMonteCarlo Integral results: ", res, "\n")
 
 
 print(
@@ -109,7 +109,7 @@ if res is not None:
 
 res = mcmc_integrator(half_sphere_integrand, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("MCMC Integral results:", res)
+    print("MarkovChainMonteCarlo Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
@@ -121,7 +121,7 @@ if res is not None:
 
 res = vegasmcmc_integrator(half_sphere_integrand, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("VEGAS-MCMC Integral results: ", res)
+    print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
 
 
 print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2")
@@ -134,7 +134,7 @@ if res is not None:
 
 res = mcmc_integrator(two_integrands, f_dim=2, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("MCMC Integral results:")
+    print("MarkovChainMonteCarlo Integral results:")
     print("  Integral 1: ", res[0])
     print("  Integral 2: ", res[1])
 
@@ -149,7 +149,7 @@ if res is not None:
 
 res = vegasmcmc_integrator(two_integrands, f_dim=2, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("VEGAS-MCMC Integral results:")
+    print("VEGAS-MarkovChainMonteCarlo Integral results:")
     print("  Integral 1: ", res[0])
     print("  Integral 2: ", res[1])
 
@@ -164,7 +164,7 @@ mc_integrator = MonteCarlo(
     # nbatch=n_eval,
     device=device,
 )
-mcmc_integrator = MCMC(
+mcmc_integrator = MarkovChainMonteCarlo(
     bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
 )
 res = mc_integrator(sharp_integrands, f_dim=3, multigpu=True)
@@ -182,7 +182,7 @@ if res is not None:
     )
 res = mcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("MCMC Integral results:")
+    print("MarkovChainMonteCarlo Integral results:")
     print(
         "  I[0] =",
         res[0],
@@ -220,7 +220,7 @@ if res is not None:
         res[1] / res[0],
     )
 
-vegasmcmc_integrator = MCMC(
+vegasmcmc_integrator = MarkovChainMonteCarlo(
     maps=vegas_map,
     neval=n_eval,
     nbatch=n_batch,
@@ -229,7 +229,7 @@ vegasmcmc_integrator = MCMC(
 )
 res = vegasmcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5, multigpu=True)
 if res is not None:
-    print("VEGAS-MCMC Integral results:")
+    print("VEGAS-MarkovChainMonteCarlo Integral results:")
     print(
         "  I[0] =",
         res[0],

@@ -1,6 +1,6 @@
-# Integration tests for VEGAS + MonteCarlo/MCMC integral methods.
+# Integration tests for VEGAS + MonteCarlo/MarkovChainMonteCarlo integral methods.
 import torch
-from integrators import MonteCarlo, MCMC
+from integrators import MonteCarlo, MarkovChainMonteCarlo
 from maps import Vegas, Linear
 from utils import set_seed, get_device
 
@@ -33,7 +33,7 @@ def func(x, f):
 alpha = 2.0
 ninc = 1000
 n_eval = 1000000
-n_batch = 20000
+n_batch = 10000
 n_therm = 10
 
 print("\nCalculate the integral log(x)/x^0.5 in the bounds [0, 1]")
@@ -43,26 +43,25 @@ vegas_map = Vegas([(0, 1)], device=device, ninc=ninc)
 vegas_map.train(100000, func, epoch=10, alpha=alpha)
 
 vegas_integrator = MonteCarlo(
+    func,
     maps=vegas_map,
-    neval=n_eval,
-    # nbatch=n_batch,
     device=device,
 )
-res = vegas_integrator(func)
+res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 
-vegasmcmc_integrator = MCMC(
+vegasmcmc_integrator = MarkovChainMonteCarlo(
+    func,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(func, mix_rate=0.5)
-print("VEGAS-MCMC Integral results: ", res)
+res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
+print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
 print(type(res))
 
-# Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
+# Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
 print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
 print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
@@ -74,11 +73,12 @@ vegas_map.train(20000, sharp_peak, epoch=10, alpha=alpha)
 
 print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
+    sharp_integrands,
+    f_dim=3,
     maps=vegas_map,
-    neval=50000,
     device=device,
 )
-res = vegas_integrator(sharp_integrands, f_dim=3)
+res = vegas_integrator(neval=500000)
 print(
     "  I[0] =",
     res[0],
@@ -96,15 +96,16 @@ print(res[0].itn_results)
 print(res[0].nitn)
 
 
-print("VEGAS-MCMC Integral results:")
-vegasmcmc_integrator = MCMC(
+print("VEGAS-MarkovChainMonteCarlo Integral results:")
+vegasmcmc_integrator = MarkovChainMonteCarlo(
+    sharp_integrands,
+    f_dim=3,
     maps=vegas_map,
-    neval=n_eval,
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
 )
-res = vegasmcmc_integrator(sharp_integrands, f_dim=3, mix_rate=0.5)
+res = vegasmcmc_integrator(neval=500000, mix_rate=0.5)
 print(
     "  I[0] =",
     res[0],
