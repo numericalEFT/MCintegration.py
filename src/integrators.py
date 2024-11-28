@@ -1,7 +1,7 @@
 from typing import Callable
 import torch
 from utils import RAvg
-from maps import Linear, Sample
+from maps import Linear, Configuration
 from base import Uniform, EPSILON
 import numpy as np
 
@@ -124,7 +124,9 @@ class MonteCarlo(Integrator):
         else:
             rank = 0
             world_size = 1
-        sample = Sample(self.nbatch, self.dim, self.f_dim, self.device, self.dtype)
+        sample = Configuration(
+            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
+        )
         # self.sample(sample)
 
         epoch = self.neval // self.nbatch
@@ -235,33 +237,31 @@ class MCMC(Integrator):
             self.maps = Linear([(0, 1)] * self.dim, device=device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
-    def sample(self, sample, niter=10, mix_rate=0, **kwargs):
-        for _ in range(niter):
-            self.metropolis_hastings(sample, mix_rate, **kwargs)
+    def sample(self, sample, nsteps=1, mix_rate=0.5, **kwargs):
+        for _ in range(nsteps):
+            proposed_y = self.proposal_dist(
+                self.dim, self.bounds, self.device, self.dtype, sample.u, **kwargs
+            )
+            proposed_x, new_jac = self.maps.forward(proposed_y)
+            new_jac.exp_()
 
-    def metropolis_hastings(self, sample, mix_rate, **kwargs):
-        proposed_y = self.proposal_dist(
-            self.dim, self.bounds, self.device, self.dtype, sample.u, **kwargs
-        )
-        proposed_x, new_jac = self.maps.forward(proposed_y)
-        new_jac.exp_()
+            new_weight = (
+                mix_rate / new_jac
+                + (1 - mix_rate) * self.f(proposed_x, sample.fx).abs()
+            )
+            new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
+            acceptance_probs = new_weight / sample.weight * new_jac / sample.jac
 
-        new_weight = (
-            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, sample.fx).abs()
-        )
-        new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
-        acceptance_probs = new_weight / sample.weight * new_jac / sample.jac
+            accept = (
+                torch.rand(self.nbatch, dtype=torch.float64, device=self.device)
+                <= acceptance_probs
+            )
 
-        accept = (
-            torch.rand(self.nbatch, dtype=torch.float64, device=self.device)
-            <= acceptance_probs
-        )
-
-        accept_expanded = accept.unsqueeze(1)
-        sample.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
-        sample.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
-        sample.weight.mul_(~accept).add_(new_weight * accept)
-        sample.jac.mul_(~accept).add_(new_jac * accept)
+            accept_expanded = accept.unsqueeze(1)
+            sample.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
+            sample.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
+            sample.weight.mul_(~accept).add_(new_weight * accept)
+            sample.jac.mul_(~accept).add_(new_jac * accept)
 
     def __call__(
         self,
@@ -283,7 +283,9 @@ class MCMC(Integrator):
         # self.fx = torch.empty(
         #     (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
         # )
-        sample = Sample(self.nbatch, self.dim, self.f_dim, self.device, self.dtype)
+        sample = Configuration(
+            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
+        )
         epoch = self.neval // self.nbatch
         sample.u, sample.jac = self.q0.sample(self.nbatch)
         sample.x, detJ = self.maps.forward(sample.u)
@@ -297,7 +299,7 @@ class MCMC(Integrator):
         n_meas = epoch // meas_freq
 
         for _ in range(self.nburnin):
-            self.metropolis_hastings(sample, mix_rate, **kwargs)
+            self.sample(sample, mix_rate=mix_rate, **kwargs)
 
         values = torch.zeros(
             (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
@@ -308,7 +310,7 @@ class MCMC(Integrator):
 
         for _ in range(n_meas):
             for _ in range(meas_freq):
-                self.metropolis_hastings(sample, mix_rate, **kwargs)
+                self.sample(sample, mix_rate=mix_rate, **kwargs)
             self.f(sample.x, sample.fx)
 
             sample.fx.div_(sample.weight.unsqueeze(1))

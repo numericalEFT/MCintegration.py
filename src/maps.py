@@ -7,7 +7,7 @@ import sys
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
-class Sample:
+class Configuration:
     def __init__(self, nsample, dim, f_dim, device="cpu", dtype=torch.float64):
         self.dim = dim
         self.f_dim = f_dim
@@ -115,7 +115,9 @@ class Vegas(Map):
         multigpu=False,
     ):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
-        sample = Sample(nsample, self.dim, f_dim, device=self.device, dtype=dtype)
+        sample = Configuration(
+            nsample, self.dim, f_dim, device=self.device, dtype=dtype
+        )
 
         # fx = torch.empty(nsample, f_dim, device=self.device, dtype=dtype)
 
