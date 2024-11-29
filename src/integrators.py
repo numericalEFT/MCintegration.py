@@ -89,15 +89,11 @@ class Integrator:
         self.f = f
         self.f_dim = f_dim
 
-        try:
-            if dist.is_initialized():
-                self.rank = dist.get_rank()
-                self.world_size = dist.get_world_size()
-            else:
-                # Fallback defaults when distributed is not initialized
-                self.rank = 0
-                self.world_size = 1
-        except ValueError as e:
+        if dist.is_initialized():
+            self.rank = dist.get_rank()
+            self.world_size = dist.get_world_size()
+        else:
+            # Fallback defaults when distributed is not initialized
             self.rank = 0
             self.world_size = 1
 
