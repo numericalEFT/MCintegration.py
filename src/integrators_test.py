@@ -1,7 +1,7 @@
 import unittest
 import torch
 import numpy as np
-from integrators import Integrator, MonteCarlo, MCMC
+from integrators import Integrator, MonteCarlo, MarkovChainMonteCarlo
 from utils import RAvg
 
 
@@ -233,7 +233,7 @@ class TestMCMC(unittest.TestCase):
         self.nburnin = 500
         self.device = "cpu"
         self.dtype = torch.float64
-        self.mcmc = MCMC(
+        self.mcmc = MarkovChainMonteCarlo(
             self.maps,
             self.bounds,
             self.q0,
@@ -258,8 +258,8 @@ class TestMCMC(unittest.TestCase):
         pass
 
     def test_initialization(self):
-        # Test if the MCMC class initializes correctly
-        self.assertIsInstance(self.mcmc, MCMC)
+        # Test if the MarkovChainMonteCarlo class initializes correctly
+        self.assertIsInstance(self.mcmc, MarkovChainMonteCarlo)
         self.assertEqual(self.mcmc.neval, self.neval)
         self.assertEqual(self.mcmc.nbatch, self.nbatch)
         self.assertEqual(self.mcmc.nburnin, self.nburnin)
@@ -299,7 +299,7 @@ class TestMCMC(unittest.TestCase):
     def test_call_with_different_device(self):
         # Test the __call__ method with device = "cuda" if available
         if torch.cuda.is_available():
-            mcmc_cuda = MCMC(
+            mcmc_cuda = MarkovChainMonteCarlo(
                 self.maps,
                 self.bounds,
                 self.q0,
@@ -316,7 +316,7 @@ class TestMCMC(unittest.TestCase):
     def test_call_with_different_dtype(self):
         # Test the __call__ method with different dtype values
         # Test with dtype = torch.float32
-        mcmc_float32 = MCMC(
+        mcmc_float32 = MarkovChainMonteCarlo(
             self.maps,
             self.bounds,
             self.q0,
@@ -335,7 +335,7 @@ class TestMCMC(unittest.TestCase):
     def test_call_with_different_bounds(self):
         # Test the __call__ method with different bounds values
         # Test with bounds = [0, 2]
-        mcmc_bounds = MCMC(
+        mcmc_bounds = MarkovChainMonteCarlo(
             self.maps,
             [(3, 5.2), (-1.1, 0.2)],
             self.q0,
