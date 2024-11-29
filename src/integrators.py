@@ -56,6 +56,8 @@ class Integrator:
         device=None,
         dtype=torch.float64,
     ):
+        self.f = f
+        self.f_dim = f_dim
         self.dtype = dtype
         if maps:
             if not self.dtype == maps.dtype:
@@ -87,25 +89,26 @@ class Integrator:
         self.f = f
         self.f_dim = f_dim
 
-        try:
+        if dist.is_initialized():
             self.rank = dist.get_rank()
             self.world_size = dist.get_world_size()
-        except ValueError as e:
+        else:
+            # Fallback defaults when distributed is not initialized
             self.rank = 0
             self.world_size = 1
 
     def __call__(self, **kwargs):
         raise NotImplementedError("Subclasses must implement this method")
 
-    def sample(self, sample, **kwargs):
-        sample.u, sample.jac = self.q0.sample(sample.nsample)
+    def sample(self, config, **kwargs):
+        config.u, config.jac = self.q0.sample(config.nsample)
         if not self.maps:
-            sample.x[:] = sample.u
+            config.x[:] = config.u
         else:
-            sample.x[:], log_detj = self.maps.forward(sample.u)
-            sample.jac += log_detj
-        self.f(sample.x, sample.fx)
-        sample.jac.exp_()
+            config.x[:], log_detj = self.maps.forward(config.u)
+            config.jac += log_detj
+        self.f(config.x, config.fx)
+        config.jac.exp_()
 
     def statistics(self, values, neval, results=None):
         dim = values.shape[1]
@@ -163,9 +166,10 @@ class MonteCarlo(Integrator):
             nsteps_perblock > 0
         ), f"neval ({neval}) should be larger than nbatch * nblock ({self.nbatch} * {nblock})"
 
-        sample = Configuration(
+        config = Configuration(
             self.nbatch, self.dim, self.f_dim, self.device, self.dtype
         )
+        # self.sample(sample)
 
         epoch = neval // self.nbatch
         integ_values = torch.zeros(
@@ -175,9 +179,9 @@ class MonteCarlo(Integrator):
 
         for _ in range(nblock):
             for _ in range(nsteps_perblock):
-                self.sample(sample)
-                sample.fx.mul_(sample.jac.unsqueeze_(1))
-                integ_values += sample.fx / nsteps_perblock
+                self.sample(config)
+                config.fx.mul_(config.jac.unsqueeze_(1))
+                integ_values += config.fx / nsteps_perblock
             self.statistics(integ_values, nsteps_perblock * self.nbatch, results)
             integ_values.zero_()
 
@@ -235,34 +239,31 @@ class MarkovChainMonteCarlo(Integrator):
             self.maps = Linear([(0, 1)] * self.dim, device=self.device)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
-    def sample(self, sample, niter=10, mix_rate=0, **kwargs):
-        for _ in range(niter):
-            self.metropolis_hastings(sample, mix_rate, **kwargs)
+    def sample(self, config, nsteps=1, mix_rate=0.5, **kwargs):
+        for _ in range(nsteps):
+            proposed_y = self.proposal_dist(
+                self.dim, self.bounds, self.device, self.dtype, config.u, **kwargs
+            )
+            proposed_x, new_jac = self.maps.forward(proposed_y)
+            new_jac.exp_()
 
-    def metropolis_hastings(self, sample, mix_rate, **kwargs):
-        proposed_y = self.proposal_dist(
-            self.dim, self.bounds, self.device, self.dtype, sample.u, **kwargs
-        )
-        proposed_x, new_jac = self.maps.forward(proposed_y)
-        new_jac.exp_()
+            new_weight = (
+                mix_rate / new_jac
+                + (1 - mix_rate) * self.f(proposed_x, config.fx).abs()
+            )
+            new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
+            acceptance_probs = new_weight / config.weight * new_jac / config.jac
 
-        new_weight = (
-            mix_rate / new_jac + (1 - mix_rate) * self.f(proposed_x, sample.fx).abs_()
-        )
-        new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
+            accept = (
+                torch.rand(self.nbatch, dtype=torch.float64, device=self.device)
+                <= acceptance_probs
+            )
 
-        acceptance_probs = new_weight / sample.weight * new_jac / sample.jac
-
-        accept = (
-            torch.rand(self.nbatch, dtype=torch.float64, device=self.device)
-            <= acceptance_probs
-        )
-
-        accept_expanded = accept.unsqueeze(1)
-        sample.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
-        sample.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
-        sample.weight.mul_(~accept).add_(new_weight * accept)
-        sample.jac.mul_(~accept).add_(new_jac * accept)
+            accept_expanded = accept.unsqueeze(1)
+            config.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
+            config.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
+            config.weight.mul_(~accept).add_(new_weight * accept)
+            config.jac.mul_(~accept).add_(new_jac * accept)
 
     def __call__(
         self,
@@ -284,20 +285,20 @@ class MarkovChainMonteCarlo(Integrator):
             f"epoch = {epoch}, nblock = {nblock}, nsteps_perblock = {nsteps_perblock}, meas_freq = {meas_freq}"
         )
 
-        sample = Configuration(
+        config = Configuration(
             self.nbatch, self.dim, self.f_dim, self.device, self.dtype
         )
-        sample.u, sample.jac = self.q0.sample(self.nbatch)
-        sample.x, detJ = self.maps.forward(sample.u)
-        sample.jac += detJ
-        sample.jac.exp_()
-        sample.weight = (
-            mix_rate / sample.jac + (1 - mix_rate) * self.f(sample.x, sample.fx).abs_()
+        config.u, config.jac = self.q0.sample(self.nbatch)
+        config.x, detJ = self.maps.forward(config.u)
+        config.jac += detJ
+        config.jac.exp_()
+        config.weight = (
+            mix_rate / config.jac + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
         )
-        sample.weight.masked_fill_(sample.weight < EPSILON, EPSILON)
+        config.weight.masked_fill_(config.weight < EPSILON, EPSILON)
 
         for _ in range(self.nburnin):
-            self.metropolis_hastings(sample, mix_rate, **kwargs)
+            self.sample(config, mix_rate=mix_rate, **kwargs)
 
         values = torch.zeros(
             (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
@@ -308,13 +309,12 @@ class MarkovChainMonteCarlo(Integrator):
 
         for _ in range(nblock):
             for _ in range(n_meas_perblock):
-                for _ in range(meas_freq):
-                    self.metropolis_hastings(sample, mix_rate, **kwargs)
-                self.f(sample.x, sample.fx)
+                self.sample(config, meas_freq, mix_rate, **kwargs)
+                self.f(config.x, config.fx)
 
-                sample.fx.div_(sample.weight.unsqueeze(1))
-                values += sample.fx / n_meas_perblock
-                refvalues += 1 / (sample.jac * sample.weight) / n_meas_perblock
+                config.fx.div_(config.weight.unsqueeze(1))
+                values += config.fx / n_meas_perblock
+                refvalues += 1 / (config.jac * config.weight) / n_meas_perblock
             self.statistics(values, nsteps_perblock * self.nbatch, results_unnorm)
             self.statistics(
                 refvalues.unsqueeze(1), nsteps_perblock * self.nbatch, results_ref
