@@ -159,12 +159,13 @@ class MonteCarlo(Integrator):
         neval = -(-neval // self.nbatch) * self.nbatch
         epoch = neval // self.nbatch
         nsteps_perblock = epoch // nblock
-        print(
-            f"epoch = {epoch}, nblock = {nblock}, nsteps_perblock = {nsteps_perblock}"
-        )
+        nblock = epoch // nsteps_perblock
         assert (
             nsteps_perblock > 0
         ), f"neval ({neval}) should be larger than nbatch * nblock ({self.nbatch} * {nblock})"
+        print(
+            f"nblock = {nblock}, n_steps_perblock = {nsteps_perblock}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
+        )
 
         config = Configuration(
             self.nbatch, self.dim, self.f_dim, self.device, self.dtype
@@ -277,12 +278,13 @@ class MarkovChainMonteCarlo(Integrator):
         neval = -(-neval // self.nbatch) * self.nbatch
         epoch = neval // self.nbatch
         nsteps_perblock = epoch // nblock
+        nblock = epoch // nsteps_perblock
         n_meas_perblock = nsteps_perblock // meas_freq
         assert (
             n_meas_perblock > 0
         ), f"neval ({neval}) should be larger than nbatch * nblock * meas_freq ({self.nbatch} * {nblock} * {meas_freq})"
         print(
-            f"epoch = {epoch}, nblock = {nblock}, nsteps_perblock = {nsteps_perblock}, meas_freq = {meas_freq}"
+            f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
         )
 
         config = Configuration(

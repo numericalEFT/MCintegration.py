@@ -21,15 +21,9 @@ def init_process(rank, world_size, fn, backend="gloo"):
 def run_mcmc(rank, world_size):
     # Instantiate the MarkovChainMonteCarlo class
     bounds = [(-1, 1), (-1, 1)]
-    n_eval = 400000
+    n_eval = 8000000
     n_batch = 10000
     n_therm = 10
-
-    # device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
-    device = torch.device("cpu")
-    mcmc = MarkovChainMonteCarlo(
-        bounds=bounds, neval=n_eval, nbatch=n_batch, nburnin=n_therm, device=device
-    )
 
     # Define the function to be integrated (dummy example)
     def two_integrands(x, f):
@@ -37,12 +31,21 @@ def run_mcmc(rank, world_size):
         f[:, 1] = -torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0)
         return f.mean(dim=-1)
 
-    # Call the MarkovChainMonteCarlo method
-    # Use multigpu=True to indicate we are running in a distributed environment
-    mcmc_result = mcmc(
+    # device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
+    mcmc = MarkovChainMonteCarlo(
         two_integrands,
+        2,
+        bounds=bounds,
+        nbatch=n_batch,
+        nburnin=n_therm,
+        device=device,
+    )
+
+    # Call the MarkovChainMonteCarlo method
+    mcmc_result = mcmc(
+        neval=n_eval,
         f_dim=2,
-        multigpu=True,  # Set to True to enable distributed operations
     )
 
     if rank == 0:

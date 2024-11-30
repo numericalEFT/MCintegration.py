@@ -45,6 +45,7 @@ vegas_map.train(100000, func, epoch=10, alpha=alpha)
 vegas_integrator = MonteCarlo(
     func,
     maps=vegas_map,
+    nbatch=n_batch,
     device=device,
 )
 res = vegas_integrator(n_eval)
@@ -76,6 +77,7 @@ vegas_integrator = MonteCarlo(
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
+    nbatch=n_batch,
     device=device,
 )
 res = vegas_integrator(neval=500000)
