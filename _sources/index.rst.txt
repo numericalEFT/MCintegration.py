@@ -13,6 +13,8 @@ Contents:
    :maxdepth: 2
    :caption: Contents:
 
+   test_results.rst
+
 Indices and tables
 ==================
 
