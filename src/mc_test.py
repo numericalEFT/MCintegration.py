@@ -3,6 +3,7 @@ import torch
 from integrators import MonteCarlo, MarkovChainMonteCarlo
 from maps import Vegas, Linear
 from utils import set_seed, get_device
+import torch.utils.benchmark as benchmark
 
 set_seed(42)
 device = get_device()
@@ -69,8 +70,24 @@ print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2..
 res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 
+# result = benchmark.Timer(stmt="mc_integrator(neval=n_eval,nblock=1)", globals=globals())
+# print(result.timeit(10))
+# result = benchmark.Timer(
+#     stmt="mc_integrator(neval=n_eval,nblock=32)", globals=globals()
+# )
+# print(result.timeit(10))
+
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MarkovChainMonteCarlo Integral results: ", res)
+print("MCMC Integral results: ", res)
+
+# result = benchmark.Timer(
+#     stmt="mcmc_integrator(neval=n_eval,nblock=1)", globals=globals()
+# )
+# print(result.timeit(10))
+# result = benchmark.Timer(
+#     stmt="mcmc_integrator(neval=n_eval,nblock=32)", globals=globals()
+# )
+# print(result.timeit(10))
 
 vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
@@ -82,6 +99,15 @@ vegas_integrator = MonteCarlo(
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 
+# result = benchmark.Timer(
+#     stmt="vegas_integrator(neval=n_eval,nblock=1)", globals=globals()
+# )
+# print(result.timeit(10))
+# result = benchmark.Timer(
+#     stmt="vegas_integrator(neval=n_eval,nblock=32)", globals=globals()
+# )
+# print(result.timeit(10))
+
 vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=unit_circle_integrand,
     maps=vegas_map,
@@ -90,8 +116,16 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
     device=device,
 )
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MarkovChainMonteCarlo Integral results: ", res, "\n")
+print("VEGAS-MCMC Integral results: ", res, "\n")
 
+# result = benchmark.Timer(
+#     stmt="vegasmcmc_integrator(neval=n_eval,nblock=1)", globals=globals()
+# )
+# print(result.timeit(10))
+# result = benchmark.Timer(
+#     stmt="vegasmcmc_integrator(neval=n_eval,nblock=32)", globals=globals()
+# )
+# print(result.timeit(10))
 
 print(
     r"Calculate the integral g(x1, x2) = $2 \max(1-(x_1^2+x_2^2), 0)$ in the bounds [-1, 1]^2..."
@@ -101,7 +135,7 @@ res = mc_integrator(n_eval)
 print("Plain MC Integral results: ", res)
 mcmc_integrator.f = half_sphere_integrand
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MarkovChainMonteCarlo Integral results:", res)
+print("MCMC Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
@@ -111,7 +145,7 @@ res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
 vegasmcmc_integrator.f = half_sphere_integrand
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
+print("VEGAS-MCMC Integral results: ", res)
 
 
 print("\nCalculate the integral [f(x1, x2), g(x1, x2)/2] in the bounds [-1, 1]^2")
@@ -125,7 +159,7 @@ print("  Integral 2: ", res[1])
 mcmc_integrator.f = two_integrands
 mcmc_integrator.f_dim = 2
 res = mcmc_integrator(n_eval, mix_rate=0.5)
-print("MarkovChainMonteCarlo Integral results:")
+print("MCMC Integral results:")
 print(f"  Integral 1: ", res[0])
 print(f"  Integral 2: ", res[1])
 
@@ -141,7 +175,7 @@ print("  Integral 2: ", res[1])
 vegasmcmc_integrator.f = two_integrands
 vegasmcmc_integrator.f_dim = 2
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
-print("VEGAS-MarkovChainMonteCarlo Integral results:")
+print("VEGAS-MCMC Integral results:")
 print("  Integral 1: ", res[0])
 print("  Integral 2: ", res[1])
 
@@ -176,7 +210,7 @@ print(
     "  I[1]/I[0] =",
     res[1] / res[0],
 )
-print("MarkovChainMonteCarlo Integral results:")
+print("MCMC Integral results:")
 res = mcmc_integrator(n_eval, mix_rate=0.5)
 print(
     "  I[0] =",
@@ -213,7 +247,7 @@ print(
     res[1] / res[0],
 )
 
-print("VEGAS-MarkovChainMonteCarlo Integral results:")
+print("VEGAS-MCMC Integral results:")
 vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=sharp_integrands,
     f_dim=3,

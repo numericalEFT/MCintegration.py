@@ -44,7 +44,7 @@ def sharp_integrands(x, f):
 
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
-n_eval = 1600000
+n_eval = 6400000
 n_batch = 10000
 n_therm = 10
 

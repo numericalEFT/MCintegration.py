@@ -4,6 +4,7 @@ from utils import RAvg
 from maps import Linear, Configuration
 from base import Uniform, EPSILON
 import numpy as np
+from warnings import warn
 
 import os
 import torch.distributed as dist
@@ -110,34 +111,73 @@ class Integrator:
         self.f(config.x, config.fx)
         config.jac.exp_()
 
-    def statistics(self, values, neval, results=None):
-        dim = values.shape[1]
-        if results is None:
-            results = np.array([RAvg() for _ in range(dim)])
-        _mean = values.mean(dim=0)
-        _var = values.var(dim=0) / self.nbatch
+    def statistics(self, means, vars, neval=None):
+        nblock = means.shape[0]
+        f_dim = means.shape[1]
+        nblock_total = nblock * self.world_size
+        weighted = nblock_total < 32
 
         if self.world_size > 1:
             # Gather mean and variance statistics to self.rank 0
             if self.rank == 0:
                 gathered_means = [
-                    torch.zeros_like(_mean) for _ in range(self.world_size)
+                    torch.zeros_like(means) for _ in range(self.world_size)
                 ]
-                gathered_vars = [torch.zeros_like(_var) for _ in range(self.world_size)]
-            dist.gather(_mean, gathered_means if self.rank == 0 else None, dst=0)
-            dist.gather(_var, gathered_vars if self.rank == 0 else None, dst=0)
+                if weighted:
+                    gathered_vars = [
+                        torch.zeros_like(vars) for _ in range(self.world_size)
+                    ]
+            dist.gather(means, gathered_means if self.rank == 0 else None, dst=0)
+            if weighted:
+                dist.gather(vars, gathered_vars if self.rank == 0 else None, dst=0)
 
             if self.rank == 0:
-                for igpu in range(self.world_size):
-                    for i in range(dim):
+                results = np.array([RAvg() for _ in range(f_dim)])
+                if weighted:
+                    for i in range(f_dim):
+                        for iblock in range(nblock):
+                            for igpu, (_mean, _var) in enumerate(
+                                zip(gathered_means, gathered_vars)
+                            ):
+                                results[i].update(
+                                    _mean[iblock, i].item(),
+                                    _var[iblock, i].item(),
+                                    neval,
+                                )
+                else:
+                    for i in range(f_dim):
+                        _means = torch.empty(
+                            nblock_total, dtype=self.dtype, device=self.device
+                        )
+                        for igpu in range(self.world_size):
+                            _means[igpu * nblock : (igpu + 1) * nblock] = (
+                                gathered_means[igpu][:, i]
+                            )
                         results[i].update(
-                            gathered_means[igpu][i].item(),
-                            gathered_vars[igpu][i].item(),
+                            _means.mean().item(),
+                            _means.var().item() / nblock_total,
+                            neval * nblock,
+                        )
+            else:
+                return None
+        else:
+            results = np.array([RAvg() for _ in range(f_dim)])
+            if weighted:
+                for i in range(f_dim):
+                    for iblock in range(nblock):
+                        results[i].update(
+                            means[iblock, i].item(),
+                            vars[iblock, i].item(),
                             neval,
                         )
-        else:
-            for i in range(dim):
-                results[i].update(_mean[i].item(), _var[i].item(), neval)
+            else:
+                for i in range(f_dim):
+                    results[i].update(
+                        means[:, i].mean().item(),
+                        means[:, i].var().item() / nblock_total,
+                        neval * nblock,
+                    )
+        return results
 
 
 class MonteCarlo(Integrator):
@@ -154,37 +194,46 @@ class MonteCarlo(Integrator):
     ):
         super().__init__(f, f_dim, maps, bounds, q0, nbatch, device, dtype)
 
-    def __call__(self, neval, nblock=32, **kwargs):
+    def __call__(self, neval, nblock=32, print=-1, **kwargs):
         neval = neval // self.world_size
         neval = -(-neval // self.nbatch) * self.nbatch
         epoch = neval // self.nbatch
-        nsteps_perblock = epoch // nblock
-        nblock = epoch // nsteps_perblock
-        assert (
-            nsteps_perblock > 0
-        ), f"neval ({neval}) should be larger than nbatch * nblock ({self.nbatch} * {nblock})"
-        print(
-            f"nblock = {nblock}, n_steps_perblock = {nsteps_perblock}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
-        )
+        epoch_perblock = epoch // nblock
+        if epoch_perblock == 0:
+            warn(
+                f"neval is too small to be divided into {nblock} blocks. Reset nblock to {epoch}."
+            )
+            epoch_perblock = 1
+            nblock = epoch
+        else:
+            nblock = epoch // epoch_perblock
+
+        if print > 0:
+            print(
+                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.nbatch}, actual neval = {self.nbatch*epoch_perblock*nblock}"
+            )
 
         config = Configuration(
             self.nbatch, self.dim, self.f_dim, self.device, self.dtype
         )
-        # self.sample(sample)
 
         epoch = neval // self.nbatch
         integ_values = torch.zeros(
             (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
         )
-        results = np.array([RAvg() for _ in range(self.f_dim)])
+        means = torch.zeros((nblock, self.f_dim), dtype=self.dtype, device=self.device)
+        vars = torch.zeros_like(means)
 
-        for _ in range(nblock):
-            for _ in range(nsteps_perblock):
+        for iblock in range(nblock):
+            for _ in range(epoch_perblock):
                 self.sample(config)
                 config.fx.mul_(config.jac.unsqueeze_(1))
-                integ_values += config.fx / nsteps_perblock
-            self.statistics(integ_values, nsteps_perblock * self.nbatch, results)
+                integ_values += config.fx / epoch_perblock
+            means[iblock, :] = integ_values.mean(dim=0)
+            vars[iblock, :] = integ_values.var(dim=0) / self.nbatch
             integ_values.zero_()
+
+        results = self.statistics(means, vars, epoch_perblock * self.nbatch)
 
         if self.rank == 0:
             if self.f_dim == 1:
@@ -272,20 +321,30 @@ class MarkovChainMonteCarlo(Integrator):
         mix_rate=0.5,
         nblock=32,
         meas_freq: int = 1,
+        print=-1,
         **kwargs,
     ):
         neval = neval // self.world_size
         neval = -(-neval // self.nbatch) * self.nbatch
         epoch = neval // self.nbatch
         nsteps_perblock = epoch // nblock
-        nblock = epoch // nsteps_perblock
+        if nsteps_perblock == 0:
+            warn(
+                f"neval is too small to be divided into {nblock} blocks. Reset nblock to {epoch}."
+            )
+            nsteps_perblock = 1
+            nblock = epoch
+        else:
+            nblock = epoch // nsteps_perblock
         n_meas_perblock = nsteps_perblock // meas_freq
         assert (
             n_meas_perblock > 0
         ), f"neval ({neval}) should be larger than nbatch * nblock * meas_freq ({self.nbatch} * {nblock} * {meas_freq})"
-        print(
-            f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
-        )
+
+        if print > 0:
+            print(
+                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
+            )
 
         config = Configuration(
             self.nbatch, self.dim, self.f_dim, self.device, self.dtype
@@ -306,10 +365,13 @@ class MarkovChainMonteCarlo(Integrator):
             (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
         )
         refvalues = torch.zeros(self.nbatch, dtype=self.dtype, device=self.device)
-        results_unnorm = np.array([RAvg() for _ in range(self.f_dim)])
-        results_ref = np.array([RAvg()])
 
-        for _ in range(nblock):
+        means = torch.zeros((nblock, self.f_dim), dtype=self.dtype, device=self.device)
+        vars = torch.zeros_like(means)
+        means_ref = torch.zeros((nblock, 1), dtype=self.dtype, device=self.device)
+        vars_ref = torch.zeros_like(means_ref)
+
+        for iblock in range(nblock):
             for _ in range(n_meas_perblock):
                 self.sample(config, meas_freq, mix_rate, **kwargs)
                 self.f(config.x, config.fx)
@@ -317,12 +379,18 @@ class MarkovChainMonteCarlo(Integrator):
                 config.fx.div_(config.weight.unsqueeze(1))
                 values += config.fx / n_meas_perblock
                 refvalues += 1 / (config.jac * config.weight) / n_meas_perblock
-            self.statistics(values, nsteps_perblock * self.nbatch, results_unnorm)
-            self.statistics(
-                refvalues.unsqueeze(1), nsteps_perblock * self.nbatch, results_ref
-            )
+            means[iblock, :] = values.mean(dim=0)
+            vars[iblock, :] = values.var(dim=0) / self.nbatch
+            means_ref[iblock, 0] = refvalues.mean()
+            vars_ref[iblock, 0] = refvalues.var() / self.nbatch
             values.zero_()
             refvalues.zero_()
+
+        results_unnorm = self.statistics(means, vars, nsteps_perblock * self.nbatch)
+        results_ref = self.statistics(
+            means_ref, vars_ref, nsteps_perblock * self.nbatch
+        )
+
         if self.rank == 0:
             if self.f_dim == 1:
                 return results_unnorm[0] / results_ref[0] * self._rangebounds.prod()
