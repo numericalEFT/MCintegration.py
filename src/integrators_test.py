@@ -12,7 +12,7 @@ class TestIntegrator(unittest.TestCase):
         self.device = "cpu"
         self.dtype = torch.float64
         self.neval = 1000
-        self.nbatch = 100
+        self.batch_size = 100
 
     def test_init_with_bounds(self):
         integrator = Integrator(
@@ -21,7 +21,7 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(integrator.bounds.tolist(), self.bounds)
         self.assertEqual(integrator.dim, 2)
         self.assertEqual(integrator.neval, self.neval)
-        self.assertEqual(integrator.nbatch, self.neval)
+        self.assertEqual(integrator.batch_size, self.neval)
         self.assertEqual(integrator.device, self.device)
         self.assertEqual(integrator.dtype, self.dtype)
 
@@ -36,7 +36,7 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(integrator.bounds.tolist(), self.bounds)
         self.assertEqual(integrator.dim, 2)
         self.assertEqual(integrator.neval, self.neval)
-        self.assertEqual(integrator.nbatch, self.neval)
+        self.assertEqual(integrator.batch_size, self.neval)
         self.assertEqual(integrator.device, self.device)
         self.assertEqual(integrator.dtype, self.dtype)
 
@@ -85,7 +85,7 @@ class TestMonteCarlo(unittest.TestCase):
         self.bounds = [[0, 1]]
         self.q0 = None
         self.neval = 1000
-        self.nbatch = 100
+        self.batch_size = 100
         self.device = "cpu"
         self.dtype = torch.float64
         self.monte_carlo = MonteCarlo(
@@ -93,7 +93,7 @@ class TestMonteCarlo(unittest.TestCase):
             self.bounds,
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.device,
             self.dtype,
         )
@@ -115,7 +115,7 @@ class TestMonteCarlo(unittest.TestCase):
         # Test if the MonteCarlo class initializes correctly
         self.assertIsInstance(self.monte_carlo, MonteCarlo)
         self.assertEqual(self.monte_carlo.neval, self.neval)
-        self.assertEqual(self.monte_carlo.nbatch, self.nbatch)
+        self.assertEqual(self.monte_carlo.batch_size, self.batch_size)
         self.assertEqual(self.monte_carlo.device, self.device)
         self.assertEqual(self.monte_carlo.dtype, self.dtype)
         self.assertTrue(
@@ -151,9 +151,9 @@ class TestMonteCarlo(unittest.TestCase):
 
     def test_sample_method(self):
         # Test the sample method to ensure it returns the correct shape
-        x, log_detJ = self.monte_carlo.sample(self.nbatch)
-        self.assertEqual(x.shape, (self.nbatch, 1))
-        self.assertEqual(log_detJ.shape, (self.nbatch,))
+        x, log_detJ = self.monte_carlo.sample(self.batch_size)
+        self.assertEqual(x.shape, (self.batch_size, 1))
+        self.assertEqual(log_detJ.shape, (self.batch_size,))
 
     def test_call_with_cuda(self):
         # Test the __call__ method with device = "cuda" if available
@@ -163,7 +163,7 @@ class TestMonteCarlo(unittest.TestCase):
                 self.bounds,
                 self.q0,
                 self.neval,
-                self.nbatch,
+                self.batch_size,
                 "cuda",
                 self.dtype,
             )
@@ -181,7 +181,7 @@ class TestMonteCarlo(unittest.TestCase):
             self.bounds,
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.device,
             torch.float32,
         )
@@ -199,7 +199,7 @@ class TestMonteCarlo(unittest.TestCase):
             [[0, 2]],
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.device,
             self.dtype,
         )
@@ -213,7 +213,7 @@ class TestMonteCarlo(unittest.TestCase):
             [(-1, 1)],
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.device,
             self.dtype,
         )
@@ -229,7 +229,7 @@ class TestMCMC(unittest.TestCase):
         self.bounds = [(-1.2, 0.6)]
         self.q0 = None
         self.neval = 10000
-        self.nbatch = 100
+        self.batch_size = 100
         self.nburnin = 500
         self.device = "cpu"
         self.dtype = torch.float64
@@ -238,7 +238,7 @@ class TestMCMC(unittest.TestCase):
             self.bounds,
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.nburnin,
             self.device,
             self.dtype,
@@ -261,7 +261,7 @@ class TestMCMC(unittest.TestCase):
         # Test if the MarkovChainMonteCarlo class initializes correctly
         self.assertIsInstance(self.mcmc, MarkovChainMonteCarlo)
         self.assertEqual(self.mcmc.neval, self.neval)
-        self.assertEqual(self.mcmc.nbatch, self.nbatch)
+        self.assertEqual(self.mcmc.batch_size, self.batch_size)
         self.assertEqual(self.mcmc.nburnin, self.nburnin)
         self.assertEqual(self.mcmc.device, self.device)
         self.assertEqual(self.mcmc.dtype, self.dtype)
@@ -304,7 +304,7 @@ class TestMCMC(unittest.TestCase):
                 self.bounds,
                 self.q0,
                 self.neval,
-                self.nbatch,
+                self.batch_size,
                 self.nburnin,
                 "cuda",
                 self.dtype,
@@ -321,7 +321,7 @@ class TestMCMC(unittest.TestCase):
             self.bounds,
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.nburnin,
             self.device,
             torch.float32,
@@ -340,7 +340,7 @@ class TestMCMC(unittest.TestCase):
             [(3, 5.2), (-1.1, 0.2)],
             self.q0,
             self.neval,
-            self.nbatch,
+            self.batch_size,
             self.nburnin,
             self.device,
             self.dtype,

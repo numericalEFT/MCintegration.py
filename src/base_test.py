@@ -63,17 +63,17 @@ class TestUniform(unittest.TestCase):
         self.assertEqual(uniform_dist.dtype, self.dtype)
 
     def test_sample_within_bounds(self):
-        nsamples = 1000
-        samples, log_detJ = self.uniform_dist.sample(nsamples)
-        self.assertEqual(samples.shape, (nsamples, 2))
+        batch_size = 1000
+        samples, log_detJ = self.uniform_dist.sample(batch_size)
+        self.assertEqual(samples.shape, (batch_size, 2))
         self.assertTrue(torch.all(samples[:, 0] >= 0.0))
         self.assertTrue(torch.all(samples[:, 0] <= 1.0))
         self.assertTrue(torch.all(samples[:, 1] >= 2.0))
         self.assertTrue(torch.all(samples[:, 1] <= 3.0))
-        self.assertEqual(log_detJ.shape, (nsamples,))
+        self.assertEqual(log_detJ.shape, (batch_size,))
         self.assertTrue(
             torch.allclose(
-                log_detJ, torch.tensor([np.log(1.0) + np.log(1.0)] * nsamples)
+                log_detJ, torch.tensor([np.log(1.0) + np.log(1.0)] * batch_size)
             )
         )
 
