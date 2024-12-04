@@ -33,7 +33,7 @@ def func(x, f):
 alpha = 2.0
 ninc = 1000
 n_eval = 1000000
-n_batch = 10000
+batch_size = 10000
 n_therm = 10
 
 print("\nCalculate the integral log(x)/x^0.5 in the bounds [0, 1]")
@@ -45,8 +45,7 @@ vegas_map.train(100000, func, epoch=10, alpha=alpha)
 vegas_integrator = MonteCarlo(
     func,
     maps=vegas_map,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
@@ -54,9 +53,8 @@ print("VEGAS Integral results: ", res)
 vegasmcmc_integrator = MarkovChainMonteCarlo(
     func,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
@@ -77,8 +75,7 @@ vegas_integrator = MonteCarlo(
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(neval=500000)
 print(
@@ -103,9 +100,8 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(neval=500000, mix_rate=0.5)
 print(

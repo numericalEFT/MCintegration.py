@@ -8,15 +8,15 @@ TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Configuration:
-    def __init__(self, nsample, dim, f_dim, device="cpu", dtype=torch.float64):
+    def __init__(self, batch_size, dim, f_dim, device="cpu", dtype=torch.float64):
         self.dim = dim
         self.f_dim = f_dim
-        self.nsample = nsample
-        self.u = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.x = torch.empty((nsample, dim), dtype=dtype, device=device)
-        self.fx = torch.empty((nsample, f_dim), dtype=dtype, device=device)
-        self.weight = torch.empty((nsample,), dtype=dtype, device=device)
-        self.jac = torch.empty((nsample, dim), dtype=dtype, device=device)
+        self.batch_size = batch_size
+        self.u = torch.empty((batch_size, dim), dtype=dtype, device=device)
+        self.x = torch.empty((batch_size, dim), dtype=dtype, device=device)
+        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=device)
+        self.weight = torch.empty((batch_size,), dtype=dtype, device=device)
+        self.jac = torch.empty((batch_size, dim), dtype=dtype, device=device)
 
 
 class Map(nn.Module):
@@ -106,21 +106,21 @@ class Vegas(Map):
 
     def train(
         self,
-        nsample,
+        batch_size,
         f,
         f_dim=1,
         dtype=torch.float64,
-        epoch=5,
+        epoch=10,
         alpha=0.5,
     ):
         q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
-        # u, log_detJ0 = q0.sample(nsample)
+        # u, log_detJ0 = q0.sample(batch_size)
         sample = Configuration(
-            nsample, self.dim, f_dim, device=self.device, dtype=dtype
+            batch_size, self.dim, f_dim, device=self.device, dtype=dtype
         )
 
         for _ in range(epoch):
-            sample.u, log_detJ0 = q0.sample(nsample)
+            sample.u, log_detJ0 = q0.sample(batch_size)
             sample.x[:], log_detJ = self.forward(sample.u)
             sample.weight = f(sample.x, sample.fx)
             sample.jac = torch.exp(log_detJ0 + log_detJ)

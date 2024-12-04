@@ -22,7 +22,7 @@ def run_mcmc(rank, world_size):
     # Instantiate the MarkovChainMonteCarlo class
     bounds = [(-1, 1), (-1, 1)]
     n_eval = 8000000
-    n_batch = 10000
+    batch_size = 10000
     n_therm = 10
 
     # Define the function to be integrated (dummy example)
@@ -37,7 +37,7 @@ def run_mcmc(rank, world_size):
         two_integrands,
         2,
         bounds=bounds,
-        nbatch=n_batch,
+        batch_size=batch_size,
         nburnin=n_therm,
         device=device,
     )

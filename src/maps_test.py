@@ -174,9 +174,9 @@ class TestVegas(unittest.TestCase):
             fx[:, 0] = torch.sum(x, dim=1)
             return fx[:, 0]
 
-        nsamples = 100
+        batch_size = 100
         epoch = 5
-        self.vegas.train(nsamples, f, epoch=epoch, alpha=self.alpha)
+        self.vegas.train(batch_size, f, epoch=epoch, alpha=self.alpha)
         self.assertEqual(self.vegas.grid.shape, (2, self.ninc + 1))
         self.assertEqual(self.vegas.inc.shape, (2, self.ninc))
 

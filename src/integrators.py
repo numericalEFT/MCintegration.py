@@ -1,6 +1,6 @@
 from typing import Callable
 import torch
-from utils import RAvg
+from utils import RAvg, get_device
 from maps import Linear, Configuration
 from base import Uniform, EPSILON
 import numpy as np
@@ -53,15 +53,16 @@ class Integrator:
         maps=None,
         bounds=None,
         q0=None,
-        nbatch=1000,
+        batch_size=1000,
         device=None,
-        dtype=torch.float64,
+        dtype=None,
     ):
         self.f = f
         self.f_dim = f_dim
-        self.dtype = dtype
         if maps:
-            if not self.dtype == maps.dtype:
+            if dtype is None or dtype == maps.dtype:
+                self.dtype = maps.dtype
+            else:
                 raise ValueError(
                     "Data type of the variables of integrator should be same as maps."
                 )
@@ -75,18 +76,22 @@ class Integrator:
         else:
             if not isinstance(bounds, (list, np.ndarray)):
                 raise TypeError("bounds must be a list or a NumPy array.")
+            if dtype is None:
+                self.dtype = torch.float64
+            else:
+                self.dtype = dtype
             if device is None:
-                self.device = torch.device("cpu")
+                self.device = get_device()
             else:
                 self.device = device
-            self.bounds = torch.tensor(bounds, dtype=dtype, device=self.device)
+            self.bounds = torch.tensor(bounds, dtype=self.dtype, device=self.device)
 
         self.dim = len(self.bounds)
         if not q0:
-            q0 = Uniform(self.bounds, device=self.device, dtype=dtype)
+            q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         self.q0 = q0
         self.maps = maps
-        self.nbatch = nbatch
+        self.batch_size = batch_size
         self.f = f
         self.f_dim = f_dim
 
@@ -102,7 +107,7 @@ class Integrator:
         raise NotImplementedError("Subclasses must implement this method")
 
     def sample(self, config, **kwargs):
-        config.u, config.jac = self.q0.sample(config.nsample)
+        config.u, config.jac = self.q0.sample(config.batch_size)
         if not self.maps:
             config.x[:] = config.u
         else:
@@ -188,16 +193,16 @@ class MonteCarlo(Integrator):
         maps=None,
         bounds=None,
         q0=None,
-        nbatch: int = 1000,
+        batch_size: int = 1000,
         device=None,
-        dtype=torch.float64,
+        dtype=None,
     ):
-        super().__init__(f, f_dim, maps, bounds, q0, nbatch, device, dtype)
+        super().__init__(f, f_dim, maps, bounds, q0, batch_size, device, dtype)
 
     def __call__(self, neval, nblock=32, print=-1, **kwargs):
         neval = neval // self.world_size
-        neval = -(-neval // self.nbatch) * self.nbatch
-        epoch = neval // self.nbatch
+        neval = -(-neval // self.batch_size) * self.batch_size
+        epoch = neval // self.batch_size
         epoch_perblock = epoch // nblock
         if epoch_perblock == 0:
             warn(
@@ -210,16 +215,16 @@ class MonteCarlo(Integrator):
 
         if print > 0:
             print(
-                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.nbatch}, actual neval = {self.nbatch*epoch_perblock*nblock}"
+                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size*epoch_perblock*nblock}"
             )
 
         config = Configuration(
-            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
+            self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
 
-        epoch = neval // self.nbatch
+        epoch = neval // self.batch_size
         integ_values = torch.zeros(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
+            (self.batch_size, self.f_dim), dtype=self.dtype, device=self.device
         )
         means = torch.zeros((nblock, self.f_dim), dtype=self.dtype, device=self.device)
         vars = torch.zeros_like(means)
@@ -230,10 +235,10 @@ class MonteCarlo(Integrator):
                 config.fx.mul_(config.jac.unsqueeze_(1))
                 integ_values += config.fx / epoch_perblock
             means[iblock, :] = integ_values.mean(dim=0)
-            vars[iblock, :] = integ_values.var(dim=0) / self.nbatch
+            vars[iblock, :] = integ_values.var(dim=0) / self.batch_size
             integ_values.zero_()
 
-        results = self.statistics(means, vars, epoch_perblock * self.nbatch)
+        results = self.statistics(means, vars, epoch_perblock * self.batch_size)
 
         if self.rank == 0:
             if self.f_dim == 1:
@@ -271,12 +276,12 @@ class MarkovChainMonteCarlo(Integrator):
         bounds=None,
         q0=None,
         proposal_dist=None,
-        nbatch: int = None,
-        nburnin: int = 500,
+        batch_size: int = 1000,
+        nburnin: int = 10,
         device=None,
-        dtype=torch.float64,
+        dtype=None,
     ):
-        super().__init__(f, f_dim, maps, bounds, q0, nbatch, device, dtype)
+        super().__init__(f, f_dim, maps, bounds, q0, batch_size, device, dtype)
         self.nburnin = nburnin
         if not proposal_dist:
             self.proposal_dist = uniform
@@ -286,7 +291,9 @@ class MarkovChainMonteCarlo(Integrator):
             self.proposal_dist = proposal_dist
         # If no transformation maps are provided, use a linear map as default
         if maps is None:
-            self.maps = Linear([(0, 1)] * self.dim, device=self.device)
+            self.maps = Linear(
+                [(0, 1)] * self.dim, device=self.device, dtype=self.dtype
+            )
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, config, nsteps=1, mix_rate=0.5, **kwargs):
@@ -305,7 +312,7 @@ class MarkovChainMonteCarlo(Integrator):
             acceptance_probs = new_weight / config.weight * new_jac / config.jac
 
             accept = (
-                torch.rand(self.nbatch, dtype=torch.float64, device=self.device)
+                torch.rand(self.batch_size, dtype=torch.float64, device=self.device)
                 <= acceptance_probs
             )
 
@@ -325,8 +332,8 @@ class MarkovChainMonteCarlo(Integrator):
         **kwargs,
     ):
         neval = neval // self.world_size
-        neval = -(-neval // self.nbatch) * self.nbatch
-        epoch = neval // self.nbatch
+        neval = -(-neval // self.batch_size) * self.batch_size
+        epoch = neval // self.batch_size
         nsteps_perblock = epoch // nblock
         if nsteps_perblock == 0:
             warn(
@@ -339,17 +346,17 @@ class MarkovChainMonteCarlo(Integrator):
         n_meas_perblock = nsteps_perblock // meas_freq
         assert (
             n_meas_perblock > 0
-        ), f"neval ({neval}) should be larger than nbatch * nblock * meas_freq ({self.nbatch} * {nblock} * {meas_freq})"
+        ), f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
 
         if print > 0:
             print(
-                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.nbatch}, actual neval = {self.nbatch*nsteps_perblock*nblock}"
+                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size*nsteps_perblock*nblock}"
             )
 
         config = Configuration(
-            self.nbatch, self.dim, self.f_dim, self.device, self.dtype
+            self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
-        config.u, config.jac = self.q0.sample(self.nbatch)
+        config.u, config.jac = self.q0.sample(self.batch_size)
         config.x, detJ = self.maps.forward(config.u)
         config.jac += detJ
         config.jac.exp_()
@@ -362,9 +369,9 @@ class MarkovChainMonteCarlo(Integrator):
             self.sample(config, mix_rate=mix_rate, **kwargs)
 
         values = torch.zeros(
-            (self.nbatch, self.f_dim), dtype=self.dtype, device=self.device
+            (self.batch_size, self.f_dim), dtype=self.dtype, device=self.device
         )
-        refvalues = torch.zeros(self.nbatch, dtype=self.dtype, device=self.device)
+        refvalues = torch.zeros(self.batch_size, dtype=self.dtype, device=self.device)
 
         means = torch.zeros((nblock, self.f_dim), dtype=self.dtype, device=self.device)
         vars = torch.zeros_like(means)
@@ -380,15 +387,15 @@ class MarkovChainMonteCarlo(Integrator):
                 values += config.fx / n_meas_perblock
                 refvalues += 1 / (config.jac * config.weight) / n_meas_perblock
             means[iblock, :] = values.mean(dim=0)
-            vars[iblock, :] = values.var(dim=0) / self.nbatch
+            vars[iblock, :] = values.var(dim=0) / self.batch_size
             means_ref[iblock, 0] = refvalues.mean()
-            vars_ref[iblock, 0] = refvalues.var() / self.nbatch
+            vars_ref[iblock, 0] = refvalues.var() / self.batch_size
             values.zero_()
             refvalues.zero_()
 
-        results_unnorm = self.statistics(means, vars, nsteps_perblock * self.nbatch)
+        results_unnorm = self.statistics(means, vars, nsteps_perblock * self.batch_size)
         results_ref = self.statistics(
-            means_ref, vars_ref, nsteps_perblock * self.nbatch
+            means_ref, vars_ref, nsteps_perblock * self.batch_size
         )
 
         if self.rank == 0:

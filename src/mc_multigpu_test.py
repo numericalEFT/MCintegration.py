@@ -6,10 +6,8 @@ from utils import set_seed, get_device
 # backend = "nccl"
 backend = "gloo"
 # set_seed(42)
-# device = get_device()
 setup(backend=backend)
-# device = torch.device("cpu")
-device = torch.cuda.current_device()
+device = get_device()
 print(device)
 
 
@@ -45,7 +43,7 @@ def sharp_integrands(x, f):
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
 n_eval = 6400000
-n_batch = 10000
+batch_size = 10000
 n_therm = 10
 
 
@@ -59,11 +57,13 @@ print(f"pi = {torch.pi} \n")
 mc_integrator = MonteCarlo(
     unit_circle_integrand,
     bounds=bounds,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
-    unit_circle_integrand, bounds=bounds, nbatch=n_batch, nburnin=n_therm, device=device
+    unit_circle_integrand,
+    bounds=bounds,
+    batch_size=batch_size,
+    nburnin=n_therm,
 )
 
 print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2...")
@@ -79,9 +79,7 @@ vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
     unit_circle_integrand,
     maps=vegas_map,
-    nbatch=n_batch,
-    # nbatch=n_eval,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(neval=n_eval)
 if res is not None:
@@ -90,9 +88,8 @@ if res is not None:
 vegasmcmc_integrator = MarkovChainMonteCarlo(
     unit_circle_integrand,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(neval=n_eval, mix_rate=0.5)
 if res is not None:
@@ -174,16 +171,14 @@ mc_integrator = MonteCarlo(
     sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
     sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = mc_integrator(n_eval)
 if res is not None:
@@ -221,8 +216,7 @@ vegas_integrator = MonteCarlo(
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(neval=n_eval)
 if res is not None:
@@ -242,9 +236,8 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(neval=n_eval, mix_rate=0.5)
 if res is not None:

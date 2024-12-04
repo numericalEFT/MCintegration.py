@@ -192,4 +192,7 @@ def set_seed(seed):
 
 
 def get_device():
-    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    if torch.cuda.is_available():
+        return torch.cuda.current_device()
+    else:
+        return torch.device("cpu")

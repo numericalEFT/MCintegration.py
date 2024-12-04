@@ -42,7 +42,7 @@ def sharp_integrands(x, f):
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
 n_eval = 6400000
-n_batch = 10000
+batch_size = 10000
 n_therm = 10
 
 vegas_map = Vegas(bounds, device=device, ninc=10)
@@ -55,15 +55,13 @@ print(f"pi = {torch.pi} \n")
 mc_integrator = MonteCarlo(
     f=unit_circle_integrand,
     bounds=bounds,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
     f=unit_circle_integrand,
     bounds=bounds,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 
 print("Calculate the area of the unit circle f(x1, x2) in the bounds [-1, 1]^2...")
@@ -89,12 +87,11 @@ print("MCMC Integral results: ", res)
 # )
 # print(result.timeit(10))
 
-vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
+vegas_map.train(batch_size, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
     f=unit_circle_integrand,
     maps=vegas_map,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
@@ -111,9 +108,8 @@ print("VEGAS Integral results: ", res)
 vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=unit_circle_integrand,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res, "\n")
@@ -139,7 +135,7 @@ print("MCMC Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
-vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5)
+vegas_map.train(batch_size, half_sphere_integrand, epoch=10, alpha=0.5)
 vegas_integrator.f = half_sphere_integrand
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
@@ -165,7 +161,7 @@ print(f"  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
 vegas_map.make_uniform()
-vegas_map.train(20000, two_integrands, f_dim=2, epoch=10, alpha=0.5)
+vegas_map.train(batch_size, two_integrands, f_dim=2, epoch=10, alpha=0.5)
 vegas_integrator.f = two_integrands
 vegas_integrator.f_dim = 2
 res = vegas_integrator(n_eval)
@@ -187,16 +183,14 @@ mc_integrator = MonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     bounds=bounds,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 print("Plain MC Integral results:")
 res = mc_integrator(n_eval)
@@ -225,15 +219,14 @@ print(
 
 vegas_map = Vegas(bounds, device=device)
 print("train VEGAS map for h(X)...")
-vegas_map.train(20000, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
+vegas_map.train(batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 
 print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
-    device=device,
+    batch_size=batch_size,
 )
 res = vegas_integrator(n_eval)
 print(
@@ -252,9 +245,8 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
-    nbatch=n_batch,
+    batch_size=batch_size,
     nburnin=n_therm,
-    device=device,
 )
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print(

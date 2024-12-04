@@ -27,7 +27,7 @@ class BaseDistribution(nn.Module):
         self.dim = self.bounds.shape[0]
         self.device = device
 
-    def sample(self, nsamples=1, **kwargs):
+    def sample(self, batch_size=1, **kwargs):
         """Samples from base distribution
 
         Args:
@@ -48,12 +48,12 @@ class Uniform(BaseDistribution):
         super().__init__(bounds, device, dtype)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
-    def sample(self, nsamples=1, **kwargs):
+    def sample(self, batch_size=1, **kwargs):
         # torch.manual_seed(0) # test seed
         u = (
-            torch.rand((nsamples, self.dim), device=self.device, dtype=self.dtype)
+            torch.rand((batch_size, self.dim), device=self.device, dtype=self.dtype)
             * self._rangebounds
             + self.bounds[:, 0]
         )
-        log_detJ = torch.log(self._rangebounds).sum().repeat(nsamples)
+        log_detJ = torch.log(self._rangebounds).sum().repeat(batch_size)
         return u, log_detJ
