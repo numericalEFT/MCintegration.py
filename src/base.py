@@ -38,6 +38,11 @@ class BaseDistribution(nn.Module):
         """
         raise NotImplementedError
 
+    def sample_with_detJ(self, batch_size=1, **kwargs):
+        u, detJ = self.sample(batch_size, **kwargs)
+        detJ.exp_()
+        return u, detJ
+
 
 class Uniform(BaseDistribution):
     """
