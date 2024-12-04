@@ -2,35 +2,43 @@ import numpy as np
 import torch
 from torch import nn
 from base import Uniform
+from utils import get_device
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Configuration:
-    def __init__(self, batch_size, dim, f_dim, device="cpu", dtype=torch.float64):
+    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float64):
+        if device is None:
+            self.device = get_device()
+        else:
+            self.device = device
         self.dim = dim
         self.f_dim = f_dim
         self.batch_size = batch_size
-        self.u = torch.empty((batch_size, dim), dtype=dtype, device=device)
-        self.x = torch.empty((batch_size, dim), dtype=dtype, device=device)
-        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=device)
-        self.weight = torch.empty((batch_size,), dtype=dtype, device=device)
-        self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=device)
+        self.u = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
+        self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
+        self.jac = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
-    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+    def __init__(self, bounds, device=None, dtype=torch.float64):
         super().__init__()
+        if device is None:
+            self.device = get_device()
+        else:
+            self.device = device
         if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
+            self.bounds = torch.tensor(bounds, dtype=dtype, device=self.device)
         elif isinstance(bounds, torch.Tensor):
-            self.bounds = bounds.to(dtype=dtype, device=device)
+            self.bounds = bounds.to(dtype=dtype, device=self.device)
         else:
             raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
 
         self.dim = self.bounds.shape[0]
-        self.device = device
         self.dtype = dtype
 
     def forward(self, u):
@@ -46,7 +54,7 @@ class Map(nn.Module):
 
 
 class CompositeMap(Map):
-    def __init__(self, maps, device="cpu", dtype=torch.float64):
+    def __init__(self, maps, device=None, dtype=torch.float64):
         if not maps:
             raise ValueError("Maps can not be empty.")
         super().__init__(maps[-1].bounds, device, dtype)
@@ -68,7 +76,7 @@ class CompositeMap(Map):
 
 
 class Linear(Map):
-    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+    def __init__(self, bounds, device=None, dtype=torch.float64):
         super().__init__(bounds, device, dtype)
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
         self._detJ1 = torch.prod(self._A)
@@ -85,16 +93,18 @@ class Linear(Map):
 
 
 class Vegas(Map):
-    def __init__(self, bounds, ninc=1000, alpha=0.5, device="cpu", dtype=torch.float64):
+    def __init__(self, bounds, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
         super().__init__(bounds, device, dtype)
 
         # Ensure ninc is a tensor of appropriate shape and type
         if isinstance(ninc, int):
-            self.ninc = torch.full((self.dim,), ninc, dtype=torch.int32, device=device)
+            self.ninc = torch.full(
+                (self.dim,), ninc, dtype=torch.int32, device=self.device
+            )
         elif isinstance(ninc, (list, np.ndarray)):
-            self.ninc = torch.tensor(ninc, dtype=torch.int32, device=device)
+            self.ninc = torch.tensor(ninc, dtype=torch.int32, device=self.device)
         elif isinstance(ninc, torch.Tensor):
-            self.ninc = ninc.to(dtype=torch.int32, device=device)
+            self.ninc = ninc.to(dtype=torch.int32, device=self.device)
         else:
             raise ValueError(
                 "'ninc' must be an int, list, numpy array, or torch tensor."
