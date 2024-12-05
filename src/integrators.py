@@ -107,14 +107,13 @@ class Integrator:
         raise NotImplementedError("Subclasses must implement this method")
 
     def sample(self, config, **kwargs):
-        config.u, config.detJ = self.q0.sample(config.batch_size)
+        config.u, config.detJ = self.q0.sample_with_detJ(config.batch_size)
         if not self.maps:
             config.x[:] = config.u
         else:
-            config.x[:], log_detj = self.maps.forward(config.u)
-            config.detJ += log_detj
+            config.x[:], detj = self.maps.forward_with_detJ(config.u)
+            config.detJ *= detj
         self.f(config.x, config.fx)
-        config.detJ.exp_()
 
     def statistics(self, means, vars, neval=None):
         nblock = means.shape[0]
@@ -355,10 +354,9 @@ class MarkovChainMonteCarlo(Integrator):
         config = Configuration(
             self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
-        config.u, config.detJ = self.q0.sample(self.batch_size)
-        config.x, detJ = self.maps.forward(config.u)
-        config.detJ += detJ
-        config.detJ.exp_()
+        config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
+        config.x, detJ = self.maps.forward_with_detJ(config.u)
+        config.detJ *= detJ
         config.weight = (
             mix_rate / config.detJ + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
         )
