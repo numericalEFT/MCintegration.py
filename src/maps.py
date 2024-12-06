@@ -44,6 +44,11 @@ class Map(nn.Module):
     def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
 
+    def forward_with_detJ(self, u):
+        u, detJ = self.forward(u)
+        detJ.exp_()
+        return u, detJ
+
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
 
@@ -74,14 +79,16 @@ class Linear(Map):
     def __init__(self, bounds, device=None, dtype=torch.float64):
         super().__init__(bounds, device, dtype)
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
-        self._jac1 = torch.prod(self._A)
+        self._detJ1 = torch.prod(self._A)
 
     def forward(self, u):
-        return u * self._A + self.bounds[:, 0], torch.log(self._jac1.repeat(u.shape[0]))
+        return u * self._A + self.bounds[:, 0], torch.log(
+            self._detJ1.repeat(u.shape[0])
+        )
 
     def inverse(self, x):
         return (x - self.bounds[:, 0]) / self._A, torch.log(
-            self._jac1.repeat(x.shape[0])
+            self._detJ1.repeat(x.shape[0])
         )
 
 
@@ -112,7 +119,7 @@ class Vegas(Map):
         self.make_uniform()
         self.alpha = alpha
         self._A = self.bounds[:, 1] - self.bounds[:, 0]
-        self._jaclinear = torch.prod(self._A)
+        self._detJlinear = torch.prod(self._A)
 
     def train(
         self,
@@ -133,7 +140,7 @@ class Vegas(Map):
             sample.u, log_detJ0 = q0.sample(batch_size)
             sample.x[:], log_detJ = self.forward(sample.u)
             sample.weight = f(sample.x, sample.fx)
-            sample.jac = torch.exp(log_detJ0 + log_detJ)
+            sample.detJ = torch.exp(log_detJ0 + log_detJ)
             self.add_training_data(sample)
             self.adapt(alpha)
 
@@ -153,7 +160,7 @@ class Vegas(Map):
             f (tensor): Training function values. ``f[j]`` corresponds to
                 point ``u[j, d]`` in ``u``-space.
         """
-        fval = (sample.jac * sample.weight) ** 2
+        fval = (sample.detJ * sample.weight) ** 2
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
             self.n_f = torch.zeros_like(self.inc) + TINY
@@ -308,8 +315,8 @@ class Vegas(Map):
         du_ninc = u_ninc - torch.floor(u_ninc).long()
 
         x = torch.empty_like(u)
-        jac = torch.ones(u.shape[0], device=x.device)
-        # self.jac.fill_(1.0)
+        detJ = torch.ones(u.shape[0], device=x.device)
+        # self.detJ.fill_(1.0)
         for d in range(self.dim):
             # Handle the case where iu < ninc
             ninc = self.ninc[d]
@@ -319,22 +326,22 @@ class Vegas(Map):
                     self.grid[d, iu[mask, d]]
                     + self.inc[d, iu[mask, d]] * du_ninc[mask, d]
                 )
-                jac[mask] *= self.inc[d, iu[mask, d]] * ninc
+                detJ[mask] *= self.inc[d, iu[mask, d]] * ninc
 
             # Handle the case where iu >= ninc
             mask_inv = ~mask
             if mask_inv.any():
                 x[mask_inv, d] = self.grid[d, ninc]
-                jac[mask_inv] *= self.inc[d, ninc - 1] * ninc
+                detJ[mask_inv] *= self.inc[d, ninc - 1] * ninc
 
-        return x, torch.log(jac / self._jaclinear)
+        return x, torch.log(detJ / self._detJlinear)
 
     @torch.no_grad()
     def inverse(self, x):
-        # self.jac.fill_(1.0)
+        # self.detJ.fill_(1.0)
         x = x.to(self.device)
         u = torch.empty_like(x)
-        jac = torch.ones(x.shape[0], device=x.device)
+        detJ = torch.ones(x.shape[0], device=x.device)
         for d in range(self.dim):
             ninc = self.ninc[d]
             iu = torch.searchsorted(self.grid[d, :], x[:, d].contiguous(), right=True)
@@ -351,19 +358,19 @@ class Vegas(Map):
                     + (x[mask_valid, d] - self.grid[d, iui_valid])
                     / self.inc[d, iui_valid]
                 ) / ninc
-                jac[mask_valid] *= self.inc[d, iui_valid] * ninc
+                detJ[mask_valid] *= self.inc[d, iui_valid] * ninc
 
             # Handle lower bound (iu <= 0)\
             if mask_lower.any():
                 u[mask_lower, d] = 0.0
-                jac[mask_lower] *= self.inc[d, 0] * ninc
+                detJ[mask_lower] *= self.inc[d, 0] * ninc
 
             # Handle upper bound (iu > ninc)
             if mask_upper.any():
                 u[mask_upper, d] = 1.0
-                jac[mask_upper] *= self.inc[d, ninc - 1] * ninc
+                detJ[mask_upper] *= self.inc[d, ninc - 1] * ninc
 
-        return u, torch.log(jac / self._jaclinear)
+        return u, torch.log(detJ / self._detJlinear)
 
 
 # class NormalizingFlow(Map):

@@ -107,14 +107,13 @@ class Integrator:
         raise NotImplementedError("Subclasses must implement this method")
 
     def sample(self, config, **kwargs):
-        config.u, config.jac = self.q0.sample(config.batch_size)
+        config.u, config.detJ = self.q0.sample_with_detJ(config.batch_size)
         if not self.maps:
             config.x[:] = config.u
         else:
-            config.x[:], log_detj = self.maps.forward(config.u)
-            config.jac += log_detj
+            config.x[:], detj = self.maps.forward_with_detJ(config.u)
+            config.detJ *= detj
         self.f(config.x, config.fx)
-        config.jac.exp_()
 
     def statistics(self, means, vars, neval=None):
         nblock = means.shape[0]
@@ -232,7 +231,7 @@ class MonteCarlo(Integrator):
         for iblock in range(nblock):
             for _ in range(epoch_perblock):
                 self.sample(config)
-                config.fx.mul_(config.jac.unsqueeze_(1))
+                config.fx.mul_(config.detJ.unsqueeze_(1))
                 integ_values += config.fx / epoch_perblock
             means[iblock, :] = integ_values.mean(dim=0)
             vars[iblock, :] = integ_values.var(dim=0) / self.batch_size
@@ -301,15 +300,14 @@ class MarkovChainMonteCarlo(Integrator):
             proposed_y = self.proposal_dist(
                 self.dim, self.bounds, self.device, self.dtype, config.u, **kwargs
             )
-            proposed_x, new_jac = self.maps.forward(proposed_y)
-            new_jac.exp_()
+            proposed_x, new_detJ = self.maps.forward_with_detJ(proposed_y)
 
             new_weight = (
-                mix_rate / new_jac
+                mix_rate / new_detJ
                 + (1 - mix_rate) * self.f(proposed_x, config.fx).abs()
             )
             new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
-            acceptance_probs = new_weight / config.weight * new_jac / config.jac
+            acceptance_probs = new_weight / config.weight * new_detJ / config.detJ
 
             accept = (
                 torch.rand(self.batch_size, dtype=torch.float64, device=self.device)
@@ -320,7 +318,7 @@ class MarkovChainMonteCarlo(Integrator):
             config.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
             config.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
             config.weight.mul_(~accept).add_(new_weight * accept)
-            config.jac.mul_(~accept).add_(new_jac * accept)
+            config.detJ.mul_(~accept).add_(new_detJ * accept)
 
     def __call__(
         self,
@@ -356,12 +354,11 @@ class MarkovChainMonteCarlo(Integrator):
         config = Configuration(
             self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
-        config.u, config.jac = self.q0.sample(self.batch_size)
-        config.x, detJ = self.maps.forward(config.u)
-        config.jac += detJ
-        config.jac.exp_()
+        config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
+        config.x, detJ = self.maps.forward_with_detJ(config.u)
+        config.detJ *= detJ
         config.weight = (
-            mix_rate / config.jac + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
+            mix_rate / config.detJ + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
         )
         config.weight.masked_fill_(config.weight < EPSILON, EPSILON)
 
@@ -385,7 +382,7 @@ class MarkovChainMonteCarlo(Integrator):
 
                 config.fx.div_(config.weight.unsqueeze(1))
                 values += config.fx / n_meas_perblock
-                refvalues += 1 / (config.jac * config.weight) / n_meas_perblock
+                refvalues += 1 / (config.detJ * config.weight) / n_meas_perblock
             means[iblock, :] = values.mean(dim=0)
             vars[iblock, :] = values.var(dim=0) / self.batch_size
             means_ref[iblock, 0] = refvalues.mean()
