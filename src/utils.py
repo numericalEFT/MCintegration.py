@@ -5,6 +5,7 @@ import sys
 
 MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
 MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)
+_VECTOR_TYPES = [np.ndarray, list]
 
 
 class RAvg(gvar.GVar):
@@ -183,6 +184,62 @@ class RAvg(gvar.GVar):
 
     def converged(self, rtol, atol):
         return self.sdev < atol + rtol * abs(self.mean)
+
+    def __mul__(xx, yy):
+        if type(yy) in _VECTOR_TYPES:
+            return NotImplemented  # let ndarray handle it
+        elif isinstance(xx, RAvg):
+            resx = gvar.gvar(xx.mean, xx.sdev)
+            if isinstance(yy, RAvg):
+                resy = gvar.gvar(yy.mean, yy.sdev)
+                return RAvg(
+                    weighted=xx.weighted,
+                    itn_results=[resx * resy],
+                    sum_neval=xx.sum_neval,
+                )
+            else:
+                return RAvg(
+                    weighted=xx.weighted,
+                    itn_results=[resx * yy],
+                    sum_neval=xx.sum_neval,
+                )
+        elif isinstance(yy, RAvg):
+            resy = gvar.gvar(yy.mean, yy.sdev)
+            return RAvg(
+                weighted=yy.weighted,
+                itn_results=[xx * resy],
+                sum_neval=yy.sum_neval,
+            )
+        else:
+            return NotImplemented
+
+    def __truediv__(xx, yy):
+        if type(yy) in _VECTOR_TYPES:
+            return NotImplemented  # let ndarray handle it
+        elif isinstance(xx, RAvg):
+            resx = gvar.gvar(xx.mean, xx.sdev)
+            if isinstance(yy, RAvg):
+                resy = gvar.gvar(yy.mean, yy.sdev)
+                return RAvg(
+                    weighted=xx.weighted,
+                    itn_results=[resx / resy],
+                    sum_neval=xx.sum_neval,
+                )
+            else:
+                return RAvg(
+                    weighted=xx.weighted,
+                    itn_results=[resx * yy],
+                    sum_neval=xx.sum_neval,
+                )
+        elif isinstance(yy, RAvg):
+            resy = gvar.gvar(yy.mean, yy.sdev)
+            return RAvg(
+                weighted=yy.weighted,
+                itn_results=[xx / resy],
+                sum_neval=yy.sum_neval,
+            )
+        else:
+            return NotImplemented
 
 
 def set_seed(seed):
