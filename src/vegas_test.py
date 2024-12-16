@@ -59,6 +59,9 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
 res = vegasmcmc_integrator(n_eval, mix_rate=0.5)
 print("VEGAS-MarkovChainMonteCarlo Integral results: ", res)
 print(type(res))
+print(res.sum_neval)
+print(res.itn_results)
+print(res.nitn)
 
 # Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
 print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
@@ -114,3 +117,8 @@ print(
     "  I[1]/I[0] =",
     res[1] / res[0],
 )
+print(type(res))
+print(type(res[0]))
+print(res[0].sum_neval)
+print(res[0].itn_results)
+print(res[0].nitn)

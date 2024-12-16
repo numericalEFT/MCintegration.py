@@ -21,7 +21,7 @@ class Configuration:
         self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
         self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
         self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
-        self.jac = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
