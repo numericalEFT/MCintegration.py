@@ -15,7 +15,8 @@ class Map(nn.Module):
         elif isinstance(bounds, torch.Tensor):
             self.bounds = bounds.to(dtype=dtype, device=device)
         else:
-            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
+            raise ValueError(
+                "'bounds' must be a list, numpy array, or torch tensor.")
 
         self.dim = self.bounds.shape[0]
         self.device = device
@@ -29,9 +30,11 @@ class Map(nn.Module):
 
 
 class CompositeMap(Map):
-    def __init__(self, maps, device="cpu", dtype=torch.float64):
+    def __init__(self, maps, device="cpu", dtype=None):
         if not maps:
             raise ValueError("Maps can not be empty.")
+        if dtype is None:
+            dtype = maps[-1].dtype
         super().__init__(maps[-1].bounds, device, dtype)
         self.maps = maps
 
@@ -71,17 +74,20 @@ class Vegas(Map):
 
         # Ensure ninc is a tensor of appropriate shape and type
         if isinstance(ninc, int):
-            self.ninc = torch.full((self.dim,), ninc, dtype=torch.int32, device=device)
+            self.ninc = torch.full(
+                (self.dim,), ninc, dtype=torch.int32, device=device)
         elif isinstance(ninc, (list, np.ndarray)):
             self.ninc = torch.tensor(ninc, dtype=torch.int32, device=device)
         elif isinstance(ninc, torch.Tensor):
             self.ninc = ninc.to(dtype=torch.int32, device=device)
         else:
-            raise ValueError("'ninc' must be an int, list, numpy array, or torch tensor.")
-        
+            raise ValueError(
+                "'ninc' must be an int, list, numpy array, or torch tensor.")
+
         # Ensure ninc has the correct shape
         if self.ninc.shape != (self.dim,):
-            raise ValueError(f"'ninc' must be a scalar or a 1D array of length {self.dim}.")
+            raise ValueError(
+                f"'ninc' must be a scalar or a 1D array of length {self.dim}.")
 
         self.make_uniform()
         self.alpha = alpha
@@ -165,13 +171,14 @@ class Vegas(Map):
         """
         new_grid = torch.empty(
             (self.dim, torch.max(self.ninc) + 1),
-            dtype=torch.float64,
+            dtype=self.dtype,
             device=self.device,
         )
-        avg_f = torch.ones(self.inc.shape[1], dtype=torch.float64, device=self.device)
+        avg_f = torch.ones(
+            self.inc.shape[1], dtype=self.dtype, device=self.device)
         if alpha > 0:
             tmp_f = torch.empty(
-                self.inc.shape[1], dtype=torch.float64, device=self.device
+                self.inc.shape[1], dtype=self.dtype, device=self.device
             )
         for d in range(self.dim):
             ninc = self.ninc[d]
@@ -183,11 +190,12 @@ class Vegas(Map):
                 if alpha > 0:  # smooth
                     tmp_f[0] = torch.abs(7.0 * avg_f[0] + avg_f[1]) / 8.0
                     tmp_f[ninc - 1] = (
-                        torch.abs(7.0 * avg_f[ninc - 1] + avg_f[ninc - 2]) / 8.0
+                        torch.abs(7.0 * avg_f[ninc - 1] +
+                                  avg_f[ninc - 2]) / 8.0
                     )
-                    tmp_f[1 : ninc - 1] = (
+                    tmp_f[1: ninc - 1] = (
                         torch.abs(
-                            6.0 * avg_f[1 : ninc - 1]
+                            6.0 * avg_f[1: ninc - 1]
                             + avg_f[: ninc - 2]
                             + avg_f[2:ninc]
                         )
@@ -218,17 +226,19 @@ class Vegas(Map):
                 else:
                     acc_f -= f_ninc
                     new_grid[d, i] = (
-                        self.grid[d, j + 1] - (acc_f / avg_f[j]) * self.inc[d, j]
+                        self.grid[d, j + 1] -
+                        (acc_f / avg_f[j]) * self.inc[d, j]
                     )
                     continue
                 break
         self.grid = new_grid
         self.inc = torch.empty(
-            (self.dim, self.grid.shape[1] - 1), dtype=torch.float64, device=self.device
+            (self.dim, self.grid.shape[1] - 1), dtype=self.dtype, device=self.device
         )
         for d in range(self.dim):
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
+                self.grid[d, 1: self.ninc[d] + 1] -
+                self.grid[d, : self.ninc[d]]
             )
         self.clear()
 
@@ -249,7 +259,8 @@ class Vegas(Map):
                 device=self.device,
             )
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
+                self.grid[d, 1: self.ninc[d] + 1] -
+                self.grid[d, : self.ninc[d]]
             )
         self.clear()
 
@@ -305,7 +316,8 @@ class Vegas(Map):
         jac = torch.ones(x.shape[0], device=x.device)
         for d in range(self.dim):
             ninc = self.ninc[d]
-            iu = torch.searchsorted(self.grid[d, :], x[:, d].contiguous(), right=True)
+            iu = torch.searchsorted(
+                self.grid[d, :], x[:, d].contiguous(), right=True)
 
             mask_valid = (iu > 0) & (iu <= ninc)
             mask_lower = iu <= 0

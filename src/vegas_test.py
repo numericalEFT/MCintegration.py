@@ -6,7 +6,9 @@ from utils import set_seed, get_device
 
 # set_seed(42)
 # device = get_device()
+# device = torch.device("mps")
 device = torch.device("cpu")
+dtype = torch.float32
 
 
 def integrand_list1(x):
@@ -29,14 +31,14 @@ def func(x):
 
 
 ninc = 1000
-n_eval = 50000
+n_eval = 500000
 n_batch = 10000
 n_therm = 10
 
 print("\nCalculate the integral log(x)/x^0.5 in the bounds [0, 1]")
 
 print("train VEGAS map")
-vegas_map = Vegas([(0, 1)], device=device, ninc=ninc)
+vegas_map = Vegas([(0, 1)], device=device, ninc=ninc, dtype=dtype)
 vegas_map.train(20000, func, epoch=10, alpha=0.5)
 
 vegas_integrator = MonteCarlo(
@@ -44,6 +46,7 @@ vegas_integrator = MonteCarlo(
     neval=1000000,
     nbatch=n_batch,
     device=device,
+    dtype=dtype
 )
 res = vegas_integrator(func)
 print("VEGAS Integral results: ", res)
@@ -54,17 +57,19 @@ vegasmcmc_integrator = MCMC(
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
+    dtype=dtype
 )
 res = vegasmcmc_integrator(func, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res)
 print(type(res))
 
 # Start Monte Carlo integration, including plain-MC, MCMC, vegas, and vegas-MCMC
-print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
+print(
+    "\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
 print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
 bounds = [(0, 1)] * 4
-vegas_map = Vegas(bounds, device=device, ninc=ninc)
+vegas_map = Vegas(bounds, device=device, ninc=ninc, dtype=dtype)
 print("train VEGAS map for h(X)...")
 vegas_map.train(20000, sharp_peak, epoch=10, alpha=0.5)
 # print(vegas_map.extract_grid())
@@ -75,6 +80,7 @@ vegas_integrator = MonteCarlo(
     neval=n_eval,
     nbatch=n_batch,
     device=device,
+    dtype=dtype
 )
 res = vegas_integrator(integrand_list1)
 print(
@@ -101,6 +107,7 @@ vegasmcmc_integrator = MCMC(
     nbatch=n_batch,
     nburnin=n_therm,
     device=device,
+    dtype=dtype
 )
 res = vegasmcmc_integrator(integrand_list1, mix_rate=0.5)
 print(

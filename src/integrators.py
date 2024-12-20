@@ -27,7 +27,8 @@ class Integrator:
         self.dtype = dtype
         if maps:
             if not self.dtype == maps.dtype:
-                raise ValueError("Float type of maps should be same as integrator.")
+                raise ValueError(
+                    "Float type of maps should be same as integrator.")
             self.bounds = maps.bounds
         else:
             if not isinstance(bounds, (list, np.ndarray)):
@@ -72,6 +73,7 @@ class MonteCarlo(Integrator):
         device="cpu",
         dtype=torch.float64,
     ):
+
         super().__init__(maps, bounds, q0, neval, nbatch, device, dtype)
 
     def __call__(self, f: Callable, **kwargs):
@@ -91,12 +93,14 @@ class MonteCarlo(Integrator):
             )
 
         epoch = self.neval // self.nbatch
-        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
+        values = torch.zeros((self.nbatch, f_size),
+                             dtype=type_fval, device=self.device)
 
         for iepoch in range(epoch):
             x, log_detJ = self.sample(self.nbatch)
             f_values = f(x)
-            batch_results = self._multiply_by_jacobian(f_values, torch.exp(log_detJ))
+            batch_results = self._multiply_by_jacobian(
+                f_values, torch.exp(log_detJ))
 
             values += batch_results / epoch
 
@@ -123,7 +127,8 @@ def random_walk(dim, bounds, device, dtype, u, **kwargs):
     rangebounds = bounds[:, 1] - bounds[:, 0]
     step_size = kwargs.get("step_size", 0.2)
     step_sizes = rangebounds * step_size
-    step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
+    step = torch.empty(dim, device=device,
+                       dtype=dtype).uniform_(-1, 1) * step_sizes
     new_u = (u + step - bounds[:, 0]) % rangebounds + bounds[:, 0]
     return new_u
 
@@ -191,7 +196,8 @@ class MCMC(MonteCarlo):
             )
         type_fval = current_fval.dtype
 
-        current_weight = mix_rate / current_jac + (1 - mix_rate) * current_fval.abs()
+        current_weight = mix_rate / current_jac + \
+            (1 - mix_rate) * current_fval.abs()
         current_weight.masked_fill_(current_weight < epsilon, epsilon)
 
         n_meas = epoch // thinning
@@ -226,8 +232,10 @@ class MCMC(MonteCarlo):
                 current_y, current_x, current_weight, current_jac
             )
 
-        values = torch.zeros((self.nbatch, f_size), dtype=type_fval, device=self.device)
-        refvalues = torch.zeros(self.nbatch, dtype=type_fval, device=self.device)
+        values = torch.zeros((self.nbatch, f_size),
+                             dtype=type_fval, device=self.device)
+        refvalues = torch.zeros(
+            self.nbatch, dtype=type_fval, device=self.device)
 
         for imeas in range(n_meas):
             for j in range(thinning):
