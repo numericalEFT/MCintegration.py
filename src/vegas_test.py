@@ -6,9 +6,21 @@ from utils import set_seed, get_device
 
 # set_seed(42)
 # device = get_device()
-# device = torch.device("mps")
-device = torch.device("cpu")
+device = torch.device("mps")
+# device = torch.device("cpu")
 dtype = torch.float32
+
+
+def reset_nan_to_zero(tensor):
+    """
+    Resets NaN values in a tensor to zero in-place.
+
+    Args:
+      tensor: The PyTorch tensor to modify.
+    """
+    mask = torch.isnan(
+        tensor)  # Create a boolean mask where True indicates NaN values
+    tensor[mask] = 0  # U
 
 
 def integrand_list1(x):
@@ -16,6 +28,9 @@ def integrand_list1(x):
     for d in range(4):
         dx2 += (x[:, d] - 0.5) ** 2
     f = torch.exp(-200 * dx2)
+    reset_nan_to_zero(f)
+    if torch.isnan(f).any():
+        print("NaN detected in func")
     return [f, f * x[:, 0], f * x[:, 0] ** 2]
 
 
@@ -23,11 +38,19 @@ def sharp_peak(x):
     dx2 = torch.zeros(x.shape[0], dtype=x.dtype, device=x.device)
     for d in range(4):
         dx2 += (x[:, d] - 0.5) ** 2
-    return torch.exp(-200 * dx2)
+    res = torch.exp(-200 * dx2)
+    reset_nan_to_zero(res)
+    if torch.isnan(res).any():
+        print("NaN detected in func")
+    return res
 
 
 def func(x):
-    return torch.log(x[:, 0]) / torch.sqrt(x[:, 0])
+    res = torch.log(x[:, 0]) / torch.sqrt(x[:, 0])
+    reset_nan_to_zero(res)
+    if torch.isnan(res).any():
+        print("NaN detected in func")
+    return res
 
 
 ninc = 1000
