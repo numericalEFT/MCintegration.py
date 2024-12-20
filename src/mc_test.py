@@ -1,7 +1,7 @@
 # Integration tests for MonteCarlo and MarkovChainMonteCarlo integrators class.
 import torch
 from integrators import MonteCarlo, MarkovChainMonteCarlo
-from maps import Vegas, Linear
+from maps import Vegas
 from utils import set_seed, get_device
 import torch.utils.benchmark as benchmark
 
@@ -45,7 +45,7 @@ n_eval = 6400000
 batch_size = 10000
 n_therm = 10
 
-vegas_map = Vegas(bounds, device=device, ninc=10)
+vegas_map = Vegas(dim, device=device, ninc=10)
 
 
 # True value of pi
@@ -87,8 +87,9 @@ print("MCMC Integral results: ", res)
 # )
 # print(result.timeit(10))
 
-vegas_map.train(batch_size, unit_circle_integrand, alpha=0.5)
+vegas_map.adaptive_training(batch_size, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
+    bounds,
     f=unit_circle_integrand,
     maps=vegas_map,
     batch_size=batch_size,
@@ -106,6 +107,7 @@ print("VEGAS Integral results: ", res)
 # print(result.timeit(10))
 
 vegasmcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     f=unit_circle_integrand,
     maps=vegas_map,
     batch_size=batch_size,
@@ -135,7 +137,7 @@ print("MCMC Integral results:", res)
 
 vegas_map.make_uniform()
 # train the vegas map
-vegas_map.train(batch_size, half_sphere_integrand, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(batch_size, half_sphere_integrand, epoch=10, alpha=0.5)
 vegas_integrator.f = half_sphere_integrand
 res = vegas_integrator(n_eval)
 print("VEGAS Integral results: ", res)
@@ -161,7 +163,7 @@ print(f"  Integral 2: ", res[1])
 
 # print("VEAGS map is trained for g(x1, x2)")
 vegas_map.make_uniform()
-vegas_map.train(batch_size, two_integrands, f_dim=2, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(batch_size, two_integrands, f_dim=2, epoch=10, alpha=0.5)
 vegas_integrator.f = two_integrands
 vegas_integrator.f_dim = 2
 res = vegas_integrator(n_eval)
@@ -178,7 +180,8 @@ print("  Integral 2: ", res[1])
 print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
 print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
-bounds = [(0, 1)] * 4
+dim = 4
+bounds = [(0, 1)] * dim
 mc_integrator = MonteCarlo(
     f=sharp_integrands,
     f_dim=3,
@@ -217,12 +220,13 @@ print(
     res[1] / res[0],
 )
 
-vegas_map = Vegas(bounds, device=device)
+vegas_map = Vegas(dim, device=device)
 print("train VEGAS map for h(X)...")
-vegas_map.train(batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 
 print("VEGAS Integral results:")
 vegas_integrator = MonteCarlo(
+    bounds,
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,
@@ -242,6 +246,7 @@ print(
 
 print("VEGAS-MCMC Integral results:")
 vegasmcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     f=sharp_integrands,
     f_dim=3,
     maps=vegas_map,

@@ -1,7 +1,7 @@
 from typing import Callable
 import torch
-from utils import RAvg, get_device
-from maps import Linear, Configuration
+from utils import RAvg, get_device, LinearMap
+from maps import Configuration, CompositeMap
 from base import Uniform, EPSILON
 import numpy as np
 from warnings import warn
@@ -48,10 +48,10 @@ class Integrator:
 
     def __init__(
         self,
+        bounds,
         f: Callable,
         f_dim=1,
         maps=None,
-        bounds=None,
         q0=None,
         batch_size=1000,
         device=None,
@@ -59,6 +59,7 @@ class Integrator:
     ):
         self.f = f
         self.f_dim = f_dim
+
         if maps:
             if dtype is None or dtype == maps.dtype:
                 self.dtype = maps.dtype
@@ -72,10 +73,7 @@ class Integrator:
                 self.device = device
                 maps.to(self.device)
                 maps.device = self.device
-            self.bounds = maps.bounds
         else:
-            if not isinstance(bounds, (list, np.ndarray)):
-                raise TypeError("bounds must be a list or a NumPy array.")
             if dtype is None:
                 self.dtype = torch.float64
             else:
@@ -84,13 +82,32 @@ class Integrator:
                 self.device = get_device()
             else:
                 self.device = device
-            self.bounds = torch.tensor(bounds, dtype=self.dtype, device=self.device)
 
-        self.dim = len(self.bounds)
+        if isinstance(bounds, (list, np.ndarray)):
+            self.bounds = torch.tensor(bounds, dtype=self.dtype, device=self.device)
+        elif isinstance(bounds, torch.Tensor):
+            self.bounds = bounds.to(dtype=self.dtype, device=self.device)
+        else:
+            raise TypeError("bounds must be a list, NumPy array, or torch.Tensor.")
+
+        linear_map = LinearMap(
+            self.bounds[:, 1] - self.bounds[:, 0],
+            self.bounds[:, 0],
+            device=self.device,
+            dtype=self.dtype,
+        )
+        if maps:
+            self.maps = CompositeMap(
+                [maps, linear_map], device=self.device, dtype=self.dtype
+            )
+        else:
+            self.maps = linear_map
+
+        self.dim = self.bounds.shape[0]
         if not q0:
             q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         self.q0 = q0
-        self.maps = maps
+        # self.maps = maps
         self.batch_size = batch_size
         self.f = f
         self.f_dim = f_dim
@@ -187,16 +204,17 @@ class Integrator:
 class MonteCarlo(Integrator):
     def __init__(
         self,
+        bounds,
         f: Callable,
         f_dim=1,
         maps=None,
-        bounds=None,
         q0=None,
         batch_size: int = 1000,
         device=None,
         dtype=None,
     ):
-        super().__init__(f, f_dim, maps, bounds, q0, batch_size, device, dtype)
+        super().__init__(bounds, f, f_dim, maps, q0, batch_size, device, dtype)
+        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def __call__(self, neval, nblock=32, print=-1, **kwargs):
         neval = neval // self.world_size
@@ -241,26 +259,46 @@ class MonteCarlo(Integrator):
 
         if self.rank == 0:
             if self.f_dim == 1:
+                # return results[0] * self._rangebounds.prod()
                 return results[0]
             else:
+                # return results * self._rangebounds.prod().item()
                 return results
 
 
-def random_walk(dim, bounds, device, dtype, u, **kwargs):
-    rangebounds = bounds[:, 1] - bounds[:, 0]
+# def random_walk(dim, bounds, device, dtype, u, **kwargs):
+#     rangebounds = bounds[:, 1] - bounds[:, 0]
+#     step_size = kwargs.get("step_size", 0.2)
+#     step_sizes = rangebounds * step_size
+#     step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
+#     new_u = (u + step - bounds[:, 0]) % rangebounds + bounds[:, 0]
+#     return new_u
+
+
+def random_walk(dim, device, dtype, u, **kwargs):
     step_size = kwargs.get("step_size", 0.2)
-    step_sizes = rangebounds * step_size
+    step_sizes = torch.ones(dim, device=device) * step_size
     step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
-    new_u = (u + step - bounds[:, 0]) % rangebounds + bounds[:, 0]
+    new_u = (u + step) % 1.0
     return new_u
 
 
-def uniform(dim, bounds, device, dtype, u, **kwargs):
-    rangebounds = bounds[:, 1] - bounds[:, 0]
-    return torch.rand_like(u) * rangebounds + bounds[:, 0]
+# def uniform(dim, bounds, device, dtype, u, **kwargs):
+#     rangebounds = bounds[:, 1] - bounds[:, 0]
+#     return torch.rand_like(u) * rangebounds + bounds[:, 0]
 
 
-def gaussian(dim, bounds, device, dtype, u, **kwargs):
+def uniform(dim, device, dtype, u, **kwargs):
+    return torch.rand_like(u)
+
+
+# def gaussian(dim, bounds, device, dtype, u, **kwargs):
+#     mean = kwargs.get("mean", torch.zeros_like(u))
+#     std = kwargs.get("std", torch.ones_like(u))
+#     return torch.normal(mean, std)
+
+
+def gaussian(dim, device, dtype, u, **kwargs):
     mean = kwargs.get("mean", torch.zeros_like(u))
     std = kwargs.get("std", torch.ones_like(u))
     return torch.normal(mean, std)
@@ -269,10 +307,10 @@ def gaussian(dim, bounds, device, dtype, u, **kwargs):
 class MarkovChainMonteCarlo(Integrator):
     def __init__(
         self,
+        bounds,
         f: Callable,
         f_dim: int = 1,
         maps=None,
-        bounds=None,
         q0=None,
         proposal_dist=None,
         batch_size: int = 1000,
@@ -280,7 +318,7 @@ class MarkovChainMonteCarlo(Integrator):
         device=None,
         dtype=None,
     ):
-        super().__init__(f, f_dim, maps, bounds, q0, batch_size, device, dtype)
+        super().__init__(bounds, f, f_dim, maps, q0, batch_size, device, dtype)
         self.nburnin = nburnin
         if not proposal_dist:
             self.proposal_dist = uniform
@@ -288,17 +326,12 @@ class MarkovChainMonteCarlo(Integrator):
             if not isinstance(proposal_dist, Callable):
                 raise TypeError("proposal_dist must be a callable function.")
             self.proposal_dist = proposal_dist
-        # If no transformation maps are provided, use a linear map as default
-        if maps is None:
-            self.maps = Linear(
-                [(0, 1)] * self.dim, device=self.device, dtype=self.dtype
-            )
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, config, nsteps=1, mix_rate=0.5, **kwargs):
         for _ in range(nsteps):
             proposed_y = self.proposal_dist(
-                self.dim, self.bounds, self.device, self.dtype, config.u, **kwargs
+                self.dim, self.device, self.dtype, config.u, **kwargs
             )
             proposed_x, new_detJ = self.maps.forward_with_detJ(proposed_y)
 
@@ -355,8 +388,8 @@ class MarkovChainMonteCarlo(Integrator):
             self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
         config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
-        config.x, detJ = self.maps.forward_with_detJ(config.u)
-        config.detJ *= detJ
+        config.x, detj = self.maps.forward_with_detJ(config.u)
+        config.detJ *= detj
         config.weight = (
             mix_rate / config.detJ + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
         )
@@ -397,6 +430,8 @@ class MarkovChainMonteCarlo(Integrator):
 
         if self.rank == 0:
             if self.f_dim == 1:
-                return results_unnorm[0] / results_ref[0] * self._rangebounds.prod()
+                # return results_unnorm[0] / results_ref[0] * self._rangebounds.prod()
+                return results_unnorm[0] / results_ref[0]
             else:
-                return results_unnorm / results_ref * self._rangebounds.prod().item()
+                # return results_unnorm / results_ref * self._rangebounds.prod().item()
+                return results_unnorm / results_ref
