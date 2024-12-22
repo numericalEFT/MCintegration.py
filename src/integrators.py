@@ -72,10 +72,16 @@ class Integrator:
                 self.device = device
                 maps.to(self.device)
                 maps.device = self.device
-            self.bounds = maps.bounds
+            self.dim = maps.dim
+            if bounds is None:
+                self.bounds = torch.tensor(
+                    [(0, 1)] * self.dim, dtype=self.dtype, device=self.device
+                )
+            else:
+                if len(bounds) != self.dim:
+                    raise ValueError("Bounds must have the same dimension as maps.")
+                self.bounds = torch.tensor(bounds, dtype=self.dtype, device=self.device)
         else:
-            if not isinstance(bounds, (list, np.ndarray)):
-                raise TypeError("bounds must be a list or a NumPy array.")
             if dtype is None:
                 self.dtype = torch.float64
             else:
@@ -84,17 +90,19 @@ class Integrator:
                 self.device = get_device()
             else:
                 self.device = device
+            if bounds is None:
+                raise ValueError("Bounds must be provided if no maps are given.")
             self.bounds = torch.tensor(bounds, dtype=self.dtype, device=self.device)
+            self.dim = len(self.bounds)
 
-        self.dim = len(self.bounds)
         if not q0:
-            q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
+            q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
         self.q0 = q0
         self.maps = maps
         self.batch_size = batch_size
         self.f = f
         self.f_dim = f_dim
-
+        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
         if dist.is_initialized():
             self.rank = dist.get_rank()
             self.world_size = dist.get_world_size()
@@ -113,6 +121,9 @@ class Integrator:
         else:
             config.x[:], detj = self.maps.forward_with_detJ(config.u)
             config.detJ *= detj
+        config.x *= self._rangebounds
+        config.x += self.bounds[:, 0]
+        config.detJ *= torch.prod(self._rangebounds)
         self.f(config.x, config.fx)
 
     def statistics(self, means, vars, neval=None):
@@ -246,21 +257,18 @@ class MonteCarlo(Integrator):
                 return results
 
 
-def random_walk(dim, bounds, device, dtype, u, **kwargs):
-    rangebounds = bounds[:, 1] - bounds[:, 0]
+def random_walk(dim, device, dtype, u, **kwargs):
     step_size = kwargs.get("step_size", 0.2)
-    step_sizes = rangebounds * step_size
-    step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
-    new_u = (u + step - bounds[:, 0]) % rangebounds + bounds[:, 0]
+    step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_size
+    new_u = (u + step) % 1.0
     return new_u
 
 
-def uniform(dim, bounds, device, dtype, u, **kwargs):
-    rangebounds = bounds[:, 1] - bounds[:, 0]
-    return torch.rand_like(u) * rangebounds + bounds[:, 0]
+def uniform(dim, device, dtype, u, **kwargs):
+    return torch.rand_like(u)
 
 
-def gaussian(dim, bounds, device, dtype, u, **kwargs):
+def gaussian(dim, device, dtype, u, **kwargs):
     mean = kwargs.get("mean", torch.zeros_like(u))
     std = kwargs.get("std", torch.ones_like(u))
     return torch.normal(mean, std)
@@ -290,18 +298,17 @@ class MarkovChainMonteCarlo(Integrator):
             self.proposal_dist = proposal_dist
         # If no transformation maps are provided, use a linear map as default
         if maps is None:
-            self.maps = Linear(
-                [(0, 1)] * self.dim, device=self.device, dtype=self.dtype
-            )
-        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
+            self.maps = Linear(self.dim, device=self.device, dtype=self.dtype)
 
     def sample(self, config, nsteps=1, mix_rate=0.5, **kwargs):
         for _ in range(nsteps):
             proposed_y = self.proposal_dist(
-                self.dim, self.bounds, self.device, self.dtype, config.u, **kwargs
+                self.dim, self.device, self.dtype, config.u, **kwargs
             )
             proposed_x, new_detJ = self.maps.forward_with_detJ(proposed_y)
-
+            proposed_x *= self._rangebounds
+            proposed_x += self.bounds[:, 0]
+            new_detJ *= torch.prod(self._rangebounds)
             new_weight = (
                 mix_rate / new_detJ
                 + (1 - mix_rate) * self.f(proposed_x, config.fx).abs()
@@ -326,7 +333,7 @@ class MarkovChainMonteCarlo(Integrator):
         mix_rate=0.5,
         nblock=32,
         meas_freq: int = 1,
-        print=-1,
+        verbose=-1,
         **kwargs,
     ):
         neval = neval // self.world_size
@@ -346,7 +353,7 @@ class MarkovChainMonteCarlo(Integrator):
             n_meas_perblock > 0
         ), f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
 
-        if print > 0:
+        if verbose > 0:
             print(
                 f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size*nsteps_perblock*nblock}"
             )
@@ -357,6 +364,9 @@ class MarkovChainMonteCarlo(Integrator):
         config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
         config.x, detJ = self.maps.forward_with_detJ(config.u)
         config.detJ *= detJ
+        config.x *= self._rangebounds
+        config.x += self.bounds[:, 0]
+        config.detJ *= torch.prod(self._rangebounds)
         config.weight = (
             mix_rate / config.detJ + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
         )
@@ -364,7 +374,6 @@ class MarkovChainMonteCarlo(Integrator):
 
         for _ in range(self.nburnin):
             self.sample(config, mix_rate=mix_rate, **kwargs)
-
         values = torch.zeros(
             (self.batch_size, self.f_dim), dtype=self.dtype, device=self.device
         )

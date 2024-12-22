@@ -45,7 +45,7 @@ n_eval = 6400000
 batch_size = 10000
 n_therm = 10
 
-vegas_map = Vegas(bounds, device=device, ninc=10)
+vegas_map = Vegas(dim, device=device, ninc=10)
 
 
 # True value of pi
@@ -217,7 +217,7 @@ print(
     res[1] / res[0],
 )
 
-vegas_map = Vegas(bounds, device=device)
+vegas_map = Vegas(dim, device=device)
 print("train VEGAS map for h(X)...")
 vegas_map.train(batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 

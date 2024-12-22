@@ -25,20 +25,14 @@ class Configuration:
 
 
 class Map(nn.Module):
-    def __init__(self, bounds, device=None, dtype=torch.float64):
+    def __init__(self, dim, device=None, dtype=torch.float64):
         super().__init__()
         if device is None:
             self.device = get_device()
         else:
             self.device = device
-        if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=dtype, device=self.device)
-        elif isinstance(bounds, torch.Tensor):
-            self.bounds = bounds.to(dtype=dtype, device=self.device)
-        else:
-            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
 
-        self.dim = self.bounds.shape[0]
+        self.dim = dim
         self.dtype = dtype
 
     def forward(self, u):
@@ -57,7 +51,7 @@ class CompositeMap(Map):
     def __init__(self, maps, device=None, dtype=torch.float64):
         if not maps:
             raise ValueError("Maps can not be empty.")
-        super().__init__(maps[-1].bounds, device, dtype)
+        super().__init__(maps.dim, device, dtype)
         self.maps = maps
 
     def forward(self, u):
@@ -76,25 +70,21 @@ class CompositeMap(Map):
 
 
 class Linear(Map):
-    def __init__(self, bounds, device=None, dtype=torch.float64):
-        super().__init__(bounds, device, dtype)
-        self._A = self.bounds[:, 1] - self.bounds[:, 0]
+    def __init__(self, dim, device=None, dtype=torch.float64):
+        super().__init__(dim, device, dtype)
+        self._A = torch.ones(dim, device=self.device, dtype=self.dtype)
         self._detJ1 = torch.prod(self._A)
 
     def forward(self, u):
-        return u * self._A + self.bounds[:, 0], torch.log(
-            self._detJ1.repeat(u.shape[0])
-        )
+        return u * self._A, torch.log(self._detJ1.repeat(u.shape[0]))
 
     def inverse(self, x):
-        return (x - self.bounds[:, 0]) / self._A, torch.log(
-            self._detJ1.repeat(x.shape[0])
-        )
+        return x / self._A, torch.log(self._detJ1.repeat(x.shape[0]))
 
 
 class Vegas(Map):
-    def __init__(self, bounds, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
-        super().__init__(bounds, device, dtype)
+    def __init__(self, dim, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
+        super().__init__(dim, device, dtype)
 
         # Ensure ninc is a tensor of appropriate shape and type
         if isinstance(ninc, int):
@@ -118,7 +108,7 @@ class Vegas(Map):
 
         self.make_uniform()
         self.alpha = alpha
-        self._A = self.bounds[:, 1] - self.bounds[:, 0]
+        self._A = torch.ones(self.dim, device=self.device, dtype=self.dtype)
         self._detJlinear = torch.prod(self._A)
 
     def train(
@@ -130,21 +120,21 @@ class Vegas(Map):
         epoch=10,
         alpha=0.5,
     ):
-        q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
+        q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
         # u, log_detJ0 = q0.sample(batch_size)
-        sample = Configuration(
+        config = Configuration(
             batch_size, self.dim, f_dim, device=self.device, dtype=dtype
         )
 
         for _ in range(epoch):
-            sample.u, log_detJ0 = q0.sample(batch_size)
-            sample.x[:], log_detJ = self.forward(sample.u)
-            sample.weight = f(sample.x, sample.fx)
-            sample.detJ = torch.exp(log_detJ0 + log_detJ)
-            self.add_training_data(sample)
+            config.u, log_detJ0 = q0.sample(batch_size)
+            config.x[:], log_detJ = self.forward(config.u)
+            config.weight = f(config.x, config.fx)
+            config.detJ = torch.exp(log_detJ0 + log_detJ)
+            self.add_training_data(config)
             self.adapt(alpha)
 
-    def add_training_data(self, sample):
+    def add_training_data(self, config):
         """Add training data ``f`` for ``u``-space points ``u``.
 
         Accumulates training data for later use by ``self.adapt()``.
@@ -160,11 +150,11 @@ class Vegas(Map):
             f (tensor): Training function values. ``f[j]`` corresponds to
                 point ``u[j, d]`` in ``u``-space.
         """
-        fval = (sample.detJ * sample.weight) ** 2
+        fval = (config.detJ * config.weight) ** 2
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
             self.n_f = torch.zeros_like(self.inc) + TINY
-        iu = (sample.u - self.bounds[:, 0]) / self._A * self.ninc
+        iu = config.u / self._A * self.ninc
         iu = torch.floor(iu).long()
         for d in range(self.dim):
             indices = iu[:, d]
@@ -281,8 +271,8 @@ class Vegas(Map):
 
         for d in range(self.dim):
             self.grid[d, : self.ninc[d] + 1] = torch.linspace(
-                self.bounds[d, 0],
-                self.bounds[d, 1],
+                0.0,
+                1.0,
                 self.ninc[d] + 1,
                 dtype=self.dtype,
                 device=self.device,
@@ -310,7 +300,7 @@ class Vegas(Map):
         u = u.to(self.device)
         u_ninc = u * self.ninc
         # iu = torch.floor(u_ninc).long()
-        iu = (u - self.bounds[:, 0]) / self._A * self.ninc
+        iu = u / self._A * self.ninc
         iu = torch.floor(iu).long()
         du_ninc = u_ninc - torch.floor(u_ninc).long()
 

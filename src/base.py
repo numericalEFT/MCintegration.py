@@ -14,17 +14,10 @@ class BaseDistribution(nn.Module):
     Parameters do not depend of target variable (as is the case for a VAE encoder)
     """
 
-    def __init__(self, bounds, device="cpu", dtype=torch.float64):
+    def __init__(self, dim, device="cpu", dtype=torch.float64):
         super().__init__()
         self.dtype = dtype
-        if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=dtype, device=device)
-        elif isinstance(bounds, torch.Tensor):
-            self.bounds = bounds.to(dtype=dtype, device=device)
-        else:
-            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
-
-        self.dim = self.bounds.shape[0]
+        self.dim = dim
         self.device = device
 
     def sample(self, batch_size=1, **kwargs):
@@ -49,16 +42,12 @@ class Uniform(BaseDistribution):
     Multivariate uniform distribution
     """
 
-    def __init__(self, bounds, device="cpu", dtype=torch.float64):
-        super().__init__(bounds, device, dtype)
-        self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
+    def __init__(self, dim, device="cpu", dtype=torch.float64):
+        super().__init__(dim, device, dtype)
+        # self._rangebounds = 1.0
 
     def sample(self, batch_size=1, **kwargs):
         # torch.manual_seed(0) # test seed
-        u = (
-            torch.rand((batch_size, self.dim), device=self.device, dtype=self.dtype)
-            * self._rangebounds
-            + self.bounds[:, 0]
-        )
-        log_detJ = torch.log(self._rangebounds).sum().repeat(batch_size)
+        u = torch.rand((batch_size, self.dim), device=self.device, dtype=self.dtype)
+        log_detJ = torch.zeros(batch_size, device=self.device, dtype=self.dtype)
         return u, log_detJ
