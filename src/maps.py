@@ -105,7 +105,7 @@ class Vegas(Map):
         epoch=10,
         alpha=0.5,
     ):
-        q0 = Uniform([[0, 1]] * self.dim, device=self.device, dtype=self.dtype)
+        q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
         sample = Configuration(
             batch_size, self.dim, f_dim, device=self.device, dtype=self.dtype
         )

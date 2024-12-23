@@ -105,7 +105,7 @@ class Integrator:
 
         self.dim = self.bounds.shape[0]
         if not q0:
-            q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
+            q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
         self.q0 = q0
         self.batch_size = batch_size
         self.f = f
@@ -258,20 +258,11 @@ class MonteCarlo(Integrator):
 
         if self.rank == 0:
             if self.f_dim == 1:
-                # return results[0] * self._rangebounds.prod()
+                # return results[0] / self._rangebounds.prod()
                 return results[0]
             else:
-                # return results * self._rangebounds.prod().item()
+                # return results / self._rangebounds.prod().item()
                 return results
-
-
-# def random_walk(dim, bounds, device, dtype, u, **kwargs):
-#     rangebounds = bounds[:, 1] - bounds[:, 0]
-#     step_size = kwargs.get("step_size", 0.2)
-#     step_sizes = rangebounds * step_size
-#     step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
-#     new_u = (u + step - bounds[:, 0]) % rangebounds + bounds[:, 0]
-#     return new_u
 
 
 def random_walk(dim, device, dtype, u, **kwargs):
@@ -282,19 +273,8 @@ def random_walk(dim, device, dtype, u, **kwargs):
     return new_u
 
 
-# def uniform(dim, bounds, device, dtype, u, **kwargs):
-#     rangebounds = bounds[:, 1] - bounds[:, 0]
-#     return torch.rand_like(u) * rangebounds + bounds[:, 0]
-
-
 def uniform(dim, device, dtype, u, **kwargs):
     return torch.rand_like(u)
-
-
-# def gaussian(dim, bounds, device, dtype, u, **kwargs):
-#     mean = kwargs.get("mean", torch.zeros_like(u))
-#     std = kwargs.get("std", torch.ones_like(u))
-#     return torch.normal(mean, std)
 
 
 def gaussian(dim, device, dtype, u, **kwargs):
@@ -429,8 +409,6 @@ class MarkovChainMonteCarlo(Integrator):
 
         if self.rank == 0:
             if self.f_dim == 1:
-                # return results_unnorm[0] / results_ref[0] * self._rangebounds.prod()
                 return results_unnorm[0] / results_ref[0]
             else:
-                # return results_unnorm / results_ref * self._rangebounds.prod().item()
                 return results_unnorm / results_ref
