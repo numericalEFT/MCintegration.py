@@ -7,6 +7,7 @@ from utils import set_seed, get_device
 set_seed(42)
 device = get_device()
 # device = torch.device("cpu")
+dtype = torch.float32
 
 
 def sharp_peak(x, f):
@@ -32,7 +33,8 @@ def func(x, f):
 
 alpha = 2.0
 ninc = 1000
-n_eval = 1000000
+# n_eval = 1000000
+n_eval = 500000
 batch_size = 10000
 n_therm = 10
 
@@ -40,7 +42,7 @@ print("\nCalculate the integral log(x)/x^0.5 in the bounds [0, 1]")
 dim = 1
 bounds = [[0, 1]] * dim
 print("train VEGAS map")
-vegas_map = Vegas(dim, device=device, ninc=ninc)
+vegas_map = Vegas(dim, device=device, ninc=ninc, dtype=dtype)
 vegas_map.adaptive_training(100000, func, epoch=10, alpha=alpha)
 
 vegas_integrator = MonteCarlo(
@@ -72,7 +74,7 @@ print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
 dim = 4
 bounds = [(0, 1)] * dim
-vegas_map = Vegas(dim, device=device, ninc=ninc)
+vegas_map = Vegas(dim, device=device, ninc=ninc, dtype=dtype)
 print("train VEGAS map for h(X)...")
 vegas_map.adaptive_training(20000, sharp_peak, epoch=10, alpha=alpha)
 # print(vegas_map.extract_grid())

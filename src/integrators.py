@@ -107,7 +107,6 @@ class Integrator:
         if not q0:
             q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
         self.q0 = q0
-        # self.maps = maps
         self.batch_size = batch_size
         self.f = f
         self.f_dim = f_dim

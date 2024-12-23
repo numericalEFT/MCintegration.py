@@ -46,9 +46,11 @@ class Map(nn.Module):
 
 
 class CompositeMap(Map):
-    def __init__(self, maps, device=None, dtype=torch.float64):
+    def __init__(self, maps, device=None, dtype=None):
         if not maps:
             raise ValueError("Maps can not be empty.")
+        if dtype is None:
+            dtype = maps[-1].dtype
         super().__init__(device, dtype)
         self.maps = maps
 
@@ -100,13 +102,12 @@ class Vegas(Map):
         batch_size,
         f,
         f_dim=1,
-        dtype=torch.float64,
         epoch=10,
         alpha=0.5,
     ):
         q0 = Uniform([[0, 1]] * self.dim, device=self.device, dtype=self.dtype)
         sample = Configuration(
-            batch_size, self.dim, f_dim, device=self.device, dtype=dtype
+            batch_size, self.dim, f_dim, device=self.device, dtype=self.dtype
         )
 
         for _ in range(epoch):
@@ -176,14 +177,12 @@ class Vegas(Map):
             torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
         new_grid = torch.empty(
             (self.dim, torch.max(self.ninc) + 1),
-            dtype=torch.float64,
+            dtype=self.dtype,
             device=self.device,
         )
-        avg_f = torch.ones(self.inc.shape[1], dtype=torch.float64, device=self.device)
+        avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
         if alpha > 0:
-            tmp_f = torch.empty(
-                self.inc.shape[1], dtype=torch.float64, device=self.device
-            )
+            tmp_f = torch.empty(self.inc.shape[1], dtype=self.dtype, device=self.device)
         for d in range(self.dim):
             ninc = self.ninc[d]
             if alpha != 0:
@@ -235,7 +234,9 @@ class Vegas(Map):
                 break
         self.grid = new_grid
         self.inc = torch.empty(
-            (self.dim, self.grid.shape[1] - 1), dtype=torch.float64, device=self.device
+            (self.dim, self.grid.shape[1] - 1),
+            dtype=self.dtype,
+            device=self.device,
         )
         for d in range(self.dim):
             self.inc[d, : self.ninc[d]] = (
