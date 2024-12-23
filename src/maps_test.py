@@ -2,7 +2,7 @@ import unittest
 import torch
 
 # import numpy as np
-from maps import Map, CompositeMap, Linear, Vegas
+from maps import Map, CompositeMap, Vegas
 
 
 class TestMap(unittest.TestCase):
@@ -43,8 +43,8 @@ class TestCompositeMap(unittest.TestCase):
     def setUp(self):
         self.bounds1 = [[0, 1], [2, 3]]
         self.bounds2 = [[1, 2], [3, 4]]
-        self.map1 = Linear(self.bounds1)
-        self.map2 = Linear(self.bounds2)
+        self.map1 = LinearMap(self.bounds1)
+        self.map2 = LinearMap(self.bounds2)
         self.composite_map = CompositeMap([self.map1, self.map2])
 
     def test_init_with_empty_maps(self):
@@ -71,7 +71,7 @@ class TestCompositeMap(unittest.TestCase):
 class TestLinear(unittest.TestCase):
     def setUp(self):
         self.bounds = [[0, 1], [2, 3]]
-        self.linear_map = Linear(self.bounds)
+        self.linear_map = LinearMap(self.bounds)
 
     def test_forward(self):
         u = torch.tensor([[0.5, 0.5]], dtype=torch.float64)

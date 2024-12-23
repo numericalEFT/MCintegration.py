@@ -1,6 +1,6 @@
 import torch
 from integrators import MonteCarlo, MarkovChainMonteCarlo, setup
-from maps import Vegas, Linear
+from maps import Vegas
 from utils import set_seed, get_device
 
 # backend = "nccl"

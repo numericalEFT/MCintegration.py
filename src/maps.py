@@ -25,20 +25,12 @@ class Configuration:
 
 
 class Map(nn.Module):
-    def __init__(self, bounds, device=None, dtype=torch.float64):
+    def __init__(self, device=None, dtype=torch.float64):
         super().__init__()
         if device is None:
             self.device = get_device()
         else:
             self.device = device
-        if isinstance(bounds, (list, np.ndarray)):
-            self.bounds = torch.tensor(bounds, dtype=dtype, device=self.device)
-        elif isinstance(bounds, torch.Tensor):
-            self.bounds = bounds.to(dtype=dtype, device=self.device)
-        else:
-            raise ValueError("'bounds' must be a list, numpy array, or torch tensor.")
-
-        self.dim = self.bounds.shape[0]
         self.dtype = dtype
 
     def forward(self, u):
@@ -54,10 +46,12 @@ class Map(nn.Module):
 
 
 class CompositeMap(Map):
-    def __init__(self, maps, device=None, dtype=torch.float64):
+    def __init__(self, maps, device=None, dtype=None):
         if not maps:
             raise ValueError("Maps can not be empty.")
-        super().__init__(maps[-1].bounds, device, dtype)
+        if dtype is None:
+            dtype = maps[-1].dtype
+        super().__init__(device, dtype)
         self.maps = maps
 
     def forward(self, u):
@@ -75,27 +69,11 @@ class CompositeMap(Map):
         return x, log_detJ
 
 
-class Linear(Map):
-    def __init__(self, bounds, device=None, dtype=torch.float64):
-        super().__init__(bounds, device, dtype)
-        self._A = self.bounds[:, 1] - self.bounds[:, 0]
-        self._detJ1 = torch.prod(self._A)
-
-    def forward(self, u):
-        return u * self._A + self.bounds[:, 0], torch.log(
-            self._detJ1.repeat(u.shape[0])
-        )
-
-    def inverse(self, x):
-        return (x - self.bounds[:, 0]) / self._A, torch.log(
-            self._detJ1.repeat(x.shape[0])
-        )
-
-
 class Vegas(Map):
-    def __init__(self, bounds, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
-        super().__init__(bounds, device, dtype)
+    def __init__(self, dim, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
+        super().__init__(device, dtype)
 
+        self.dim = dim
         # Ensure ninc is a tensor of appropriate shape and type
         if isinstance(ninc, int):
             self.ninc = torch.full(
@@ -118,22 +96,18 @@ class Vegas(Map):
 
         self.make_uniform()
         self.alpha = alpha
-        self._A = self.bounds[:, 1] - self.bounds[:, 0]
-        self._detJlinear = torch.prod(self._A)
 
-    def train(
+    def adaptive_training(
         self,
         batch_size,
         f,
         f_dim=1,
-        dtype=torch.float64,
         epoch=10,
         alpha=0.5,
     ):
-        q0 = Uniform(self.bounds, device=self.device, dtype=self.dtype)
-        # u, log_detJ0 = q0.sample(batch_size)
+        q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
         sample = Configuration(
-            batch_size, self.dim, f_dim, device=self.device, dtype=dtype
+            batch_size, self.dim, f_dim, device=self.device, dtype=self.dtype
         )
 
         for _ in range(epoch):
@@ -164,8 +138,7 @@ class Vegas(Map):
         if self.sum_f is None:
             self.sum_f = torch.zeros_like(self.inc)
             self.n_f = torch.zeros_like(self.inc) + TINY
-        iu = (sample.u - self.bounds[:, 0]) / self._A * self.ninc
-        iu = torch.floor(iu).long()
+        iu = torch.floor(sample.u * self.ninc).long()
         for d in range(self.dim):
             indices = iu[:, d]
             self.sum_f[d].scatter_add_(0, indices, fval.abs())
@@ -204,14 +177,12 @@ class Vegas(Map):
             torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
         new_grid = torch.empty(
             (self.dim, torch.max(self.ninc) + 1),
-            dtype=torch.float64,
+            dtype=self.dtype,
             device=self.device,
         )
-        avg_f = torch.ones(self.inc.shape[1], dtype=torch.float64, device=self.device)
+        avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
         if alpha > 0:
-            tmp_f = torch.empty(
-                self.inc.shape[1], dtype=torch.float64, device=self.device
-            )
+            tmp_f = torch.empty(self.inc.shape[1], dtype=self.dtype, device=self.device)
         for d in range(self.dim):
             ninc = self.ninc[d]
             if alpha != 0:
@@ -263,7 +234,9 @@ class Vegas(Map):
                 break
         self.grid = new_grid
         self.inc = torch.empty(
-            (self.dim, self.grid.shape[1] - 1), dtype=torch.float64, device=self.device
+            (self.dim, self.grid.shape[1] - 1),
+            dtype=self.dtype,
+            device=self.device,
         )
         for d in range(self.dim):
             self.inc[d, : self.ninc[d]] = (
@@ -281,8 +254,8 @@ class Vegas(Map):
 
         for d in range(self.dim):
             self.grid[d, : self.ninc[d] + 1] = torch.linspace(
-                self.bounds[d, 0],
-                self.bounds[d, 1],
+                0,
+                1,
                 self.ninc[d] + 1,
                 dtype=self.dtype,
                 device=self.device,
@@ -309,9 +282,7 @@ class Vegas(Map):
     def forward(self, u):
         u = u.to(self.device)
         u_ninc = u * self.ninc
-        # iu = torch.floor(u_ninc).long()
-        iu = (u - self.bounds[:, 0]) / self._A * self.ninc
-        iu = torch.floor(iu).long()
+        iu = torch.floor(u_ninc).long()
         du_ninc = u_ninc - torch.floor(u_ninc).long()
 
         x = torch.empty_like(u)
@@ -334,7 +305,7 @@ class Vegas(Map):
                 x[mask_inv, d] = self.grid[d, ninc]
                 detJ[mask_inv] *= self.inc[d, ninc - 1] * ninc
 
-        return x, torch.log(detJ / self._detJlinear)
+        return x, detJ.log_()
 
     @torch.no_grad()
     def inverse(self, x):
@@ -370,7 +341,7 @@ class Vegas(Map):
                 u[mask_upper, d] = 1.0
                 detJ[mask_upper] *= self.inc[d, ninc - 1] * ninc
 
-        return u, torch.log(detJ / self._detJlinear)
+        return u, detJ.log_()
 
 
 # class NormalizingFlow(Map):
