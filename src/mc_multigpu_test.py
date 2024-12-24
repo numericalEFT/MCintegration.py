@@ -47,7 +47,7 @@ batch_size = 10000
 n_therm = 10
 
 
-vegas_map = Vegas(bounds, device=device, ninc=10)
+vegas_map = Vegas(dim, device=device, ninc=10)
 
 
 # True value of pi
@@ -55,13 +55,13 @@ print(f"pi = {torch.pi} \n")
 
 # Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
 mc_integrator = MonteCarlo(
+    bounds,
     unit_circle_integrand,
-    bounds=bounds,
     batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     unit_circle_integrand,
-    bounds=bounds,
     batch_size=batch_size,
     nburnin=n_therm,
 )
@@ -75,8 +75,9 @@ res = mcmc_integrator(neval=n_eval, mix_rate=0.5)
 if res is not None:
     print("MarkovChainMonteCarlo Integral results: ", res)
 
-vegas_map.train(20000, unit_circle_integrand, alpha=0.5)
+vegas_map.adaptive_training(20000, unit_circle_integrand, alpha=0.5)
 vegas_integrator = MonteCarlo(
+    bounds,
     unit_circle_integrand,
     maps=vegas_map,
     batch_size=batch_size,
@@ -86,6 +87,7 @@ if res is not None:
     print("VEGAS Integral results: ", res)
 
 vegasmcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     unit_circle_integrand,
     maps=vegas_map,
     batch_size=batch_size,
@@ -112,7 +114,7 @@ if res is not None:
 
 vegas_map.make_uniform()
 # train the vegas map
-vegas_map.train(20000, half_sphere_integrand, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(20000, half_sphere_integrand, epoch=10, alpha=0.5)
 
 vegas_integrator.f = half_sphere_integrand
 res = vegas_integrator(n_eval)
@@ -145,7 +147,7 @@ if res is not None:
 
 # print("VEAGS map is trained for g(x1, x2)")
 vegas_map.make_uniform()
-vegas_map.train(20000, two_integrands, f_dim=2, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(20000, two_integrands, f_dim=2, epoch=10, alpha=0.5)
 
 vegas_integrator.f = two_integrands
 vegas_integrator.f_dim = 2
@@ -166,17 +168,18 @@ if res is not None:
 print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
 print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
-bounds = [(0, 1)] * 4
+dim = 4
+bounds = [(0, 1)] * dim
 mc_integrator = MonteCarlo(
+    bounds,
     sharp_integrands,
     f_dim=3,
-    bounds=bounds,
     batch_size=batch_size,
 )
 mcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     sharp_integrands,
     f_dim=3,
-    bounds=bounds,
     batch_size=batch_size,
     nburnin=n_therm,
 )
@@ -207,12 +210,13 @@ if res is not None:
         res[1] / res[0],
     )
 
-vegas_map = Vegas(bounds, device=device)
+vegas_map = Vegas(dim, device=device)
 print("train VEGAS map for h(X)...")
-# vegas_map.train(20000, sharp_peak, epoch=10, alpha=0.5)
-vegas_map.train(20000, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
+# vegas_map.adaptive_training(20000, sharp_peak, epoch=10, alpha=0.5)
+vegas_map.adaptive_training(20000, sharp_integrands, f_dim=3, epoch=10, alpha=0.5)
 
 vegas_integrator = MonteCarlo(
+    bounds,
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
@@ -233,6 +237,7 @@ if res is not None:
     )
 
 vegasmcmc_integrator = MarkovChainMonteCarlo(
+    bounds,
     sharp_integrands,
     f_dim=3,
     maps=vegas_map,
