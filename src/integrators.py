@@ -215,7 +215,7 @@ class MonteCarlo(Integrator):
         super().__init__(bounds, f, f_dim, maps, q0, batch_size, device, dtype)
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
-    def __call__(self, neval, nblock=32, print=-1, **kwargs):
+    def __call__(self, neval, nblock=32, verbose=-1, **kwargs):
         neval = neval // self.world_size
         neval = -(-neval // self.batch_size) * self.batch_size
         epoch = neval // self.batch_size
@@ -229,7 +229,7 @@ class MonteCarlo(Integrator):
         else:
             nblock = epoch // epoch_perblock
 
-        if print > 0:
+        if verbose > 0:
             print(
                 f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size*epoch_perblock*nblock}"
             )
@@ -338,7 +338,7 @@ class MarkovChainMonteCarlo(Integrator):
         mix_rate=0.5,
         nblock=32,
         meas_freq: int = 1,
-        print=-1,
+        verbose=-1,
         **kwargs,
     ):
         neval = neval // self.world_size
@@ -358,7 +358,7 @@ class MarkovChainMonteCarlo(Integrator):
             n_meas_perblock > 0
         ), f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
 
-        if print > 0:
+        if verbose > 0:
             print(
                 f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size*nsteps_perblock*nblock}"
             )
