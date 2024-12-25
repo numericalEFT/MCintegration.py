@@ -2,8 +2,8 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import os
-import MCFlow
-from MCFlow import MonteCarlo, MarkovChainMonteCarlo
+import MCintegration
+from MCintegration import MonteCarlo, MarkovChainMonteCarlo
 
 
 def init_process(rank, world_size, fn, backend="gloo"):
@@ -35,9 +35,9 @@ def run_mcmc(rank, world_size):
     # device = torch.device(f"cuda:{rank}" if torch.cuda.is_available() else "cpu")
     device = torch.device("cpu")
     mcmc = MarkovChainMonteCarlo(
+        bounds,
         two_integrands,
         2,
-        bounds=bounds,
         batch_size=batch_size,
         nburnin=n_therm,
         device=device,

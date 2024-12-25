@@ -1,8 +1,7 @@
 # Integration tests for VEGAS + MonteCarlo/MarkovChainMonteCarlo integral methods.
 import torch
-from integrators import MonteCarlo, MarkovChainMonteCarlo
-from maps import Vegas
-from utils import set_seed, get_device
+from MCintegration import MonteCarlo, MarkovChainMonteCarlo
+from MCintegration import Vegas, set_seed, get_device
 
 set_seed(42)
 device = get_device()
