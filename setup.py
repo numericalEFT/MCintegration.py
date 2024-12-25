@@ -17,7 +17,7 @@ with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
 install_requires = [x.strip() for x in all_reqs]
 
 setup(
-    name="MCFlow",
+    name="MCintegration",
     version=__version__,
     description="Pytorch implementation combining MCIntegration and normalizing flows",
     long_description=long_description,

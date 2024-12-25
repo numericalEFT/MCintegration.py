@@ -1,9 +1,9 @@
 # Integration tests for MonteCarlo and MarkovChainMonteCarlo integrators class.
 import torch
-import MCFlow
-from MCFlow import MonteCarlo, MarkovChainMonteCarlo
-from MCFlow import Vegas
-from MCFlow import set_seed, get_device
+import MCintegration
+from MCintegration import MonteCarlo, MarkovChainMonteCarlo
+from MCintegration import Vegas
+from MCintegration import set_seed, get_device
 import torch.utils.benchmark as benchmark
 
 set_seed(42)
