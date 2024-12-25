@@ -5,8 +5,8 @@ from maps import Vegas
 from utils import set_seed, get_device
 
 set_seed(42)
-# device = get_device()
-device = torch.device("mps")
+device = get_device()
+# device = torch.device("mps")
 dtype = torch.float32
 
 
