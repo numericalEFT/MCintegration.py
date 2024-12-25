@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 from torch import nn
-from .base import Uniform
-from .utils import get_device
+from MCintegration.base import Uniform
+from MCintegration.utils import get_device
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
@@ -21,7 +21,7 @@ class Configuration:
         self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
         self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
         self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
-        self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
@@ -51,6 +51,11 @@ class CompositeMap(Map):
             raise ValueError("Maps can not be empty.")
         if dtype is None:
             dtype = maps[-1].dtype
+        if device is None:
+            device = maps[-1].device
+        elif device != maps[-1].device:
+            for map in maps:
+                map.to(device)
         super().__init__(device, dtype)
         self.maps = maps
 
@@ -344,8 +349,8 @@ class Vegas(Map):
 
 
 # class NormalizingFlow(Map):
-#     def __init__(self, bounds, flow_model, device="cpu"):
-#         super().__init__(bounds, device)
+#     def __init__(self, dim, flow_model, device="cpu"):
+#         super().__init__(dim, device)
 #         self.flow_model = flow_model.to(device)
 
 #     def forward(self, u):

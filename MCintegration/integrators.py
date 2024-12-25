@@ -1,8 +1,8 @@
 from typing import Callable
 import torch
-from .utils import RAvg, get_device, LinearMap
-from .maps import Configuration, CompositeMap
-from .base import Uniform, EPSILON
+from MCintegration.utils import RAvg, get_device
+from MCintegration.maps import Configuration, CompositeMap
+from MCintegration.base import Uniform, EPSILON, LinearMap
 import numpy as np
 from warnings import warn
 
@@ -89,6 +89,8 @@ class Integrator:
             self.bounds = bounds.to(dtype=self.dtype, device=self.device)
         else:
             raise TypeError("bounds must be a list, NumPy array, or torch.Tensor.")
+
+        assert self.bounds.shape[1] == 2, "bounds must be a 2D array"
 
         linear_map = LinearMap(
             self.bounds[:, 1] - self.bounds[:, 0],
