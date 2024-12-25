@@ -5,8 +5,8 @@ from maps import Vegas
 from utils import set_seed, get_device
 
 set_seed(42)
-device = get_device()
-# device = torch.device("cpu")
+# device = get_device()
+device = torch.device("mps")
 dtype = torch.float32
 
 
@@ -69,7 +69,8 @@ print(res.itn_results)
 print(res.nitn)
 
 # Start Monte Carlo integration, including plain-MC, MarkovChainMonteCarlo, vegas, and vegas-MarkovChainMonteCarlo
-print("\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
+print(
+    "\nCalculate the integral [h(X), x1 * h(X),  x1^2 * h(X)] in the bounds [0, 1]^4")
 print("h(X) = exp(-200 * (x1^2 + x2^2 + x3^2 + x4^2))")
 
 dim = 4
