@@ -13,7 +13,7 @@ from MCintegration import (
 # backend = "nccl"
 backend = "gloo"
 # set_seed(42)
-# setup(backend=backend)
+setup(backend=backend)
 device = get_device()
 print(device)
 

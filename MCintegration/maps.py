@@ -70,7 +70,7 @@ class CompositeMap(Map):
 
 
 class Vegas(Map):
-    def __init__(self, dim, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
+    def __init__(self, dim, ninc=1000, device=None, dtype=torch.float64):
         super().__init__(device, dtype)
 
         self.dim = dim
@@ -95,7 +95,6 @@ class Vegas(Map):
             )
 
         self.make_uniform()
-        self.alpha = alpha
 
     def adaptive_training(
         self,
