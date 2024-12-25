@@ -1,12 +1,19 @@
 import torch
-from integrators import MonteCarlo, MarkovChainMonteCarlo, setup
-from maps import Vegas
-from utils import set_seed, get_device
+import MCintegration
+from MCintegration import (
+    MonteCarlo,
+    MarkovChainMonteCarlo,
+    setup,
+    Vegas,
+    set_seed,
+    get_device,
+)
+
 
 # backend = "nccl"
 backend = "gloo"
 # set_seed(42)
-setup(backend=backend)
+# setup(backend=backend)
 device = get_device()
 print(device)
 
