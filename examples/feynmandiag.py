@@ -40,6 +40,7 @@ def load_leaf_info(root_dir, name, key_str):
 
 
 class FeynmanIntegrand(nn.Module):
+    @torch.no_grad()
     def __init__(self, order, beta, loopBasis, leafstates, leafvalues, batchsize):
         super().__init__()
         # super().__init__(prop_scale=torch.tensor(1.0), prop_shift=torch.tensor(0.0))
@@ -143,6 +144,7 @@ class FeynmanIntegrand(nn.Module):
         else:
             raise ValueError("Invalid order")
 
+    @torch.no_grad()
     def kernelFermiT(self):
         sign = torch.where(self.tau > 0, 1.0, -1.0)
 
@@ -157,6 +159,7 @@ class FeynmanIntegrand(nn.Module):
         self.leaf_fermi[:] = sign * torch.exp(self.dispersion * a)
         self.leaf_fermi /= 1 + torch.exp(self.dispersion * b)
 
+    @torch.no_grad()
     def extract_mom(self, var):
         p_rescale = var[
             :, self.totalTauNum - 1 : self.totalTauNum - 1 + self.innerLoopNum
@@ -194,6 +197,7 @@ class FeynmanIntegrand(nn.Module):
         self.p[:, 1, 1:] *= torch.sin(phi)
         self.p[:, 2, 1:] = p_rescale * self.maxK * torch.cos(theta)
 
+    @torch.no_grad()
     def _evalleaf(self, var):
         self.isfermi[:] = self.lftype == 1
         self.isbose[:] = self.lftype == 2
@@ -221,6 +225,7 @@ class FeynmanIntegrand(nn.Module):
         self.leafvalues = torch.where(self.isfermi, self.leaf_fermi, self.leafvalues)
         self.leafvalues = torch.where(self.isbose, self.leaf_bose, self.leafvalues)
 
+    @torch.no_grad()
     def __call__(self, var, root):
         self._evalleaf(var)
         # root[:] = self.eval_graph(self.leafvalues)

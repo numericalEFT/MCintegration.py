@@ -7,6 +7,7 @@ from MCintegration import (
     set_seed,
     get_device,
 )
+import time
 
 device = get_device()
 batch_size = 5000
@@ -20,13 +21,16 @@ feynfunc = init_feynfunc(order, beta, batch_size)
 feynfunc.to(device)
 f_dim = num_roots[order - 1]
 
+
 vegas_map = Vegas(feynfunc.ndims, ninc=1000, device=device)
 # vegas_map = Vegas(feynfunc.ndims, ninc=1000, device=torch.device("cpu"))
 print("Training the vegas map...")
 # feynfunc.to(torch.device("cpu"))
+begin_time = time.time()
 vegas_map.adaptive_training(batch_size, feynfunc, f_dim=f_dim, epoch=10, alpha=1.0)
+print("training time: ", time.time() - begin_time, "s\n")
 
-
+begin_time = time.time()
 bounds = [[0, 1]] * feynfunc.ndims
 
 mc_integrator = MonteCarlo(
@@ -71,3 +75,5 @@ vegasmcmc_integrator = MarkovChainMonteCarlo(
 )
 res = vegasmcmc_integrator(neval=n_eval, mix_rate=0.5)
 print("VEGAS-MCMC Integral results: ", res)
+
+print("Total time: ", time.time() - begin_time, "s")
