@@ -291,3 +291,13 @@ def get_device():
         return torch.cuda.current_device()
     else:
         return torch.device("cpu")
+
+
+def set_requires_grad(module, flag):
+    """Sets requires_grad flag of all parameters of a torch.nn.module
+    Args:
+      module: torch.nn.module
+      flag: Flag to set requires_grad to
+    """
+    for param in module.parameters():
+        param.requires_grad = flag

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from torch import nn
 from .base import Uniform
-from .utils import get_device
+from .utils import get_device, set_requires_grad
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
@@ -22,6 +22,43 @@ class Configuration:
         self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
         self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
         self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+
+    def forward_kld(self):
+        """Estimates forward KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
+        Args:
+        x: Batch sampled from target distribution
+        Returns:
+        Estimate of forward KL divergence averaged over batch
+        """
+        return torch.mean(torch.log(self.detJ))
+
+    def reverse_kld(self, beta=1.0, score_fn=True):
+        """Estimates reverse KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
+        Args:
+            num_samples: Number of samples to draw from base distribution
+            beta: Annealing parameter, see [arXiv 1505.05770](https://arxiv.org/abs/1505.05770)
+            score_fn: Flag whether to include score function in gradient, see [arXiv 1703.09194](https://arxiv.org/abs/1703.09194)
+        Returns:
+            Estimate of the reverse KL divergence averaged over latent samples
+        """
+        # z, log_q_ = self.q0(num_samples)
+        # log_q = torch.zeros_like(log_q_)
+        # log_q += log_q_
+        # for flow in self.flows:
+        #     z, log_det = flow(z)
+        #     log_q -= log_det
+        log_q = -torch.log(self.detJ)
+        if not score_fn:
+            x_ = self.x
+            log_q = torch.zeros(len(x_), device=x_.device)
+            set_requires_grad(self, False)
+            for i in range(len(self.flows) - 1, -1, -1):
+                x_, log_det = self.flows[i].inverse(x_)
+                log_q += log_det
+            log_q += self.q0.log_prob(x_)
+            set_requires_grad(self, True)
+        log_p = torch.log(self.fx)
+        return torch.mean(log_q) - beta * torch.mean(log_p)
 
 
 class Map(nn.Module):
@@ -50,9 +87,9 @@ class CompositeMap(Map):
         if not maps:
             raise ValueError("Maps can not be empty.")
         if dtype is None:
-            dtype = maps[-1].dtype
+            dtype = torch.float32  # maps[-1].dtype
         super().__init__(device, dtype)
-        self.maps = maps
+        self.maps = nn.ModuleList(maps)
 
     def forward(self, u):
         log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
@@ -67,6 +104,65 @@ class CompositeMap(Map):
             x, log_detj = self.maps[i].inverse(x)
             log_detJ += log_detj
         return x, log_detJ
+
+    def adaptive_train(
+        self,
+        dim,
+        batch_size,
+        f,
+        f_dim=1,
+        epoch=10,
+        alpha=0.5,
+        accum_iter=10,
+        init_lr=8e-3,
+        has_scheduler=True,
+        sample_interval=5,
+    ):
+        q0 = Uniform(dim, device=self.device, dtype=self.dtype)
+        # u, log_detJ0 = q0.sample(batch_size)
+        config = Configuration(
+            batch_size, dim, f_dim, device=self.device, dtype=self.dtype
+        )
+        # self.train()  # Set model to training mode
+        print("start training \n")
+        # Initialize optimizer and scheduler
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=init_lr
+        )  # , weight_decay=1e-5)
+        if has_scheduler:
+            # scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, max_iter)
+            scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, mode="min", factor=0.5, patience=10, verbose=True
+            )
+        warmup_epochs = 10
+        scheduler_warmup = torch.optim.lr_scheduler.LinearLR(
+            optimizer, start_factor=0.1, total_iters=warmup_epochs
+        )
+        for it in range(epoch):
+            optimizer.zero_grad()
+            loss_accum = torch.zeros(1, requires_grad=False, device=self.device)
+            config.u, log_detJ0 = q0.sample(batch_size)
+            config.x[:], log_detJ = self.forward(config.u)
+            config.weight = f(config.x, config.fx)
+            config.detJ = torch.exp(log_detJ0 + log_detJ)
+            for _ in range(accum_iter):
+                loss = config.reverse_kld()
+                loss = loss / accum_iter
+                loss_accum += loss
+                # Do backprop and optimizer step
+                if ~(torch.isnan(loss) | torch.isinf(loss)):
+                    loss.backward()
+            print(loss)
+            torch.nn.utils.clip_grad_norm_(
+                self.parameters(), max_norm=1.0
+            )  # Gradient clipping
+            optimizer.step()
+            # Scheduler step after optimizer step
+            if it < warmup_epochs:
+                scheduler_warmup.step()
+            elif has_scheduler:
+                scheduler.step(loss_accum)  # ReduceLROnPlateau
+                # scheduler.step()  # CosineAnnealingLR
 
 
 class Vegas(Map):

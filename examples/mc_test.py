@@ -2,9 +2,10 @@
 import torch
 import MCintegration
 from MCintegration import MonteCarlo, MarkovChainMonteCarlo
-from MCintegration import Vegas
+from MCintegration import Vegas, CompositeMap
 from MCintegration import set_seed, get_device
 import torch.utils.benchmark as benchmark
+import normflows as nf
 
 set_seed(42)
 device = get_device()
@@ -42,9 +43,37 @@ def sharp_integrands(x, f):
 
 dim = 2
 bounds = [(-1, 1), (-1, 1)]
-n_eval = 6400000
-batch_size = 10000
+n_eval = 10000
+batch_size = 1000
 n_therm = 10
+
+latent_size = 2
+hidden_units = 8
+num_blocks = 2
+masks = nf.utils.iflow_binary_masks(latent_size)  # mask0
+# masks = [torch.ones(ndims)]
+print(masks)
+maps = []
+for mask in masks[::-1]:
+    maps += [
+        nf.flows.CoupledRationalQuadraticSpline(
+            latent_size, num_blocks, hidden_units, mask=mask
+        )
+    ]
+nf_map = CompositeMap(maps, device=device)
+print(
+    "total model params", sum(p.numel() for p in nf_map.parameters() if p.requires_grad)
+)
+nf_map.adaptive_train(dim, batch_size, unit_circle_integrand, epoch=10, alpha=0.5)
+nf_integrator = MonteCarlo(
+    bounds=bounds,
+    f=unit_circle_integrand,
+    maps=nf_map,
+    batch_size=batch_size,
+)
+res = nf_integrator(n_eval)
+print("VEGAS Integral results: ", res)
+
 
 vegas_map = Vegas(dim, device=device, ninc=10)
 
