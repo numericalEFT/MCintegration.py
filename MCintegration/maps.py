@@ -1,15 +1,15 @@
 import numpy as np
 import torch
 from torch import nn
-from .base import Uniform
-from .utils import get_device
+from MCintegration.base import Uniform
+from MCintegration.utils import get_device
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Configuration:
-    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float64):
+    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float32):
         if device is None:
             self.device = get_device()
         else:
@@ -21,11 +21,11 @@ class Configuration:
         self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
         self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
         self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
-        self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
-    def __init__(self, device=None, dtype=torch.float64):
+    def __init__(self, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
@@ -51,6 +51,11 @@ class CompositeMap(Map):
             raise ValueError("Maps can not be empty.")
         if dtype is None:
             dtype = maps[-1].dtype
+        if device is None:
+            device = maps[-1].device
+        elif device != maps[-1].device:
+            for map in maps:
+                map.to(device)
         super().__init__(device, dtype)
         self.maps = maps
 
@@ -70,7 +75,7 @@ class CompositeMap(Map):
 
 
 class Vegas(Map):
-    def __init__(self, dim, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
+    def __init__(self, dim, ninc=1000, device=None, dtype=torch.float32):
         super().__init__(device, dtype)
 
         self.dim = dim
@@ -95,7 +100,6 @@ class Vegas(Map):
             )
 
         self.make_uniform()
-        self.alpha = alpha
 
     def adaptive_training(
         self,
@@ -280,7 +284,7 @@ class Vegas(Map):
 
     @torch.no_grad()
     def forward(self, u):
-        u = u.to(self.device)
+        # u = u.to(self.device)
         u_ninc = u * self.ninc
         iu = torch.floor(u_ninc).long()
         du_ninc = u_ninc - torch.floor(u_ninc).long()
@@ -345,8 +349,8 @@ class Vegas(Map):
 
 
 # class NormalizingFlow(Map):
-#     def __init__(self, bounds, flow_model, device="cpu"):
-#         super().__init__(bounds, device)
+#     def __init__(self, dim, flow_model, device="cpu"):
+#         super().__init__(dim, device)
 #         self.flow_model = flow_model.to(device)
 
 #     def forward(self, u):
