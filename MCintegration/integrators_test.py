@@ -45,7 +45,7 @@ class TestIntegrator(unittest.TestCase):
                 integrator = Integrator(bounds=bounds, f=self.f)
                 self.assertIsInstance(integrator.bounds, torch.Tensor)
                 self.assertEqual(
-                    integrator.bounds.dtype, torch.float64
+                    integrator.bounds.dtype, torch.float32
                 )  # Check dtype conversion
                 self.assertEqual(
                     integrator.bounds.shape, (2, 2)

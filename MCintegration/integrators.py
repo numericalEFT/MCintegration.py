@@ -75,7 +75,7 @@ class Integrator:
                 maps.device = self.device
         else:
             if dtype is None:
-                self.dtype = torch.float64
+                self.dtype = torch.float32
             else:
                 self.dtype = dtype
             if device is None:

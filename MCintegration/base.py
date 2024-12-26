@@ -15,7 +15,7 @@ class BaseDistribution(nn.Module):
     Parameters do not depend of target variable (as is the case for a VAE encoder)
     """
 
-    def __init__(self, dim, device="cpu", dtype=torch.float64):
+    def __init__(self, dim, device="cpu", dtype=torch.float32):
         super().__init__()
         self.dtype = dtype
         self.dim = dim
@@ -43,7 +43,7 @@ class Uniform(BaseDistribution):
     Multivariate uniform distribution
     """
 
-    def __init__(self, dim, device="cpu", dtype=torch.float64):
+    def __init__(self, dim, device="cpu", dtype=torch.float32):
         super().__init__(dim, device, dtype)
 
     def sample(self, batch_size=1, **kwargs):
@@ -54,7 +54,7 @@ class Uniform(BaseDistribution):
 
 
 class LinearMap(nn.Module):
-    def __init__(self, A, b, device=None, dtype=torch.float64):
+    def __init__(self, A, b, device=None, dtype=torch.float32):
         if device is None:
             self.device = get_device()
         else:

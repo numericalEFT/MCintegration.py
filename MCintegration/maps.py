@@ -9,7 +9,7 @@ TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Configuration:
-    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float64):
+    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float32):
         if device is None:
             self.device = get_device()
         else:
@@ -25,7 +25,7 @@ class Configuration:
 
 
 class Map(nn.Module):
-    def __init__(self, device=None, dtype=torch.float64):
+    def __init__(self, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
@@ -75,7 +75,7 @@ class CompositeMap(Map):
 
 
 class Vegas(Map):
-    def __init__(self, dim, ninc=1000, device=None, dtype=torch.float64):
+    def __init__(self, dim, ninc=1000, device=None, dtype=torch.float32):
         super().__init__(device, dtype)
 
         self.dim = dim
@@ -284,7 +284,7 @@ class Vegas(Map):
 
     @torch.no_grad()
     def forward(self, u):
-        u = u.to(self.device)
+        # u = u.to(self.device)
         u_ninc = u * self.ninc
         iu = torch.floor(u_ninc).long()
         du_ninc = u_ninc - torch.floor(u_ninc).long()
