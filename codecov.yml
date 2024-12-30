@@ -1,6 +1,7 @@
 ignore:
   - "examples/*"
-status:
-  patch:
-    default:
-      target: 85%
+coverage:
+  status:
+    patch:
+      default:
+        target: 85%
