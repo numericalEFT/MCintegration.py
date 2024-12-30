@@ -11,13 +11,13 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
     long_description = f.read()
 
 # get the dependencies and installs
-# with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
-#     all_reqs = f.read().split("\n")
+with open(path.join(here, "requirements.txt"), encoding="utf-8") as f:
+    all_reqs = f.read().split("\n")
 
-# install_requires = [x.strip() for x in all_reqs]
+install_requires = [x.strip() for x in all_reqs]
 
 setup(
-    name="MCFlow",
+    name="MCintegration",
     version=__version__,
     description="Pytorch implementation combining MCIntegration and normalizing flows",
     long_description=long_description,

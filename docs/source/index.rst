@@ -4,8 +4,7 @@
    contain the root `toctree` directive.
 
 MCintegration documentation
-===============
-
+===========================
 
 Contents:
 

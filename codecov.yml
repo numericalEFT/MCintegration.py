@@ -1,2 +1,10 @@
 ignore:
-  - "examples"
+  - "examples/*"
+coverage:
+  status:
+    patch:
+      default:
+        target: 84%
+    project:
+      default:
+        target: 84%

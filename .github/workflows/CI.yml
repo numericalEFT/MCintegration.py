@@ -43,8 +43,8 @@ jobs:
 
       - name: Run tests
         run: |
-          export PYTHONPATH=src
-          pytest --cov --cov-report=xml
+          export PYTHONPATH=MCintegration
+          pytest --cov --cov-report=xml --ignore=examples
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
@@ -68,8 +68,8 @@ jobs:
       - name: Build documentation
         run: |
           cd docs
-          sphinx-apidoc -o source ../src ../src/*_test.py
-          python ../clean_src_rst.py
+          sphinx-apidoc -o source ../MCintegration ../MCintegration/*_test.py
+          python ../clean_MCintegration_rst.py
           make html
           python ../clean_html_sidebar.py
 
