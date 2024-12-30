@@ -1,37 +1,37 @@
-src package
-===========
+MCintegration package
+=====================
 
 Submodules
 ----------
 
 base module
----------------
+-------------------------
 
-.. automodule:: base
+.. automodule:: MCintegration.base
    :members:
    :undoc-members:
    :show-inheritance:
 
 integrators module
-----------------------
+--------------------------------
 
-.. automodule:: integrators
+.. automodule:: MCintegration.integrators
    :members:
    :undoc-members:
    :show-inheritance:
 
 maps module
----------------
+-------------------------
 
-.. automodule:: maps
+.. automodule:: MCintegration.maps
    :members:
    :undoc-members:
    :show-inheritance:
 
 utils module
-----------------
+--------------------------
 
-.. automodule:: utils
+.. automodule:: MCintegration.utils
    :members:
    :undoc-members:
    :show-inheritance:
@@ -39,7 +39,7 @@ utils module
 Module contents
 ---------------
 
-.. automodule:: src
+.. automodule:: MCintegration
    :members:
    :undoc-members:
    :show-inheritance:

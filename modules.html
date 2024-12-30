@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>src &#8212; MCintegration 1.0.0 documentation</title>
+    <title>MCintegration &#8212; MCintegration 1.0.0 documentation</title>
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4848ba22" />
     <link rel="stylesheet" type="text/css" href="_static/pyramid.css?v=424f8d56" />
     <script src="_static/documentation_options.js?v=8d563738"></script>
@@ -31,7 +31,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">src</a></li> 
+        <li class="nav-item nav-item-this"><a href="">MCintegration</a></li> 
       </ul>
     </div>  
 
@@ -40,83 +40,95 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <section id="src">
-<h1>src<a class="headerlink" href="#src" title="Link to this heading">¶</a></h1>
+  <section id="mcintegration">
+<h1>MCintegration<a class="headerlink" href="#mcintegration" title="Link to this heading">¶</a></h1>
 <div class="toctree-wrapper compound">
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="src.html">src package</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="src.html#submodules">Submodules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-base">base module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="src.html#base.BaseDistribution"><code class="docutils literal notranslate"><span class="pre">BaseDistribution</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#base.BaseDistribution.sample"><code class="docutils literal notranslate"><span class="pre">BaseDistribution.sample()</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="MCintegration.html">MCintegration package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#module-MCintegration.base">base module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.base.BaseDistribution"><code class="docutils literal notranslate"><span class="pre">BaseDistribution</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.BaseDistribution.sample"><code class="docutils literal notranslate"><span class="pre">BaseDistribution.sample()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.BaseDistribution.sample_with_detJ"><code class="docutils literal notranslate"><span class="pre">BaseDistribution.sample_with_detJ()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#base.Uniform"><code class="docutils literal notranslate"><span class="pre">Uniform</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#base.Uniform.sample"><code class="docutils literal notranslate"><span class="pre">Uniform.sample()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.base.LinearMap"><code class="docutils literal notranslate"><span class="pre">LinearMap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.LinearMap.forward"><code class="docutils literal notranslate"><span class="pre">LinearMap.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.LinearMap.forward_with_detJ"><code class="docutils literal notranslate"><span class="pre">LinearMap.forward_with_detJ()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.LinearMap.inverse"><code class="docutils literal notranslate"><span class="pre">LinearMap.inverse()</span></code></a></li>
 </ul>
 </li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-integrators">integrators module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#integrators.Integrator.sample"><code class="docutils literal notranslate"><span class="pre">Integrator.sample()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.MCMC"><code class="docutils literal notranslate"><span class="pre">MCMC</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.gaussian"><code class="docutils literal notranslate"><span class="pre">gaussian()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.random_walk"><code class="docutils literal notranslate"><span class="pre">random_walk()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#integrators.uniform"><code class="docutils literal notranslate"><span class="pre">uniform()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-maps">maps module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="src.html#maps.CompositeMap"><code class="docutils literal notranslate"><span class="pre">CompositeMap</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.CompositeMap.forward"><code class="docutils literal notranslate"><span class="pre">CompositeMap.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.CompositeMap.inverse"><code class="docutils literal notranslate"><span class="pre">CompositeMap.inverse()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#maps.Linear"><code class="docutils literal notranslate"><span class="pre">Linear</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Linear.forward"><code class="docutils literal notranslate"><span class="pre">Linear.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Linear.inverse"><code class="docutils literal notranslate"><span class="pre">Linear.inverse()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#maps.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Map.forward"><code class="docutils literal notranslate"><span class="pre">Map.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Map.inverse"><code class="docutils literal notranslate"><span class="pre">Map.inverse()</span></code></a></li>
-</ul>
-</li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#maps.Vegas"><code class="docutils literal notranslate"><span class="pre">Vegas</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.adapt"><code class="docutils literal notranslate"><span class="pre">Vegas.adapt()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.add_training_data"><code class="docutils literal notranslate"><span class="pre">Vegas.add_training_data()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.clear"><code class="docutils literal notranslate"><span class="pre">Vegas.clear()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.extract_grid"><code class="docutils literal notranslate"><span class="pre">Vegas.extract_grid()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.forward"><code class="docutils literal notranslate"><span class="pre">Vegas.forward()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.inverse"><code class="docutils literal notranslate"><span class="pre">Vegas.inverse()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.make_uniform"><code class="docutils literal notranslate"><span class="pre">Vegas.make_uniform()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#maps.Vegas.train"><code class="docutils literal notranslate"><span class="pre">Vegas.train()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.base.Uniform"><code class="docutils literal notranslate"><span class="pre">Uniform</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.base.Uniform.sample"><code class="docutils literal notranslate"><span class="pre">Uniform.sample()</span></code></a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-utils">utils module</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="src.html#utils.RAvg"><code class="docutils literal notranslate"><span class="pre">RAvg</span></code></a><ul>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.Q"><code class="docutils literal notranslate"><span class="pre">RAvg.Q</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.add"><code class="docutils literal notranslate"><span class="pre">RAvg.add()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.avg_neval"><code class="docutils literal notranslate"><span class="pre">RAvg.avg_neval</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.chi2"><code class="docutils literal notranslate"><span class="pre">RAvg.chi2</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.converged"><code class="docutils literal notranslate"><span class="pre">RAvg.converged()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.dof"><code class="docutils literal notranslate"><span class="pre">RAvg.dof</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.extend"><code class="docutils literal notranslate"><span class="pre">RAvg.extend()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.nitn"><code class="docutils literal notranslate"><span class="pre">RAvg.nitn</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.summary"><code class="docutils literal notranslate"><span class="pre">RAvg.summary()</span></code></a></li>
-<li class="toctree-l4"><a class="reference internal" href="src.html#utils.RAvg.update"><code class="docutils literal notranslate"><span class="pre">RAvg.update()</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#module-MCintegration.integrators">integrators module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.Integrator.sample"><code class="docutils literal notranslate"><span class="pre">Integrator.sample()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.Integrator.statistics"><code class="docutils literal notranslate"><span class="pre">Integrator.statistics()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#utils.get_device"><code class="docutils literal notranslate"><span class="pre">get_device()</span></code></a></li>
-<li class="toctree-l3"><a class="reference internal" href="src.html#utils.set_seed"><code class="docutils literal notranslate"><span class="pre">set_seed()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.MarkovChainMonteCarlo"><code class="docutils literal notranslate"><span class="pre">MarkovChainMonteCarlo</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.MarkovChainMonteCarlo.sample"><code class="docutils literal notranslate"><span class="pre">MarkovChainMonteCarlo.sample()</span></code></a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="src.html#module-contents">Module contents</a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.cleanup"><code class="docutils literal notranslate"><span class="pre">cleanup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.gaussian"><code class="docutils literal notranslate"><span class="pre">gaussian()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.get_ip"><code class="docutils literal notranslate"><span class="pre">get_ip()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.get_open_port"><code class="docutils literal notranslate"><span class="pre">get_open_port()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.random_walk"><code class="docutils literal notranslate"><span class="pre">random_walk()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.setup"><code class="docutils literal notranslate"><span class="pre">setup()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.integrators.uniform"><code class="docutils literal notranslate"><span class="pre">uniform()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#module-MCintegration.maps">maps module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.maps.CompositeMap"><code class="docutils literal notranslate"><span class="pre">CompositeMap</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.CompositeMap.forward"><code class="docutils literal notranslate"><span class="pre">CompositeMap.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.CompositeMap.inverse"><code class="docutils literal notranslate"><span class="pre">CompositeMap.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Configuration"><code class="docutils literal notranslate"><span class="pre">Configuration</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Map"><code class="docutils literal notranslate"><span class="pre">Map</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Map.forward"><code class="docutils literal notranslate"><span class="pre">Map.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Map.forward_with_detJ"><code class="docutils literal notranslate"><span class="pre">Map.forward_with_detJ()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Map.inverse"><code class="docutils literal notranslate"><span class="pre">Map.inverse()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas"><code class="docutils literal notranslate"><span class="pre">Vegas</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.adapt"><code class="docutils literal notranslate"><span class="pre">Vegas.adapt()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.adaptive_training"><code class="docutils literal notranslate"><span class="pre">Vegas.adaptive_training()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.add_training_data"><code class="docutils literal notranslate"><span class="pre">Vegas.add_training_data()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.clear"><code class="docutils literal notranslate"><span class="pre">Vegas.clear()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.extract_grid"><code class="docutils literal notranslate"><span class="pre">Vegas.extract_grid()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.forward"><code class="docutils literal notranslate"><span class="pre">Vegas.forward()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.inverse"><code class="docutils literal notranslate"><span class="pre">Vegas.inverse()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.maps.Vegas.make_uniform"><code class="docutils literal notranslate"><span class="pre">Vegas.make_uniform()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#module-MCintegration.utils">utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg"><code class="docutils literal notranslate"><span class="pre">RAvg</span></code></a><ul>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.Q"><code class="docutils literal notranslate"><span class="pre">RAvg.Q</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.add"><code class="docutils literal notranslate"><span class="pre">RAvg.add()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.avg_neval"><code class="docutils literal notranslate"><span class="pre">RAvg.avg_neval</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.chi2"><code class="docutils literal notranslate"><span class="pre">RAvg.chi2</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.converged"><code class="docutils literal notranslate"><span class="pre">RAvg.converged()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.dof"><code class="docutils literal notranslate"><span class="pre">RAvg.dof</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.extend"><code class="docutils literal notranslate"><span class="pre">RAvg.extend()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.nitn"><code class="docutils literal notranslate"><span class="pre">RAvg.nitn</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.summary"><code class="docutils literal notranslate"><span class="pre">RAvg.summary()</span></code></a></li>
+<li class="toctree-l4"><a class="reference internal" href="MCintegration.html#MCintegration.utils.RAvg.update"><code class="docutils literal notranslate"><span class="pre">RAvg.update()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.utils.get_device"><code class="docutils literal notranslate"><span class="pre">get_device()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="MCintegration.html#MCintegration.utils.set_seed"><code class="docutils literal notranslate"><span class="pre">set_seed()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="MCintegration.html#module-MCintegration">Module contents</a></li>
 </ul>
 </li>
 </ul>
@@ -161,7 +173,7 @@
           <a href="py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
         <li class="nav-item nav-item-0"><a href="index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">src</a></li> 
+        <li class="nav-item nav-item-this"><a href="">MCintegration</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">

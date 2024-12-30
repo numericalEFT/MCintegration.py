@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 
-<html lang="en" data-content_root="../">
+<html lang="en" data-content_root="../../">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>utils &#8212; MCintegration 1.0.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=4848ba22" />
-    <link rel="stylesheet" type="text/css" href="../_static/pyramid.css?v=424f8d56" />
-    <script src="../_static/documentation_options.js?v=8d563738"></script>
-    <script src="../_static/doctools.js?v=9bcbadda"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
-    <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
+    <title>MCintegration.utils &#8212; MCintegration 1.0.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=4848ba22" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pyramid.css?v=424f8d56" />
+    <script src="../../_static/documentation_options.js?v=8d563738"></script>
+    <script src="../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Neuton&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Nobile:regular,italic,bold,bolditalic&amp;subset=latin" type="text/css" media="screen" charset="utf-8" />
 <!--[if lte IE 6]>
-<link rel="stylesheet" href="../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
+<link rel="stylesheet" href="../../_static/ie6.css" type="text/css" media="screen" charset="utf-8" />
 <![endif]-->
 
   </head><body>
@@ -24,14 +24,14 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
+          <a href="../../genindex.html" title="General Index"
              accesskey="I">index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
+          <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" accesskey="U">Module code</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">utils</a></li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MCintegration.utils</a></li> 
       </ul>
     </div>  
 
@@ -40,18 +40,20 @@
         <div class="bodywrapper">
           <div class="body" role="main">
             
-  <h1>Source code for utils</h1><div class="highlight"><pre>
+  <h1>Source code for MCintegration.utils</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">gvar</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="n">MINVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">min_10_exp</span> <span class="o">+</span> <span class="mi">50</span><span class="p">)</span>
 <span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">max_10_exp</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span>
+<span class="n">_VECTOR_TYPES</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="nb">list</span><span class="p">]</span>
 
 
 <div class="viewcode-block" id="RAvg">
-<a class="viewcode-back" href="../src.html#utils.RAvg">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg">[docs]</a>
 <span class="k">class</span> <span class="nc">RAvg</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">GVar</span><span class="p">):</span>
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">itn_results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sum_neval</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">weighted</span><span class="p">:</span>
@@ -77,7 +79,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">=</span> <span class="n">sum_neval</span>
 
 <div class="viewcode-block" id="RAvg.update">
-<a class="viewcode-back" href="../src.html#utils.RAvg.update">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.update">[docs]</a>
     <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">last_neval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="o">**</span><span class="mf">0.5</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">last_neval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -85,7 +87,7 @@
 
 
 <div class="viewcode-block" id="RAvg.add">
-<a class="viewcode-back" href="../src.html#utils.RAvg.add">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.add">[docs]</a>
     <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">gvar</span><span class="o">.</span><span class="n">GVarRef</span><span class="p">):</span>
@@ -107,7 +109,7 @@
 
 
 <div class="viewcode-block" id="RAvg.extend">
-<a class="viewcode-back" href="../src.html#utils.RAvg.extend">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.extend">[docs]</a>
     <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ravg</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge results from :class:`RAvg` object ``ravg`` after results currently in ``self``.&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">ravg</span><span class="o">.</span><span class="n">itn_results</span><span class="p">:</span>
@@ -195,14 +197,14 @@
     <span class="p">)</span>
 
 <div class="viewcode-block" id="RAvg.summary">
-<a class="viewcode-back" href="../src.html#utils.RAvg.summary">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.summary">[docs]</a>
     <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Assemble summary of results, iteration-by-iteration, into a string.</span>
 
 <span class="sd">        Args:</span>
 <span class="sd">            weighted (bool): Display weighted averages of results from different</span>
 <span class="sd">                iterations if ``True``; otherwise show unweighted averages.</span>
-<span class="sd">                Default behavior is determined by |vegas|.</span>
+<span class="sd">                Default behavior is determined by vegas.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">weighted</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">weighted</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">weighted</span>
@@ -239,15 +241,71 @@
 
 
 <div class="viewcode-block" id="RAvg.converged">
-<a class="viewcode-back" href="../src.html#utils.RAvg.converged">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.converged">[docs]</a>
     <span class="k">def</span> <span class="nf">converged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">atol</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sdev</span> <span class="o">&lt;</span> <span class="n">atol</span> <span class="o">+</span> <span class="n">rtol</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span></div>
-</div>
+
+
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">yy</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_VECTOR_TYPES</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># let ndarray handle it</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+            <span class="n">resx</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">xx</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">xx</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">yy</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+                <span class="n">resy</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">yy</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">yy</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                    <span class="n">weighted</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                    <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">resx</span> <span class="o">*</span> <span class="n">resy</span><span class="p">],</span>
+                    <span class="n">sum_neval</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                    <span class="n">weighted</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                    <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">resx</span> <span class="o">*</span> <span class="n">yy</span><span class="p">],</span>
+                    <span class="n">sum_neval</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">yy</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+            <span class="n">resy</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">yy</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">yy</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                <span class="n">weighted</span><span class="o">=</span><span class="n">yy</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">xx</span> <span class="o">*</span> <span class="n">resy</span><span class="p">],</span>
+                <span class="n">sum_neval</span><span class="o">=</span><span class="n">yy</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>
+
+    <span class="k">def</span> <span class="fm">__truediv__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">yy</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_VECTOR_TYPES</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># let ndarray handle it</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+            <span class="n">resx</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">xx</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">xx</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">yy</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+                <span class="n">resy</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">yy</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">yy</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                    <span class="n">weighted</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                    <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">resx</span> <span class="o">/</span> <span class="n">resy</span><span class="p">],</span>
+                    <span class="n">sum_neval</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+                <span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                    <span class="n">weighted</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                    <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">resx</span> <span class="o">/</span> <span class="n">yy</span><span class="p">],</span>
+                    <span class="n">sum_neval</span><span class="o">=</span><span class="n">xx</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+                <span class="p">)</span>
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">yy</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
+            <span class="n">resy</span> <span class="o">=</span> <span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">yy</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span> <span class="n">yy</span><span class="o">.</span><span class="n">sdev</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
+                <span class="n">weighted</span><span class="o">=</span><span class="n">yy</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
+                <span class="n">itn_results</span><span class="o">=</span><span class="p">[</span><span class="n">xx</span> <span class="o">/</span> <span class="n">resy</span><span class="p">],</span>
+                <span class="n">sum_neval</span><span class="o">=</span><span class="n">yy</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">NotImplemented</span></div>
 
 
 
 <div class="viewcode-block" id="set_seed">
-<a class="viewcode-back" href="../src.html#utils.set_seed">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.set_seed">[docs]</a>
 <span class="k">def</span> <span class="nf">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
     <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
@@ -256,9 +314,12 @@
 
 
 <div class="viewcode-block" id="get_device">
-<a class="viewcode-back" href="../src.html#utils.get_device">[docs]</a>
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.get_device">[docs]</a>
 <span class="k">def</span> <span class="nf">get_device</span><span class="p">():</span>
-    <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span> <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">()</span> <span class="k">else</span> <span class="s2">&quot;cpu&quot;</span><span class="p">)</span></div>
+    <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">current_device</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">(</span><span class="s2">&quot;cpu&quot;</span><span class="p">)</span></div>
 
 </pre></div>
 
@@ -271,7 +332,7 @@
 <search id="searchbox" style="display: none" role="search">
   <h3 id="searchlabel">Quick search</h3>
     <div class="searchformwrapper">
-    <form class="search" action="../search.html" method="get">
+    <form class="search" action="../../search.html" method="get">
       <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
       <input type="submit" value="Go" />
     </form>
@@ -286,14 +347,14 @@
       <h3>Navigation</h3>
       <ul>
         <li class="right" style="margin-right: 10px">
-          <a href="../genindex.html" title="General Index"
+          <a href="../../genindex.html" title="General Index"
              >index</a></li>
         <li class="right" >
-          <a href="../py-modindex.html" title="Python Module Index"
+          <a href="../../py-modindex.html" title="Python Module Index"
              >modules</a> |</li>
-        <li class="nav-item nav-item-0"><a href="../index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
-          <li class="nav-item nav-item-1"><a href="index.html" >Module code</a> &#187;</li>
-        <li class="nav-item nav-item-this"><a href="">utils</a></li> 
+        <li class="nav-item nav-item-0"><a href="../../index.html">MCintegration 1.0.0 documentation</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">MCintegration.utils</a></li> 
       </ul>
     </div>
     <div class="footer" role="contentinfo">
