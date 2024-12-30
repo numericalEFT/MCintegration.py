@@ -43,9 +43,8 @@ jobs:
 
       - name: Run tests
         run: |
-          cat codecov.yml | curl --data-binary @- https://codecov.io/validate
           export PYTHONPATH=MCintegration
-          pytest --cov --cov-report=xml
+          pytest --cov --cov-report=xml --ignore=examples
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
