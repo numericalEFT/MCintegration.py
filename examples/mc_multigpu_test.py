@@ -10,8 +10,8 @@ from MCintegration import (
 )
 
 
-# backend = "nccl"
-backend = "gloo"
+backend = "nccl"
+# backend = "gloo"
 # set_seed(42)
 setup(backend=backend)
 device = get_device()
