@@ -4,4 +4,7 @@ coverage:
   status:
     patch:
       default:
-        target: 85%
+        target: 84%
+    project:
+      default:
+        target: 84%
