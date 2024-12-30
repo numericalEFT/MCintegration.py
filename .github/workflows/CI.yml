@@ -3,10 +3,10 @@ name: CI
 on: 
   push:
     branches:
-      - master
+      - cyfan
   pull_request:
     branches:
-      - master
+      - cyfan
 
 permissions:
   contents: write
@@ -43,7 +43,7 @@ jobs:
 
       - name: Run tests
         run: |
-          export PYTHONPATH=src
+          export PYTHONPATH=MCintegration
           pytest --cov --cov-report=xml
 
       - name: Upload coverage to Codecov
@@ -68,8 +68,8 @@ jobs:
       - name: Build documentation
         run: |
           cd docs
-          sphinx-apidoc -o source ../src ../src/*_test.py
-          python ../clean_src_rst.py
+          sphinx-apidoc -o source ../MCintegration ../MCintegration/*_test.py
+          python ../clean_MCintegration_rst.py
           make html
           python ../clean_html_sidebar.py
 
