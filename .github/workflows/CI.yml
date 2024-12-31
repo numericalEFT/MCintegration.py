@@ -3,10 +3,10 @@ name: CI
 on: 
   push:
     branches:
-      - master
+      - cyfan
   pull_request:
     branches:
-      - master
+      - cyfan
 
 permissions:
   contents: write
@@ -43,8 +43,12 @@ jobs:
 
       - name: Run tests
         run: |
+          export RANK=0
+          export WORLD_SIZE=1
+          export MASTER_ADDR=localhost
+          export MASTER_PORT=12345
           export PYTHONPATH=MCintegration
-          pytest --cov --cov-report=xml --ignore=examples
+          pytest --cov --cov-report=xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
