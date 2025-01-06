@@ -3,10 +3,10 @@ name: CI
 on: 
   push:
     branches:
-      - cyfan
+      - master
   pull_request:
     branches:
-      - cyfan
+      - master
 
 permissions:
   contents: write
