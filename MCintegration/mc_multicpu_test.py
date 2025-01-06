@@ -2,8 +2,16 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import os
+import pytest
 from integrators import MonteCarlo, MarkovChainMonteCarlo
 
+@pytest.fixture
+def rank():
+    return 0
+
+@pytest.fixture
+def world_size():
+    return 8
 
 def test_init_process(rank, world_size, fn, backend="gloo"):
     # Set MASTER_ADDR and MASTER_PORT appropriately
