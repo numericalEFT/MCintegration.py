@@ -2,8 +2,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import os
-import MCintegration
-from MCintegration import MonteCarlo, MarkovChainMonteCarlo
+from integrators import MonteCarlo, MarkovChainMonteCarlo
 
 
 def init_process(rank, world_size, fn, backend="gloo"):
