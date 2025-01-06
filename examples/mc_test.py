@@ -16,35 +16,87 @@ def test_nothing():
     pass
 
 
-def unit_circle_integrand(x, f):
+# def unit_circle_integrand(x, f):
+#     f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
+#     return f[:, 0]
+
+
+# def gaussian_integrand(x, f):
+#     sigma = 1.0
+
+#     f[:, 0] = (1.0 / (2 * torch.pi * sigma**2)) * torch.exp(
+#         -1.0 * torch.sum((x - 0.5) ** 2 / sigma**2, -1)
+#     )
+#     return f[:, 0]
+
+# def half_sphere_integrand(x, f):
+#     f[:, 0] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
+#     return f[:, 0]
+
+
+# def two_integrands(x, f):
+#     f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
+#     f[:, 1] = -torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0)
+#     return f.mean(dim=-1)
+
+
+# def sharp_integrands(x, f):
+#     f[:, 0] = torch.sum((x - 0.5) ** 2, dim=-1)
+#     f[:, 0] *= -200
+#     f[:, 0].exp_()
+#     f[:, 1] = f[:, 0] * x[:, 0]
+#     f[:, 2] = f[:, 0] * x[:, 0] ** 2
+#     return f.mean(dim=-1)
+
+
+def unit_circle_integrand(x):
+    f = torch.zeros((x.shape[0], 1), device=x.device, dtype=x.dtype)
     f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
-    return f[:, 0]
+    return f, f[:, 0]
 
 
-def half_sphere_integrand(x, f):
+def gaussian_integrand(x):
+    sigma = 0.2
+    f = torch.zeros((x.shape[0], 1), device=x.device, dtype=x.dtype)
+    f[:, 0] = (1.0 / (2 * torch.pi * sigma**2)) * torch.exp(
+        -1.0 * torch.sum((x - 0.5) ** 2 / sigma**2, -1)
+    )
+    return f, f[:, 0]
+
+
+def sharp_log(x):
+    f = torch.zeros((x.shape[0], 1), device=x.device, dtype=x.dtype)
+    f[:, 0] = -torch.log(x[:, 0]) / torch.sqrt(x[:, 0])
+    return f, f[:, 0]
+
+
+def half_sphere_integrand(x):
+    f = torch.zeros((x.shape[0], 1), device=x.device, dtype=x.dtype)
     f[:, 0] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
-    return f[:, 0]
+    return f, f[:, 0]
 
 
-def two_integrands(x, f):
+def two_integrands(x):
+    f = torch.zeros((x.shape[0], 2), device=x.device, dtype=x.dtype)
     f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
     f[:, 1] = -torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0)
-    return f.mean(dim=-1)
+    return f, f.mean(dim=-1)
 
 
-def sharp_integrands(x, f):
+def sharp_integrands(x):
+    f = torch.zeros((x.shape[0], 3), device=x.device, dtype=x.dtype)
     f[:, 0] = torch.sum((x - 0.5) ** 2, dim=-1)
     f[:, 0] *= -200
     f[:, 0].exp_()
     f[:, 1] = f[:, 0] * x[:, 0]
     f[:, 2] = f[:, 0] * x[:, 0] ** 2
-    return f.mean(dim=-1)
+    return f, f.mean(dim=-1)
 
 
 dim = 2
-bounds = [(-1, 1), (-1, 1)]
+bounds = [(0, 1), (0, 1)]
 n_eval = 10000
-batch_size = 1000
+batch_size = 5000
 n_therm = 10
 
 latent_size = 2
@@ -64,15 +116,15 @@ nf_map = CompositeMap(maps, device=device)
 print(
     "total model params", sum(p.numel() for p in nf_map.parameters() if p.requires_grad)
 )
-nf_map.adaptive_train(dim, batch_size, unit_circle_integrand, epoch=10, alpha=0.5)
+nf_map.adaptive_train(dim, batch_size, sharp_log, epoch=100, alpha=0.5)
 nf_integrator = MonteCarlo(
     bounds=bounds,
-    f=unit_circle_integrand,
+    f=sharp_log,
     maps=nf_map,
     batch_size=batch_size,
 )
 res = nf_integrator(n_eval)
-print("VEGAS Integral results: ", res)
+print("NF Integral results: ", res)
 
 
 vegas_map = Vegas(dim, device=device, ninc=10)
@@ -117,10 +169,10 @@ print("MCMC Integral results: ", res)
 # )
 # print(result.timeit(10))
 
-vegas_map.adaptive_training(batch_size, unit_circle_integrand, alpha=0.5)
+vegas_map.adaptive_training(batch_size, sharp_log, alpha=0.5)
 vegas_integrator = MonteCarlo(
     bounds,
-    f=unit_circle_integrand,
+    f=sharp_log,
     maps=vegas_map,
     batch_size=batch_size,
 )

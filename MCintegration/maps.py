@@ -1,15 +1,15 @@
 import numpy as np
 import torch
 from torch import nn
-from .base import Uniform
-from .utils import get_device, set_requires_grad
+from MCintegration.base import Uniform
+from MCintegration.utils import get_device, set_requires_grad
 import sys
 
 TINY = 10 ** (sys.float_info.min_10_exp + 50)
 
 
 class Configuration:
-    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float64):
+    def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float32):
         if device is None:
             self.device = get_device()
         else:
@@ -21,7 +21,7 @@ class Configuration:
         self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
         self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
         self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
-        self.detJ = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
 
     def forward_kld(self):
         """Estimates forward KL divergence, see [arXiv 1912.02762](https://arxiv.org/abs/1912.02762)
@@ -48,21 +48,21 @@ class Configuration:
         #     z, log_det = flow(z)
         #     log_q -= log_det
         log_q = -torch.log(self.detJ)
-        if not score_fn:
-            x_ = self.x
-            log_q = torch.zeros(len(x_), device=x_.device)
-            set_requires_grad(self, False)
-            for i in range(len(self.flows) - 1, -1, -1):
-                x_, log_det = self.flows[i].inverse(x_)
-                log_q += log_det
-            log_q += self.q0.log_prob(x_)
-            set_requires_grad(self, True)
-        log_p = torch.log(self.fx)
+        # if not score_fn:
+        #     x_ = self.x
+        #     log_q = torch.zeros(len(x_), device=x_.device)
+        #     set_requires_grad(self, False)
+        #     for i in range(len(self.flows) - 1, -1, -1):
+        #         x_, log_det = self.flows[i].inverse(x_)
+        #         log_q += log_det
+        #     log_q += self.q0.log_prob(x_)
+        #     set_requires_grad(self, True)
+        log_p = torch.log(self.weight.abs())
         return torch.mean(log_q) - beta * torch.mean(log_p)
 
 
 class Map(nn.Module):
-    def __init__(self, device=None, dtype=torch.float64):
+    def __init__(self, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
@@ -88,8 +88,14 @@ class CompositeMap(Map):
             raise ValueError("Maps can not be empty.")
         if dtype is None:
             dtype = torch.float32  # maps[-1].dtype
+        if device is None:
+            device = torch.device("cpu")
+
+        # for map in maps:
+        #     map.to(device)
         super().__init__(device, dtype)
         self.maps = nn.ModuleList(maps)
+        self.maps.to(device)
 
     def forward(self, u):
         log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
@@ -142,16 +148,14 @@ class CompositeMap(Map):
             optimizer.zero_grad()
             loss_accum = torch.zeros(1, requires_grad=False, device=self.device)
             config.u, log_detJ0 = q0.sample(batch_size)
-            config.x[:], log_detJ = self.forward(config.u)
-            config.weight = f(config.x, config.fx)
+            config.x, log_detJ = self.forward(config.u)
+            config.fx, config.weight = f(config.x)
             config.detJ = torch.exp(log_detJ0 + log_detJ)
-            for _ in range(accum_iter):
-                loss = config.reverse_kld()
-                loss = loss / accum_iter
-                loss_accum += loss
-                # Do backprop and optimizer step
-                if ~(torch.isnan(loss) | torch.isinf(loss)):
-                    loss.backward()
+
+            loss = config.reverse_kld()
+
+            if ~(torch.isnan(loss) | torch.isinf(loss)):
+                loss.backward()
             print(loss)
             torch.nn.utils.clip_grad_norm_(
                 self.parameters(), max_norm=1.0
@@ -166,7 +170,7 @@ class CompositeMap(Map):
 
 
 class Vegas(Map):
-    def __init__(self, dim, ninc=1000, alpha=0.5, device=None, dtype=torch.float64):
+    def __init__(self, dim, ninc=1000, device=None, dtype=torch.float32):
         super().__init__(device, dtype)
 
         self.dim = dim
@@ -191,7 +195,6 @@ class Vegas(Map):
             )
 
         self.make_uniform()
-        self.alpha = alpha
 
     def adaptive_training(
         self,
@@ -209,7 +212,7 @@ class Vegas(Map):
         for _ in range(epoch):
             sample.u, log_detJ0 = q0.sample(batch_size)
             sample.x[:], log_detJ = self.forward(sample.u)
-            sample.weight = f(sample.x, sample.fx)
+            sample.fx, sample.weight = f(sample.x)
             sample.detJ = torch.exp(log_detJ0 + log_detJ)
             self.add_training_data(sample)
             self.adapt(alpha)
@@ -376,7 +379,7 @@ class Vegas(Map):
 
     @torch.no_grad()
     def forward(self, u):
-        u = u.to(self.device)
+        # u = u.to(self.device)
         u_ninc = u * self.ninc
         iu = torch.floor(u_ninc).long()
         du_ninc = u_ninc - torch.floor(u_ninc).long()
@@ -441,8 +444,8 @@ class Vegas(Map):
 
 
 # class NormalizingFlow(Map):
-#     def __init__(self, bounds, flow_model, device="cpu"):
-#         super().__init__(bounds, device)
+#     def __init__(self, dim, flow_model, device="cpu"):
+#         super().__init__(dim, device)
 #         self.flow_model = flow_model.to(device)
 
 #     def forward(self, u):

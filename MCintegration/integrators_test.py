@@ -2,366 +2,295 @@ import unittest
 import torch
 import numpy as np
 from integrators import Integrator, MonteCarlo, MarkovChainMonteCarlo
-from utils import RAvg
+
+# from base import LinearMap, Uniform
+from maps import Configuration
 
 
 class TestIntegrator(unittest.TestCase):
     def setUp(self):
-        # Common setup for all tests
-        self.bounds = [[0, 1], [2, 3]]
-        self.device = "cpu"
-        self.dtype = torch.float64
-        self.neval = 1000
-        self.batch_size = 100
+        self.bounds = torch.tensor([[0.0, 1.0], [-1.0, 1.0]], dtype=torch.float64)
+        self.f = lambda x, fx: torch.sum(x**2, dim=1, keepdim=True)
+        self.batch_size = 1000
 
-    def test_init_with_bounds(self):
+    def test_initialization(self):
         integrator = Integrator(
-            bounds=self.bounds, device=self.device, dtype=self.dtype
+            bounds=self.bounds, f=self.f, batch_size=self.batch_size
         )
-        self.assertEqual(integrator.bounds.tolist(), self.bounds)
         self.assertEqual(integrator.dim, 2)
-        self.assertEqual(integrator.neval, self.neval)
-        self.assertEqual(integrator.batch_size, self.neval)
-        self.assertEqual(integrator.device, self.device)
-        self.assertEqual(integrator.dtype, self.dtype)
+        self.assertEqual(integrator.batch_size, 1000)
+        self.assertEqual(integrator.f_dim, 1)
+        # Check map type and properties instead of direct instance check
+        self.assertTrue(hasattr(integrator.maps, "forward_with_detJ"))
+        self.assertTrue(hasattr(integrator.maps, "device"))
+        self.assertTrue(hasattr(integrator.maps, "dtype"))
 
-    def test_init_with_maps(self):
-        class MockMaps:
-            def __init__(self, bounds, dtype):
-                self.bounds = torch.tensor(bounds, dtype=dtype)
-                self.dtype = dtype
+    def test_bounds_conversion(self):
+        # Test various input types
+        test_cases = [
+            (np.array([[0.0, 1.0], [-1.0, 1.0]]), "numpy array"),
+            ([[0.0, 1.0], [-1.0, 1.0]], "list"),
+            (
+                torch.tensor([[0.0, 1.0], [-1.0, 1.0]], dtype=torch.float32),
+                "float32 tensor",
+            ),
+            (
+                torch.tensor([[0.0, 1.0], [-1.0, 1.0]], dtype=torch.float64),
+                "float64 tensor",
+            ),
+        ]
 
-        maps = MockMaps(bounds=self.bounds, dtype=self.dtype)
-        integrator = Integrator(maps=maps, device=self.device, dtype=self.dtype)
-        self.assertEqual(integrator.bounds.tolist(), self.bounds)
-        self.assertEqual(integrator.dim, 2)
-        self.assertEqual(integrator.neval, self.neval)
-        self.assertEqual(integrator.batch_size, self.neval)
-        self.assertEqual(integrator.device, self.device)
-        self.assertEqual(integrator.dtype, self.dtype)
+        for bounds, desc in test_cases:
+            with self.subTest(desc=desc):
+                integrator = Integrator(bounds=bounds, f=self.f)
+                self.assertIsInstance(integrator.bounds, torch.Tensor)
+                self.assertEqual(
+                    integrator.bounds.dtype, torch.float32
+                )  # Check dtype conversion
+                self.assertEqual(
+                    integrator.bounds.shape, (2, 2)
+                )  # Check shape preservation
 
-    def test_init_with_mismatched_dtype(self):
-        class MockMaps:
-            def __init__(self, bounds, dtype):
-                self.bounds = bounds
-                self.dtype = dtype
+    def test_invalid_bounds(self):
+        invalid_cases = [
+            ("invalid", TypeError, "string bounds"),
+            (123, TypeError, "integer bounds"),
+            ([[1, 2], [3]], ValueError, "inconsistent dimensions"),
+            (
+                np.array([[1.0]]),
+                AssertionError,
+                "invalid shape",
+            ),  # Changed from single value
+            (np.array([]), IndexError, "empty bounds"),  # Changed from empty list
+        ]
 
-        maps = MockMaps(bounds=self.bounds, dtype=torch.float32)
-        with self.assertRaises(ValueError):
-            Integrator(maps=maps, device=self.device, dtype=self.dtype)
+        for bounds, error_type, desc in invalid_cases:
+            with self.subTest(desc=desc):
+                with self.assertRaises(error_type):
+                    Integrator(bounds=bounds, f=self.f)
 
-    def test_init_with_invalid_bounds(self):
-        with self.assertRaises(TypeError):
-            Integrator(bounds=123, device=self.device, dtype=self.dtype)
+    def test_device_handling(self):
+        if torch.cuda.is_available():
+            integrator = Integrator(bounds=self.bounds, f=self.f, device="cuda")
+            self.assertTrue(integrator.bounds.is_cuda)
+            self.assertTrue(integrator.maps.device == "cuda")
 
-    def test_sample_without_maps(self):
-        integrator = Integrator(
-            bounds=self.bounds, device=self.device, dtype=self.dtype
-        )
-        u, log_detJ = integrator.sample(100)
-        self.assertEqual(u.shape, (100, 2))
-        self.assertEqual(log_detJ.shape, (100,))
-
-    def test_sample_with_maps(self):
-        class MockMaps:
-            def __init__(self, bounds, dtype):
-                self.bounds = bounds
-                self.dtype = dtype
-
-            def forward(self, u):
-                return u, torch.zeros(u.shape[0], dtype=self.dtype)
-
-        maps = MockMaps(bounds=self.bounds, dtype=self.dtype)
-        integrator = Integrator(maps=maps, device=self.device, dtype=self.dtype)
-        u, log_detJ = integrator.sample(100)
-        self.assertEqual(u.shape, (100, 2))
-        self.assertEqual(log_detJ.shape, (100,))
+    def test_dtype_handling(self):
+        dtypes = [torch.float32, torch.float64]
+        for dtype in dtypes:
+            with self.subTest(dtype=dtype):
+                integrator = Integrator(bounds=self.bounds, f=self.f, dtype=dtype)
+                self.assertEqual(integrator.bounds.dtype, dtype)
+                self.assertEqual(integrator.maps.dtype, dtype)
 
 
 class TestMonteCarlo(unittest.TestCase):
     def setUp(self):
-        # Setup common parameters for tests
-        self.maps = None
-        self.bounds = [[0, 1]]
-        self.q0 = None
-        self.neval = 1000
-        self.batch_size = 100
-        self.device = "cpu"
-        self.dtype = torch.float64
-        self.monte_carlo = MonteCarlo(
-            self.maps,
-            self.bounds,
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.device,
-            self.dtype,
+        self.bounds = torch.tensor([[-1.0, 1.0], [-1, 1]], dtype=torch.float64)
+
+        def simple_integral(x, fx):
+            fx[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double() / torch.pi
+            return fx[:, 0]
+
+        self.simple_integral = simple_integral
+        self.mc = MonteCarlo(
+            bounds=self.bounds, f=self.simple_integral, batch_size=10000
         )
 
-    def f(self, x, fx):
-        fx[:, 0] = x.sum(dim=1)
-        return fx[:, 0]
+    def test_simple_integration(self):
+        # Test with different numbers of evaluations
+        test_cases = [
+            (10000, 1.0, 0.1),
+            (100000, 1.0, 0.05),
+            (1000000, 1.0, 0.01),
+        ]
 
-    def f2(self, x, fx):
-        fx[:, 0] = x.sum(dim=1)
-        fx[:, 1] = x.prod(dim=1)
-        return fx.mean(dim=1)
+        for neval, expected, tolerance in test_cases:
+            with self.subTest(neval=neval):
+                result = self.mc(neval=neval)
+                if hasattr(result, "mean"):
+                    value = result.mean
+                else:
+                    value = result
+                self.assertAlmostEqual(float(value), expected, delta=tolerance)
 
-    def tearDown(self):
-        # Teardown after tests
-        pass
+    def test_multidimensional_integration(self):
+        # Test integration over higher dimensions
+        bounds = torch.tensor([[0.0, 1.0], [0.0, 1.0]], dtype=torch.float64)
 
-    def test_initialization(self):
-        # Test if the MonteCarlo class initializes correctly
-        self.assertIsInstance(self.monte_carlo, MonteCarlo)
-        self.assertEqual(self.monte_carlo.neval, self.neval)
-        self.assertEqual(self.monte_carlo.batch_size, self.batch_size)
-        self.assertEqual(self.monte_carlo.device, self.device)
-        self.assertEqual(self.monte_carlo.dtype, self.dtype)
-        self.assertTrue(
-            torch.equal(
-                self.monte_carlo.bounds,
-                torch.tensor(self.bounds, dtype=self.dtype, device=self.device),
-            )
-        )
-        self.assertEqual(self.monte_carlo.dim, 1)
+        def volume_integral(x, fx):
+            fx[:] = torch.ones_like(fx)
+            return fx[:, 0]
 
-    def test_call_single_tensor_output(self):
-        # Test the __call__ method with a function that returns a single tensor
-        result = self.monte_carlo(self.f)
-        self.assertIsInstance(result, RAvg)
-        self.assertEqual(result.shape, ())
-        self.assertIsInstance(result.mean, float)
-        self.assertIsInstance(result.sdev, float)
+        mc = MonteCarlo(bounds=bounds, f=volume_integral, batch_size=10000)
+        result = mc(neval=100000)
+        expected_volume = 1.0  # Unit square
 
-    def test_call_multiple_tensor_output(self):
-        # Test the __call__ method with a function that returns a list of tensors
-        result = self.monte_carlo(self.f2, f_dim=2)
-        self.assertIsInstance(result, np.ndarray)
-        self.assertEqual(result.shape, (2,))
-        self.assertEqual(result.dtype, RAvg)
+        if hasattr(result, "mean"):
+            value = result.mean
+        else:
+            value = result
+        self.assertAlmostEqual(float(value), expected_volume, places=1)
 
-    def test_call_invalid_output_type(self):
-        # Test the __call__ method with a function that returns an invalid type
-        def f(x):
-            return "invalid"
+    def test_convergence(self):
+        # Test that uncertainty decreases with more samples
+        results = []
+        nevals = [10000, 100000, 1000000]
 
-        with self.assertRaises(TypeError):
-            self.monte_carlo(f)
+        for neval in nevals:
+            result = self.mc(neval=neval)
+            if hasattr(result, "mean"):
+                value = result.mean
+                uncertainty = result.sdev  # Changed from error to sdev
+            else:
+                value = result
+                uncertainty = abs(value - 1.0)
+            results.append(uncertainty)
 
-    def test_sample_method(self):
-        # Test the sample method to ensure it returns the correct shape
-        x, log_detJ = self.monte_carlo.sample(self.batch_size)
-        self.assertEqual(x.shape, (self.batch_size, 1))
-        self.assertEqual(log_detJ.shape, (self.batch_size,))
+        # Check that uncertainties decrease with more samples
+        for i in range(len(results) - 1):
+            self.assertGreater(results[i], results[i + 1])
 
-    def test_call_with_cuda(self):
-        # Test the __call__ method with device = "cuda" if available
-        if torch.cuda.is_available():
-            monte_carlo_cuda = MonteCarlo(
-                self.maps,
-                self.bounds,
-                self.q0,
-                self.neval,
-                self.batch_size,
-                "cuda",
-                self.dtype,
-            )
-            result_cuda = monte_carlo_cuda(self.f)
-            self.assertIsInstance(result_cuda, RAvg)
-            self.assertIsInstance(result_cuda.mean, float)
-            self.assertIsInstance(result_cuda.sdev, float)
-            self.assertEqual(result_cuda.shape, ())
+    def test_batch_size_handling(self):
+        test_cases = [
+            (100, 32),  # Small neval
+            (1000, 16),  # Medium neval
+            (10000, 8),  # Large neval
+        ]
 
-    def test_call_with_different_dtype(self):
-        # Test the __call__ method with different dtype values
-        # Test with dtype = torch.float32
-        monte_carlo_float32 = MonteCarlo(
-            self.maps,
-            self.bounds,
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.device,
-            torch.float32,
-        )
-        result_float32 = monte_carlo_float32(self.f)
-        self.assertIsInstance(result_float32, RAvg)
-        self.assertIsInstance(result_float32.mean, float)
-        self.assertIsInstance(result_float32.sdev, float)
-        self.assertEqual(result_float32.shape, ())
-
-    def test_call_with_different_bounds(self):
-        # Test the __call__ method with different bounds values
-        # Test with bounds = [0, 2]
-        monte_carlo_bounds_0_2 = MonteCarlo(
-            self.maps,
-            [[0, 2]],
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.device,
-            self.dtype,
-        )
-        result_bounds_0_2 = monte_carlo_bounds_0_2(self.f)
-        self.assertIsInstance(result_bounds_0_2, RAvg)
-        self.assertEqual(result_bounds_0_2.shape, ())
-
-        # Test with bounds = [-1, 1]
-        monte_carlo_bounds_minus1_1 = MonteCarlo(
-            self.maps,
-            [(-1, 1)],
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.device,
-            self.dtype,
-        )
-        result_bounds_minus1_1 = monte_carlo_bounds_minus1_1(self.f)
-        self.assertIsInstance(result_bounds_minus1_1, RAvg)
-        self.assertEqual(result_bounds_minus1_1.shape, ())
+        for neval, nblock in test_cases:
+            with self.subTest(neval=neval, nblock=nblock):
+                if neval < nblock * self.mc.batch_size:
+                    with self.assertWarns(UserWarning):
+                        self.mc(neval=neval, nblock=nblock)
+                else:
+                    # Should not raise warning
+                    self.mc(neval=neval, nblock=nblock)
 
 
-class TestMCMC(unittest.TestCase):
+class TestMarkovChainMonteCarlo(unittest.TestCase):
     def setUp(self):
-        # Setup common parameters for tests
-        self.maps = None
-        self.bounds = [(-1.2, 0.6)]
-        self.q0 = None
-        self.neval = 10000
-        self.batch_size = 100
-        self.nburnin = 500
-        self.device = "cpu"
-        self.dtype = torch.float64
+        self.bounds = torch.tensor([[-1.0, 1.0], [-1, 1]], dtype=torch.float64)
+
+        def simple_integral(x, fx):
+            fx[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double() / torch.pi
+            return fx[:, 0]
+
+        self.simple_integral = simple_integral
         self.mcmc = MarkovChainMonteCarlo(
-            self.maps,
-            self.bounds,
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.nburnin,
-            self.device,
-            self.dtype,
+            bounds=self.bounds, f=self.simple_integral, batch_size=1000, nburnin=5
         )
 
-    def f(self, x, fx):
-        fx[:, 0] = x.sum(dim=1)
-        return fx[:, 0]
+    def test_proposal_distribution(self):
+        # Test different proposal distributions
+        def custom_proposal(dim, device, dtype, u, **kwargs):
+            return torch.rand_like(u) * 0.5  # Restricted range
 
-    def f2(self, x, fx):
-        fx[:, 0] = x.sum(dim=1)
-        fx[:, 1] = x.prod(dim=1)
-        return fx.mean(dim=1)
+        test_cases = [
+            (None, "default uniform"),
+            (custom_proposal, "custom proposal"),
+        ]
 
-    def tearDown(self):
-        # Teardown after tests
-        pass
+        for proposal_dist, desc in test_cases:
+            with self.subTest(desc=desc):
+                if proposal_dist:
+                    mcmc = MarkovChainMonteCarlo(
+                        bounds=self.bounds,
+                        f=self.simple_integral,
+                        proposal_dist=proposal_dist,
+                    )
+                else:
+                    mcmc = self.mcmc
 
-    def test_initialization(self):
-        # Test if the MarkovChainMonteCarlo class initializes correctly
-        self.assertIsInstance(self.mcmc, MarkovChainMonteCarlo)
-        self.assertEqual(self.mcmc.neval, self.neval)
-        self.assertEqual(self.mcmc.batch_size, self.batch_size)
-        self.assertEqual(self.mcmc.nburnin, self.nburnin)
-        self.assertEqual(self.mcmc.device, self.device)
-        self.assertEqual(self.mcmc.dtype, self.dtype)
-        self.assertTrue(
-            torch.equal(
-                self.mcmc.bounds,
-                torch.tensor(self.bounds, dtype=self.dtype, device=self.device),
-            )
-        )
-        self.assertEqual(self.mcmc.dim, 1)
+                config = Configuration(
+                    mcmc.batch_size,
+                    mcmc.dim,
+                    mcmc.f_dim,
+                    mcmc.device,
+                    mcmc.dtype,
+                )
+                config.u, config.detJ = mcmc.q0.sample_with_detJ(mcmc.batch_size)
+                new_u = mcmc.proposal_dist(mcmc.dim, mcmc.device, mcmc.dtype, config.u)
+                self.assertEqual(new_u.shape, config.u.shape)
+                self.assertTrue(torch.all(new_u >= 0) and torch.all(new_u <= 1))
 
-    def test_call_single_tensor_output(self):
-        # Test the __call__ method with a function that returns a single tensor
-        result = self.mcmc(self.f)
-        self.assertIsInstance(result, RAvg)
-        self.assertEqual(result.shape, ())
-        self.assertIsInstance(result.mean, float)
-        self.assertIsInstance(result.sdev, float)
+    def test_burnin_effect(self):
+        # Test different burnin values
+        test_cases = [
+            (0, 0.2),  # No burnin
+            (5, 0.15),  # Short burnin
+            (20, 0.1),  # Long burnin
+        ]
 
-    def test_call_multiple_tensor_output(self):
-        # Test the __call__ method with a function that returns a list of tensors
-        result = self.mcmc(self.f2, f_dim=2)
-        self.assertIsInstance(result, np.ndarray)
-        self.assertEqual(result.shape, (2,))
-        self.assertEqual(result.dtype, RAvg)
+        for nburnin, tolerance in test_cases:
+            with self.subTest(nburnin=nburnin):
+                mcmc = MarkovChainMonteCarlo(
+                    bounds=self.bounds,
+                    f=self.simple_integral,
+                    batch_size=1000,
+                    nburnin=nburnin,
+                )
+                result = mcmc(neval=50000, mix_rate=0.5, nblock=10)
+                if hasattr(result, "mean"):
+                    value = result.mean
+                else:
+                    value = result
+                self.assertAlmostEqual(float(value), 1.0, delta=tolerance)
 
-    def test_call_invalid_output_type(self):
-        # Test the __call__ method with a function that returns an invalid type
-        def f(x):
-            return "invalid"
+    # def test_mix_rate_sensitivity(self):
+    #     # Modified mix rate test to be more robust
+    #     mix_rates = [0.0, 0.5, 1.0]
+    #     results = []
 
-        with self.assertRaises(TypeError):
-            self.mcmc(f)
+    #     for mix_rate in mix_rates:
+    #         accumulated_error = 0
+    #         n_trials = 3  # Run multiple trials for each mix_rate
 
-    def test_call_with_different_device(self):
-        # Test the __call__ method with device = "cuda" if available
-        if torch.cuda.is_available():
-            mcmc_cuda = MarkovChainMonteCarlo(
-                self.maps,
-                self.bounds,
-                self.q0,
-                self.neval,
-                self.batch_size,
-                self.nburnin,
-                "cuda",
-                self.dtype,
-            )
-            result_cuda = mcmc_cuda(self.f)
-            self.assertIsInstance(result_cuda, RAvg)
-            self.assertEqual(result_cuda.shape, ())
+    #         for _ in range(n_trials):
+    #             result = self.mcmc(neval=50000, mix_rate=mix_rate, nblock=10)
+    #             if hasattr(result, "mean"):
+    #                 value = result.mean
+    #                 error = result.sdev
+    #             else:
+    #                 value = result
+    #                 error = abs(float(value) - 1.0)
+    #             accumulated_error += error
 
-    def test_call_with_different_dtype(self):
-        # Test the __call__ method with different dtype values
-        # Test with dtype = torch.float32
-        mcmc_float32 = MarkovChainMonteCarlo(
-            self.maps,
-            self.bounds,
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.nburnin,
-            self.device,
-            torch.float32,
-        )
-        result_float32 = mcmc_float32(self.f)
-        self.assertIsInstance(result_float32, RAvg)
-        self.assertEqual(result_float32.shape, ())
-        self.assertIsInstance(result_float32.mean, float)
-        self.assertIsInstance(result_float32.sdev, float)
+    #         results.append(accumulated_error / n_trials)
 
-    def test_call_with_different_bounds(self):
-        # Test the __call__ method with different bounds values
-        # Test with bounds = [0, 2]
-        mcmc_bounds = MarkovChainMonteCarlo(
-            self.maps,
-            [(3, 5.2), (-1.1, 0.2)],
-            self.q0,
-            self.neval,
-            self.batch_size,
-            self.nburnin,
-            self.device,
-            self.dtype,
-        )
-        result_bounds = mcmc_bounds(self.f)
-        self.assertIsInstance(result_bounds, RAvg)
-        self.assertEqual(result_bounds.shape, ())
+    #     # We expect moderate mix rates to have lower average error
+    #     self.assertLess(results[1], max(results[0], results[2]))
 
-    def test_call_with_different_proposal_dist(self):
-        # Test the __call__ method with different proposal distributions
-        from integrators import random_walk, gaussian
 
-        # Test with uniform proposal distribution
-        result_rw = self.mcmc(self.f, proposal_dist=random_walk)
-        self.assertIsInstance(result_rw, RAvg)
-        self.assertEqual(result_rw.shape, ())
+class TestDistributedFunctionality(unittest.TestCase):
+    @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
+    def test_distributed_initialization(self):
+        bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
+        f = lambda x, fx: torch.ones_like(x)
+        integrator = Integrator(bounds=bounds, f=f)
+        self.assertEqual(integrator.rank, 0)
+        self.assertEqual(integrator.world_size, 1)
 
-        # Test with normal proposal distribution
-        result_normal = self.mcmc(self.f, proposal_dist=gaussian)
-        self.assertIsInstance(result_normal, RAvg)
-        self.assertEqual(result_normal.shape, ())
+    @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
+    def test_multi_gpu_consistency(self):
+        if torch.cuda.device_count() >= 2:
+            bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
+            f = lambda x, fx: torch.ones_like(x)
+
+            # Create two integrators on different devices
+            integrator1 = Integrator(bounds=bounds, f=f, device="cuda:0")
+            integrator2 = Integrator(bounds=bounds, f=f, device="cuda:1")
+
+            # Results should be consistent across devices
+            result1 = integrator1(neval=10000)
+            result2 = integrator2(neval=10000)
+
+            if hasattr(result1, "mean"):
+                value1, value2 = result1.mean, result2.mean
+            else:
+                value1, value2 = result1, result2
+
+            self.assertAlmostEqual(float(value1), float(value2), places=1)
 
 
 if __name__ == "__main__":

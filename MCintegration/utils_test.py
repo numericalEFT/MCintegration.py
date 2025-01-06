@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 import gvar
-from utils import RAvg
+import torch
+from utils import RAvg, set_seed, get_device
 
 
 class TestRAvg(unittest.TestCase):
@@ -140,6 +141,138 @@ class TestRAvg(unittest.TestCase):
     def test_converged(self):
         self.weighted_ravg.add(gvar.gvar(1.0, 0.01))
         self.assertTrue(self.weighted_ravg.converged(0.1, 0.1))
+
+    # def test_multiplication(self):
+    #     ravg1 = RAvg(weighted=True)
+    #     ravg1.update(2.0, 0.1)
+    #     ravg2 = RAvg(weighted=True)
+    #     ravg2.update(3.0, 0.1)
+    #     result = ravg1 * ravg2
+    #     self.assertAlmostEqual(result.mean, 6.0)
+
+    # def test_division(self):
+    #     ravg1 = RAvg(weighted=True)
+    #     ravg1.update(6.0, 0.1)
+    #     ravg2 = RAvg(weighted=True)
+    #     ravg2.update(3.0, 0.1)
+    #     result = ravg1 / ravg2
+    #     self.assertAlmostEqual(result.mean, 2.0)
+    def test_multiplication(self):
+        ravg1 = RAvg(weighted=True)
+        # Test multiplication by another RAvg object
+        ravg1.update(2.0, 0.1)
+        ravg2 = RAvg(weighted=True)
+        ravg2.update(3.0, 0.1)
+
+        result = ravg1 * ravg2
+        self.assertAlmostEqual(result.mean, 6.0)
+        sdev = (0.1 / 2**2 + 0.1 / 3**2) ** 0.5 * 6.0
+        self.assertAlmostEqual(result.sdev, sdev)
+
+        # Test multiplication by a scalar
+        result = ravg1 * 2.0
+        self.assertAlmostEqual(result.mean, 4.0)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev * 2)
+
+        # Test multiplication by a negative number
+        result = -1.0 * ravg1
+        self.assertAlmostEqual(result.mean, -2.0)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev)
+
+        # Test multiplication by a large number
+        result = ravg1 * 1e10
+        self.assertAlmostEqual(result.mean, 2.0 * 1e10)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev * 1e10)
+
+        # Test multiplication by zero
+        result = ravg1 * 0.0
+        self.assertAlmostEqual(result.mean, 0.0)
+        self.assertAlmostEqual(result.sdev, 0.0)
+
+        # Test multiplication by a vector (numpy array)
+        result = ravg1 * np.array([2.0, 3.0])
+        self.assertIsInstance(result, np.ndarray)
+        self.assertEqual(result.shape, (2,))
+        self.assertTrue(np.allclose([r.mean for r in result], [4.0, 6.0]))
+        self.assertTrue(
+            np.allclose([r.sdev for r in result], [2.0 * ravg1.sdev, 3.0 * ravg1.sdev])
+        )
+
+    def test_division(self):
+        ravg1 = RAvg(weighted=True)
+        ravg1.update(6.0, 0.1)
+        ravg2 = RAvg(weighted=True)
+        ravg2.update(3.0, 0.1)
+
+        # Test division by another RAvg object
+        result = ravg1 / ravg2
+        self.assertAlmostEqual(result.mean, 2.0)
+        sdev = (0.1 / 6.0**2 + 0.1 / 3.0**2) ** 0.5 * 2.0
+        self.assertAlmostEqual(result.sdev, sdev)
+
+        # Test division by a scalar
+        result = ravg1 / 2.0
+        self.assertAlmostEqual(result.mean, 3.0)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev / 2.0)
+
+        # Test division by a negative number
+        result = ravg1 / -1.0
+        self.assertAlmostEqual(result.mean, -6.0)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev)
+
+        # Test division by a large number
+        result = ravg1 / 1e10
+        self.assertAlmostEqual(result.mean, 6.0 / 1e10)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev / 1e10)
+
+        result = -12.0 / ravg1
+        self.assertAlmostEqual(result.mean, -2.0)
+        self.assertAlmostEqual(result.sdev, ravg1.sdev / 3)
+
+        # Test division by zero
+        with self.assertRaises(ZeroDivisionError):
+            result = ravg1 / 0.0
+
+        # Test division by a vector (numpy array)
+        result = ravg1 / np.array([2.0, 3.0])
+        self.assertIsInstance(result, np.ndarray)
+        self.assertEqual(result.shape, (2,))
+        self.assertTrue(np.allclose([r.mean for r in result], [3.0, 2.0]))
+        self.assertTrue(
+            np.allclose([r.sdev for r in result], [ravg1.sdev / 2.0, ravg1.sdev / 3.0])
+        )
+
+
+class TestUtils(unittest.TestCase):
+    def setUp(self):
+        # Ensure a consistent state before each test
+        torch.manual_seed(0)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(0)
+
+    def test_set_seed_cpu(self):
+        # Test set_seed on a CPU-only environment
+        set_seed(42)
+        self.assertEqual(torch.initial_seed(), 42)
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
+    def test_set_seed_cuda(self):
+        # Test set_seed on a CUDA-enabled environment
+        set_seed(42)
+        self.assertEqual(torch.initial_seed(), 42)
+        self.assertEqual(torch.cuda.initial_seed(), 42)
+
+    @unittest.skipIf(torch.cuda.is_available(), "CUDA is available")
+    def test_get_device_cpu(self):
+        # Test get_device when CUDA is not available
+        device = get_device()
+        self.assertEqual(device, torch.device("cpu"))
+
+    @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
+    def test_get_device_cuda(self):
+        # Test get_device when CUDA is available
+        device = get_device()
+        self.assertEqual(device, torch.cuda.current_device())
 
 
 if __name__ == "__main__":
