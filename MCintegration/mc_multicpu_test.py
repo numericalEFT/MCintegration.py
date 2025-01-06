@@ -5,7 +5,7 @@ import os
 from integrators import MonteCarlo, MarkovChainMonteCarlo
 
 
-def init_process(rank, world_size, fn, backend="gloo"):
+def test_init_process(rank, world_size, fn, backend="gloo"):
     # Set MASTER_ADDR and MASTER_PORT appropriately
     # Assuming environment variables are set by the cluster's job scheduler
     master_addr = os.getenv("MASTER_ADDR", "localhost")
@@ -18,7 +18,7 @@ def init_process(rank, world_size, fn, backend="gloo"):
     fn(rank, world_size)
 
 
-def run_mcmc(rank, world_size):
+def test_run_mcmc(rank, world_size):
     # Instantiate the MarkovChainMonteCarlo class
     bounds = [(-1, 1), (-1, 1)]
     n_eval = 8000000
@@ -55,4 +55,4 @@ def run_mcmc(rank, world_size):
 
 if __name__ == "__main__":
     world_size = 8  # Number of processes to launch
-    mp.spawn(init_process, args=(world_size, run_mcmc), nprocs=world_size, join=True)
+    mp.spawn(test_init_process, args=(world_size, test_run_mcmc), nprocs=world_size, join=True)
