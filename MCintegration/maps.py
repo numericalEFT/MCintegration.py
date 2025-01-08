@@ -58,7 +58,7 @@ class Configuration:
         #     log_q += self.q0.log_prob(x_)
         #     set_requires_grad(self, True)
         log_p = torch.log(self.weight.abs())
-        return torch.mean(log_q) - beta * torch.mean(log_p)
+        return torch.mean(log_q)  # - beta * torch.mean(log_p)
 
 
 class Map(nn.Module):
@@ -80,6 +80,15 @@ class Map(nn.Module):
 
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
+
+
+def print_grad_fn(grad_fn, level=0):
+    if grad_fn is None:
+        return
+    print("  " * level + str(grad_fn))
+    for next_fn in grad_fn.next_functions:
+        if next_fn[0] is not None:
+            print_grad_fn(next_fn[0], level + 1)
 
 
 class CompositeMap(Map):
@@ -144,19 +153,25 @@ class CompositeMap(Map):
         scheduler_warmup = torch.optim.lr_scheduler.LinearLR(
             optimizer, start_factor=0.1, total_iters=warmup_epochs
         )
+
+        # fx = torch.zeros_like(config.fx)
         for it in range(epoch):
             optimizer.zero_grad()
             loss_accum = torch.zeros(1, requires_grad=False, device=self.device)
             config.u, log_detJ0 = q0.sample(batch_size)
             config.x, log_detJ = self.forward(config.u)
-            config.fx, config.weight = f(config.x)
+            config.weight = f(config.x, config.fx)
+            loss = torch.mean(torch.log(config.weight))
+            # loss.backward()
+            # print_grad_fn(loss.grad_fn)
+            # raise Exception("This is an error message")
+            # config.fx = fx.clone()
             config.detJ = torch.exp(log_detJ0 + log_detJ)
-
-            loss = config.reverse_kld()
-
+            # loss = config.reverse_kld()
+            # loss = torch.mean(torch.log(config.weight.abs()))
             if ~(torch.isnan(loss) | torch.isinf(loss)):
                 loss.backward()
-            print(loss)
+            print(it, loss)
             torch.nn.utils.clip_grad_norm_(
                 self.parameters(), max_norm=1.0
             )  # Gradient clipping
@@ -211,8 +226,8 @@ class Vegas(Map):
 
         for _ in range(epoch):
             sample.u, log_detJ0 = q0.sample(batch_size)
-            sample.x[:], log_detJ = self.forward(sample.u)
-            sample.fx, sample.weight = f(sample.x)
+            sample.x, log_detJ = self.forward(sample.u)
+            sample.weight = f(sample.x, sample.fx)
             sample.detJ = torch.exp(log_detJ0 + log_detJ)
             self.add_training_data(sample)
             self.adapt(alpha)

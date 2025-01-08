@@ -131,7 +131,7 @@ class Integrator:
         else:
             config.x[:], detj = self.maps.forward_with_detJ(config.u)
             config.detJ *= detj
-        config.fx, _ = self.f(config.x)
+        self.f(config.x, config.fx)
 
     def statistics(self, means, vars, neval=None):
         nblock = means.shape[0]
@@ -315,8 +315,10 @@ class MarkovChainMonteCarlo(Integrator):
                 self.dim, self.device, self.dtype, config.u, **kwargs
             )
             proposed_x, new_detJ = self.maps.forward_with_detJ(proposed_y)
-            config.fx, proposed_weight = self.f(proposed_x)
-            new_weight = mix_rate / new_detJ + (1 - mix_rate) * proposed_weight.abs()
+            new_weight = (
+                mix_rate / new_detJ
+                + (1 - mix_rate) * self.f(proposed_x, config.fx).abs()
+            )
             new_weight.masked_fill_(new_weight < EPSILON, EPSILON)
             acceptance_probs = new_weight / config.weight * new_detJ / config.detJ
 
@@ -368,8 +370,9 @@ class MarkovChainMonteCarlo(Integrator):
         config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
         config.x, detj = self.maps.forward_with_detJ(config.u)
         config.detJ *= detj
-        config.fx, config.weight = self.f(config.x)
-        config.weight = mix_rate / config.detJ + (1 - mix_rate) * config.weight.abs_()
+        config.weight = (
+            mix_rate / config.detJ + (1 - mix_rate) * self.f(config.x, config.fx).abs_()
+        )
         config.weight.masked_fill_(config.weight < EPSILON, EPSILON)
 
         for _ in range(self.nburnin):
@@ -388,8 +391,7 @@ class MarkovChainMonteCarlo(Integrator):
         for iblock in range(nblock):
             for _ in range(n_meas_perblock):
                 self.sample(config, meas_freq, mix_rate, **kwargs)
-                config.fx, _ = self.f(config.x)
-
+                self.f(config.x, config.fx)
                 config.fx.div_(config.weight.unsqueeze(1))
                 values += config.fx / n_meas_perblock
                 refvalues += 1 / (config.detJ * config.weight) / n_meas_perblock
