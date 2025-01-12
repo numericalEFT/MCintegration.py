@@ -58,7 +58,7 @@ class Configuration:
         #     log_q += self.q0.log_prob(x_)
         #     set_requires_grad(self, True)
         log_p = torch.log(self.weight.abs())
-        return torch.mean(log_q)  # - beta * torch.mean(log_p)
+        return torch.mean(log_q) - beta * torch.mean(log_p)
 
 
 class Map(nn.Module):
@@ -133,6 +133,11 @@ class CompositeMap(Map):
         has_scheduler=True,
         sample_interval=5,
     ):
+        def f_no_inplace(x, f):
+            fx = torch.zeros((x.shape[0], f_dim), device=x.device, dtype=x.dtype)
+            weight = f(x, fx)
+            return fx, weight
+
         q0 = Uniform(dim, device=self.device, dtype=self.dtype)
         # u, log_detJ0 = q0.sample(batch_size)
         config = Configuration(
@@ -160,14 +165,15 @@ class CompositeMap(Map):
             loss_accum = torch.zeros(1, requires_grad=False, device=self.device)
             config.u, log_detJ0 = q0.sample(batch_size)
             config.x, log_detJ = self.forward(config.u)
-            config.weight = f(config.x, config.fx)
-            loss = torch.mean(torch.log(config.weight))
+            # config.weight = f(config.x, config.fx)
+            config.fx, config.weight = f_no_inplace(config.x, f)
+            # oss = torch.mean(torch.log(config.weight))
             # loss.backward()
             # print_grad_fn(loss.grad_fn)
             # raise Exception("This is an error message")
             # config.fx = fx.clone()
             config.detJ = torch.exp(log_detJ0 + log_detJ)
-            # loss = config.reverse_kld()
+            loss = config.reverse_kld()
             # loss = torch.mean(torch.log(config.weight.abs()))
             if ~(torch.isnan(loss) | torch.isinf(loss)):
                 loss.backward()
