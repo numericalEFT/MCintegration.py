@@ -148,7 +148,7 @@ class RAvg(gvar.GVar):
         Args:
             weighted (bool): Display weighted averages of results from different
                 iterations if ``True``; otherwise show unweighted averages.
-                Default behavior is determined by |vegas|.
+                Default behavior is determined by vegas.
         """
         if weighted is None:
             weighted = self.weighted
