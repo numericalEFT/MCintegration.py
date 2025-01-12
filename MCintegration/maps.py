@@ -177,7 +177,6 @@ class CompositeMap(Map):
             # loss = torch.mean(torch.log(config.weight.abs()))
             if ~(torch.isnan(loss) | torch.isinf(loss)):
                 loss.backward()
-            print(it, loss)
             torch.nn.utils.clip_grad_norm_(
                 self.parameters(), max_norm=1.0
             )  # Gradient clipping
