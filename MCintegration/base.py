@@ -15,13 +15,20 @@ class BaseDistribution(nn.Module):
     Parameters do not depend of target variable (as is the case for a VAE encoder)
     """
 
-    def __init__(self, dim, device="cpu", dtype=torch.float32):
+    def __init__(self, dim, batch_size, device="cpu", dtype=torch.float32):
         super().__init__()
         self.dtype = dtype
         self.dim = dim
+        self.batch_size = batch_size
         self.device = device
+        self.register_buffer(
+            "u", torch.empty((batch_size, dim), device=device, dtype=dtype)
+        )
+        self.register_buffer(
+            "log_detJ", torch.empty(batch_size, device=device, dtype=dtype)
+        )
 
-    def sample(self, batch_size=1, **kwargs):
+    def sample(self, **kwargs):
         """Samples from base distribution
 
         Args:
@@ -32,10 +39,10 @@ class BaseDistribution(nn.Module):
         """
         raise NotImplementedError
 
-    def sample_with_detJ(self, batch_size=1, **kwargs):
-        u, detJ = self.sample(batch_size, **kwargs)
-        detJ.exp_()
-        return u, detJ
+    def sample_with_detJ(self, **kwargs):
+        self.sample(**kwargs)
+        self.log_detJ.exp_()
+        return self.u, self.log_detJ
 
 
 class Uniform(BaseDistribution):
@@ -43,18 +50,18 @@ class Uniform(BaseDistribution):
     Multivariate uniform distribution
     """
 
-    def __init__(self, dim, device="cpu", dtype=torch.float32):
-        super().__init__(dim, device, dtype)
+    def __init__(self, dim, batch_size, device="cpu", dtype=torch.float32):
+        super().__init__(dim, batch_size, device, dtype)
 
-    def sample(self, batch_size=1, **kwargs):
+    def sample(self, **kwargs):
         # torch.manual_seed(0) # test seed
-        u = torch.rand((batch_size, self.dim), device=self.device, dtype=self.dtype)
-        log_detJ = torch.zeros(batch_size, device=self.device, dtype=self.dtype)
-        return u, log_detJ
+        self.u.uniform_()
+        self.log_detJ.zero_()
+        return self.u, self.log_detJ
 
 
 class LinearMap(nn.Module):
-    def __init__(self, A, b, device=None, dtype=torch.float32):
+    def __init__(self, dim, batch_size, A, b, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
@@ -78,14 +85,21 @@ class LinearMap(nn.Module):
             raise ValueError("'b' must be a list, numpy array, or torch tensor.")
 
         self._detJ = torch.prod(self.A)
+        self.register_buffer(
+            "u", torch.empty((batch_size, dim), device=device, dtype=dtype)
+        )
+        self.register_buffer("log_detJ", torch.log(self._detJ.repeat(batch_size)))
+        self.register_buffer("detJ", self._detJ.repeat(batch_size))
 
     def forward(self, u):
-        return u * self.A + self.b, torch.log(self._detJ.repeat(u.shape[0]))
+        self.u = u * self.A + self.b
+        return self.u, self.log_detJ
 
     def forward_with_detJ(self, u):
-        u, detJ = self.forward(u)
-        detJ.exp_()
-        return u, detJ
+        self.forward(u)
+        # detJ.exp_()
+        return self.u, self.detJ
 
     def inverse(self, x):
-        return (x - self.b) / self.A, torch.log(self._detJ.repeat(x.shape[0]))
+        self.u = (x - self.b) / self.A
+        return self.u, self.log_detJ

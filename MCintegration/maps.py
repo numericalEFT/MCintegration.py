@@ -62,21 +62,30 @@ class Configuration:
 
 
 class Map(nn.Module):
-    def __init__(self, device=None, dtype=torch.float32):
+    def __init__(self, dim, batch_size, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
         else:
             self.device = device
         self.dtype = dtype
+        self.register_buffer(
+            "u", torch.empty((batch_size, dim), device=device, dtype=dtype)
+        )
+        self.register_buffer(
+            "log_detJ", torch.empty(batch_size, device=device, dtype=dtype)
+        )
+        self.register_buffer(
+            "detJ", torch.empty(batch_size, device=device, dtype=dtype)
+        )
 
     def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
 
     def forward_with_detJ(self, u):
-        u, detJ = self.forward(u)
-        detJ.exp_()
-        return u, detJ
+        self.forward(u)
+        self.detJ = torch.exp(self.log_detJ)
+        return self.u, self.detJ
 
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
@@ -107,7 +116,6 @@ class CompositeMap(Map):
         self.maps.to(device)
 
     def forward(self, u):
-        log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
         for map in self.maps:
             u, log_detj = map.forward(u)
             log_detJ += log_detj
@@ -138,8 +146,7 @@ class CompositeMap(Map):
             weight = f(x, fx)
             return fx, weight
 
-        q0 = Uniform(dim, device=self.device, dtype=self.dtype)
-        # u, log_detJ0 = q0.sample(batch_size)
+        q0 = Uniform(dim, batch_size, device=self.device, dtype=self.dtype)
         config = Configuration(
             batch_size, dim, f_dim, device=self.device, dtype=self.dtype
         )
@@ -163,7 +170,7 @@ class CompositeMap(Map):
         for it in range(epoch):
             optimizer.zero_grad()
             loss_accum = torch.zeros(1, requires_grad=False, device=self.device)
-            config.u, log_detJ0 = q0.sample(batch_size)
+            config.u, log_detJ0 = q0.sample()
             config.x, log_detJ = self.forward(config.u)
             # config.weight = f(config.x, config.fx)
             config.fx, config.weight = f_no_inplace(config.x, f)
@@ -224,13 +231,13 @@ class Vegas(Map):
         epoch=10,
         alpha=0.5,
     ):
-        q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
+        q0 = Uniform(self.dim, batch_size, device=self.device, dtype=self.dtype)
         sample = Configuration(
             batch_size, self.dim, f_dim, device=self.device, dtype=self.dtype
         )
 
         for _ in range(epoch):
-            sample.u, log_detJ0 = q0.sample(batch_size)
+            sample.u, log_detJ0 = q0.sample()
             sample.x, log_detJ = self.forward(sample.u)
             sample.weight = f(sample.x, sample.fx)
             sample.detJ = torch.exp(log_detJ0 + log_detJ)

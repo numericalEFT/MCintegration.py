@@ -91,8 +91,11 @@ class Integrator:
             raise TypeError("bounds must be a list, NumPy array, or torch.Tensor.")
 
         assert self.bounds.shape[1] == 2, "bounds must be a 2D array"
-
+        self.dim = self.bounds.shape[0]
+        self.batch_size = batch_size
         linear_map = LinearMap(
+            self.dim,
+            self.batch_size,
             self.bounds[:, 1] - self.bounds[:, 0],
             self.bounds[:, 0],
             device=self.device,
@@ -105,11 +108,12 @@ class Integrator:
         else:
             self.maps = linear_map
 
-        self.dim = self.bounds.shape[0]
         if not q0:
-            q0 = Uniform(self.dim, device=self.device, dtype=self.dtype)
+            q0 = Uniform(
+                self.dim, self.batch_size, device=self.device, dtype=self.dtype
+            )
         self.q0 = q0
-        self.batch_size = batch_size
+
         self.f = f
         self.f_dim = f_dim
 
@@ -125,7 +129,7 @@ class Integrator:
         raise NotImplementedError("Subclasses must implement this method")
 
     def sample(self, config, **kwargs):
-        config.u, config.detJ = self.q0.sample_with_detJ(config.batch_size)
+        config.u[:], config.detJ[:] = self.q0.sample_with_detJ()
         if not self.maps:
             config.x[:] = config.u
         else:
@@ -233,7 +237,7 @@ class MonteCarlo(Integrator):
 
         if verbose > 0:
             print(
-                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size*epoch_perblock*nblock}"
+                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size * epoch_perblock * nblock}"
             )
 
         config = Configuration(
@@ -250,7 +254,7 @@ class MonteCarlo(Integrator):
         for iblock in range(nblock):
             for _ in range(epoch_perblock):
                 self.sample(config)
-                config.fx.mul_(config.detJ.unsqueeze_(1))
+                config.fx.mul_(config.detJ[:, None])
                 integ_values += config.fx / epoch_perblock
             means[iblock, :] = integ_values.mean(dim=0)
             vars[iblock, :] = integ_values.var(dim=0) / self.batch_size
@@ -327,9 +331,8 @@ class MarkovChainMonteCarlo(Integrator):
                 <= acceptance_probs
             )
 
-            accept_expanded = accept.unsqueeze(1)
-            config.u.mul_(~accept_expanded).add_(proposed_y * accept_expanded)
-            config.x.mul_(~accept_expanded).add_(proposed_x * accept_expanded)
+            config.u.mul_(~accept[:, None]).add_(proposed_y * accept[:, None])
+            config.x.mul_(~accept[:, None]).add_(proposed_x * accept[:, None])
             config.weight.mul_(~accept).add_(new_weight * accept)
             config.detJ.mul_(~accept).add_(new_detJ * accept)
 
@@ -355,19 +358,19 @@ class MarkovChainMonteCarlo(Integrator):
         else:
             nblock = epoch // nsteps_perblock
         n_meas_perblock = nsteps_perblock // meas_freq
-        assert (
-            n_meas_perblock > 0
-        ), f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
+        assert n_meas_perblock > 0, (
+            f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
+        )
 
         if verbose > 0:
             print(
-                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size*nsteps_perblock*nblock}"
+                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size * nsteps_perblock * nblock}"
             )
 
         config = Configuration(
             self.batch_size, self.dim, self.f_dim, self.device, self.dtype
         )
-        config.u, config.detJ = self.q0.sample_with_detJ(self.batch_size)
+        config.u, config.detJ = self.q0.sample_with_detJ()
         config.x, detj = self.maps.forward_with_detJ(config.u)
         config.detJ *= detj
         config.weight = (
@@ -392,7 +395,7 @@ class MarkovChainMonteCarlo(Integrator):
             for _ in range(n_meas_perblock):
                 self.sample(config, meas_freq, mix_rate, **kwargs)
                 self.f(config.x, config.fx)
-                config.fx.div_(config.weight.unsqueeze(1))
+                config.fx.div_(config.weight[:, None])
                 values += config.fx / n_meas_perblock
                 refvalues += 1 / (config.detJ * config.weight) / n_meas_perblock
             means[iblock, :] = values.mean(dim=0)
