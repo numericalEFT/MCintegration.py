@@ -62,30 +62,21 @@ class Configuration:
 
 
 class Map(nn.Module):
-    def __init__(self, dim, batch_size, device=None, dtype=torch.float32):
+    def __init__(self, device=None, dtype=torch.float32):
         super().__init__()
         if device is None:
             self.device = get_device()
         else:
             self.device = device
         self.dtype = dtype
-        self.register_buffer(
-            "u", torch.empty((batch_size, dim), device=device, dtype=dtype)
-        )
-        self.register_buffer(
-            "log_detJ", torch.empty(batch_size, device=device, dtype=dtype)
-        )
-        self.register_buffer(
-            "detJ", torch.empty(batch_size, device=device, dtype=dtype)
-        )
 
     def forward(self, u):
         raise NotImplementedError("Subclasses must implement this method")
 
     def forward_with_detJ(self, u):
-        self.forward(u)
-        self.detJ = torch.exp(self.log_detJ)
-        return self.u, self.detJ
+        u, detJ = self.forward(u)
+        detJ.exp_()
+        return u, detJ
 
     def inverse(self, x):
         raise NotImplementedError("Subclasses must implement this method")
@@ -116,6 +107,7 @@ class CompositeMap(Map):
         self.maps.to(device)
 
     def forward(self, u):
+        log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
         for map in self.maps:
             u, log_detj = map.forward(u)
             log_detJ += log_detj
