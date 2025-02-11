@@ -101,15 +101,13 @@ class Vegas(Map):
 
         # Preallocate tensors to minimize memory allocations
         self.max_ninc = self.ninc.max().item()
-        # self.new_grid = torch.empty(
-        #     (self.dim, self.max_ninc + 1), dtype=self.dtype, device=self.device
-        # )
-        # self.sum_f = None
-        # self.n_f = None
-
         # Preallocate temporary tensors for adapt
-        # self.avg_f = torch.ones(self.max_ninc, dtype=self.dtype, device=self.device)
-        # self.tmp_f = torch.empty(self.max_ninc, dtype=self.dtype, device=self.device)
+        self.sum_f = torch.zeros(
+            self.dim, self.max_ninc, dtype=self.dtype, device=self.device
+        )
+        self.n_f = torch.zeros(
+            self.dim, self.max_ninc, dtype=self.dtype, device=self.device
+        )
         self.avg_f = torch.ones(
             (self.dim, self.max_ninc), dtype=self.dtype, device=self.device
         )
@@ -118,9 +116,6 @@ class Vegas(Map):
         )
 
         self.make_uniform()
-        self.sum_f = torch.zeros_like(self.inc)
-        # self.n_f = torch.full_like(self.inc, TINY)
-        self.n_f = torch.zeros_like(self.inc)
 
     def adaptive_training(
         self,
@@ -171,128 +166,11 @@ class Vegas(Map):
                 point ``u[j, d]`` in ``u``-space.
         """
         fval = (sample.detJ * sample.weight) ** 2
-        # if self.sum_f is None:
-        #     self.sum_f = torch.zeros_like(self.inc)
-        #     self.n_f = torch.full_like(self.inc, TINY)
         iu = torch.floor(sample.u * self.ninc).long()
         for d in range(self.dim):
             indices = iu[:, d]
             self.sum_f[d].scatter_add_(0, indices, fval.abs())
             self.n_f[d].scatter_add_(0, indices, torch.ones_like(fval))
-
-    # @torch.no_grad()
-    # def adapt(self, alpha=0.0):
-    #     """Adapt grid to accumulated training data.
-
-    #     ``self.adapt(...)`` projects the training data onto
-    #     each axis independently and maps it into ``x`` space.
-    #     It shrinks ``x``-grid increments in regions where the
-    #     projected training data is large, and grows increments
-    #     where the projected data is small. The grid along
-    #     any direction is unchanged if the training data
-    #     is constant along that direction.
-
-    #     The number of increments along a direction can be
-    #     changed by setting parameter ``ninc`` (array or number).
-
-    #     The grid does not change if no training data has
-    #     been accumulated, unless ``ninc`` is specified, in
-    #     which case the number of increments is adjusted
-    #     while preserving the relative density of increments
-    #     at different values of ``x``.
-
-    #     Args:
-    #         alpha (float): Determines the speed with which the grid
-    #             adapts to training data. Large (postive) values imply
-    #             rapid evolution; small values (much less than one) imply
-    #             slow evolution. Typical values are of order one. Choosing
-    #             ``alpha<0`` causes adaptation to the unmodified training
-    #             data (usually not a good idea).
-    #     """
-    #     if torch.distributed.is_initialized():
-    #         torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
-    #         torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
-
-    #     mask = self.n_f > 0
-    #     self.avg_f = torch.where(
-    #         mask, self.sum_f / self.n_f, torch.zeros_like(self.sum_f)
-    #     )
-
-    #     if alpha > 0:
-    #         # Smooth avg_f using a convolution-like operation
-    #         # Pad avg_f for boundary conditions
-    #         avg_f_padded = torch.nn.functional.pad(
-    #             self.avg_f, (1, 1), mode="replicate"
-    #         )  # Shape: (dim, max_ninc +2)
-
-    #         # Apply smoothing kernel: [6,1,1] and [1,6,1], normalized by 8
-    #         self.tmp_f[:, :] = (
-    #             6.0 * self.avg_f + avg_f_padded[:, :-2] + avg_f_padded[:, 2:]
-    #         ).abs_() / 8.0
-    #         self.tmp_f[:, 0] = (7.0 * self.avg_f[:, 0] + self.avg_f[:, 1]).abs_() / 8.0
-    #         self.tmp_f[:, -1] = (
-    #             7.0 * self.avg_f[:, -1] + self.avg_f[:, -2]
-    #         ).abs_() / 8.0
-
-    #         # Normalize tmp_f
-    #         sum_f = self.tmp_f.sum(dim=1, keepdim=True).clamp_min_(TINY)
-    #         self.avg_f = self.tmp_f / sum_f + TINY
-
-    #         # Apply transformation
-    #         self.avg_f = (-(1 - self.avg_f) / torch.log(self.avg_f)).pow_(alpha)
-
-    #     # Initialize new_grid with the first point as 0.0
-    #     new_grid = torch.zeros(
-    #         (self.dim, self.max_ninc + 1), dtype=self.dtype, device=self.device
-    #     )
-    #     new_grid[:, -1] = 1.0  # Set the last element to 1.0 for all dimensions
-
-    #     # Iterate over each dimension to compute new grid points
-    #     for d in range(self.dim):
-    #         ninc_d = self.ninc[d].item()
-
-    #         if alpha != 0 and self.sum_f is not None:
-    #             # Compute f_ninc
-    #             f_ninc = self.avg_f[d, :ninc_d].sum() / ninc_d  # Scalar
-
-    #             # Initialize variables for grid point placement
-    #             j = -1
-    #             acc_f = 0.0
-
-    #             for i in range(1, ninc_d):
-    #                 while acc_f < f_ninc:
-    #                     j += 1
-    #                     if j < ninc_d:
-    #                         acc_f += self.avg_f[d, j].item()
-    #                     else:
-    #                         break
-    #                 else:
-    #                     acc_f -= f_ninc
-    #                     # Compute new_grid[d, i] based on current j and acc_f
-    #                     # Ensure j+1 does not exceed ninc
-    #                     if j + 1 < ninc_d:
-    #                         new_grid[d, i] = (
-    #                             self.grid[d, j + 1]
-    #                             - (acc_f / self.avg_f[d, j]) * self.inc[d, j]
-    #                         )
-    #                     else:
-    #                         new_grid[d, i] = self.grid[
-    #                             d, j
-    #                         ]  # Fallback to existing grid point
-    #                     continue
-    #                 break  # Exit the loop if j >= ninc_d
-
-    #     # Assign the newly computed grid
-    #     self.grid = new_grid
-
-    #     # Update increments based on the new grid
-    #     self.inc.zero_()
-    #     self.inc[:, : self.max_ninc] = (
-    #         self.grid[:, 1 : self.max_ninc + 1] - self.grid[:, : self.max_ninc]
-    #     )
-
-    #     # Reset training data
-    #     self.clear()
 
     @torch.no_grad()
     def adapt(self, alpha=0.5):
@@ -358,28 +236,38 @@ class Vegas(Map):
                 # Compute the target accumulated f per increment
                 f_ninc = avg_f.sum() / ninc  # Scalar
 
-                # Initialize variables for grid point placement
-                j = -1
-                acc_f = 0.0
-
                 new_grid[d, 0] = self.grid[d, 0]
                 new_grid[d, ninc] = self.grid[d, ninc]
-                for i in range(1, ninc):
-                    while acc_f < f_ninc:
-                        j += 1
-                        if j < ninc:
-                            acc_f += avg_f[j]
-                        else:
-                            break
-                    else:
-                        acc_f -= f_ninc
-                        # Place the new grid point based on accumulated f
-                        new_grid[d, i] = (
-                            self.grid[d, j + 1] - (acc_f / avg_f[j]) * self.inc[d, j]
-                        )
-                        continue
-                    break  # Exit the loop if j >= ninc
 
+                target_cumulative_weights = (
+                    torch.arange(1, ninc, device=self.device) * f_ninc
+                )  # Calculate the target cumulative weights for each new grid point
+
+                cumulative_avg_f = torch.cat(
+                    (
+                        torch.tensor([0.0], device=self.device),
+                        torch.cumsum(avg_f, dim=0),
+                    )
+                )  # Calculate the cumulative sum of avg_f
+                interval_indices = (
+                    torch.searchsorted(
+                        cumulative_avg_f, target_cumulative_weights, right=True
+                    )
+                    - 1
+                )  # Find the intervals in the original grid where the target weights fall
+                # Extract the necessary values using the interval indices
+                grid_left = self.grid[d, interval_indices]
+                inc_relevant = self.inc[d, interval_indices]
+                avg_f_relevant = avg_f[interval_indices]
+                cumulative_avg_f_relevant = cumulative_avg_f[interval_indices]
+
+                # Calculate the fractional position within each interval
+                fractional_positions = (
+                    target_cumulative_weights - cumulative_avg_f_relevant
+                ) / avg_f_relevant
+
+                # Calculate the new grid points using vectorized operations
+                new_grid[d, 1:ninc] = grid_left + fractional_positions * inc_relevant
             else:
                 # If alpha == 0 or no training data, retain the existing grid
                 new_grid[d, :] = self.grid[d, :]
@@ -396,107 +284,6 @@ class Vegas(Map):
             )
 
         # Clear accumulated training data for the next adaptation cycle
-        self.clear()
-
-    @torch.no_grad()
-    def adaptv0(self, alpha=0.0):
-        """Adapt grid to accumulated training data.
-
-        ``self.adapt(...)`` projects the training data onto
-        each axis independently and maps it into ``x`` space.
-        It shrinks ``x``-grid increments in regions where the
-        projected training data is large, and grows increments
-        where the projected data is small. The grid along
-        any direction is unchanged if the training data
-        is constant along that direction.
-
-        The number of increments along a direction can be
-        changed by setting parameter ``ninc`` (array or number).
-
-        The grid does not change if no training data has
-        been accumulated, unless ``ninc`` is specified, in
-        which case the number of increments is adjusted
-        while preserving the relative density of increments
-        at different values of ``x``.
-
-        Args:
-            alpha (float): Determines the speed with which the grid
-                adapts to training data. Large (postive) values imply
-                rapid evolution; small values (much less than one) imply
-                slow evolution. Typical values are of order one. Choosing
-                ``alpha<0`` causes adaptation to the unmodified training
-                data (usually not a good idea).
-        """
-        if torch.distributed.is_initialized():
-            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
-            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
-        new_grid = torch.empty(
-            (self.dim, torch.max(self.ninc) + 1),
-            dtype=self.dtype,
-            device=self.device,
-        )
-        avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
-        if alpha > 0:
-            tmp_f = torch.empty(self.inc.shape[1], dtype=self.dtype, device=self.device)
-        for d in range(self.dim):
-            ninc = self.ninc[d]
-            if alpha != 0:
-                if self.sum_f is not None:
-                    mask = self.n_f[d, :] > 0
-                    avg_f[mask] = self.sum_f[d, mask] / self.n_f[d, mask]
-                    avg_f[~mask] = 0.0
-                if alpha > 0:  # smooth
-                    tmp_f[0] = torch.abs(7.0 * avg_f[0] + avg_f[1]) / 8.0
-                    tmp_f[ninc - 1] = (
-                        torch.abs(7.0 * avg_f[ninc - 1] + avg_f[ninc - 2]) / 8.0
-                    )
-                    tmp_f[1 : ninc - 1] = (
-                        torch.abs(
-                            6.0 * avg_f[1 : ninc - 1]
-                            + avg_f[: ninc - 2]
-                            + avg_f[2:ninc]
-                        )
-                        / 8.0
-                    )
-                    sum_f = torch.sum(tmp_f[:ninc])
-                    if sum_f > 0:
-                        avg_f[:ninc] = tmp_f[:ninc] / sum_f + TINY
-                    else:
-                        avg_f[:ninc] = TINY
-                    avg_f[:ninc] = (
-                        -(1 - avg_f[:ninc]) / torch.log(avg_f[:ninc])
-                    ) ** alpha
-
-            new_grid[d, 0] = self.grid[d, 0]
-            new_grid[d, ninc] = self.grid[d, ninc]
-            f_ninc = torch.sum(avg_f[:ninc]) / ninc
-
-            j = -1
-            acc_f = 0
-            for i in range(1, ninc):
-                while acc_f < f_ninc:
-                    j += 1
-                    if j < ninc:
-                        acc_f += avg_f[j]
-                    else:
-                        break
-                else:
-                    acc_f -= f_ninc
-                    new_grid[d, i] = (
-                        self.grid[d, j + 1] - (acc_f / avg_f[j]) * self.inc[d, j]
-                    )
-                    continue
-                break
-        self.grid = new_grid
-        self.inc = torch.empty(
-            (self.dim, self.grid.shape[1] - 1),
-            dtype=self.dtype,
-            device=self.device,
-        )
-        for d in range(self.dim):
-            self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
-            )
         self.clear()
 
     @torch.no_grad()
@@ -521,21 +308,6 @@ class Vegas(Map):
             )
         self.clear()
 
-        # self.grid = torch.linspace(
-        #     0, 1, self.max_ninc + 1, device=self.device, dtype=self.dtype
-        # )
-        # self.grid = self.grid.unsqueeze(0).repeat(
-        #     self.dim, 1
-        # )  # Shape: (dim, max_ninc + 1)
-        # self.inc = self.grid[:, 1:] - self.grid[:, :-1]  # Shape: (dim, max_ninc)
-        # # Mask to handle different ninc per dimension
-        # # mask = torch.arange(max_ninc, device=self.device).unsqueeze(
-        # #     0
-        # # ) < self.ninc.unsqueeze(1)
-        # # self.grid[~mask] = self.grid.max()  # Assign grid boundary for unused increments
-        # # self.inc[~mask[:, :-1]] = 0.0  # Zero increments where not used
-        # self.clear()
-
     def extract_grid(self):
         "Return a list of lists specifying the map's grid."
         grid_list = []
@@ -547,11 +319,7 @@ class Vegas(Map):
     @torch.no_grad()
     def clear(self):
         "Clear information accumulated by :meth:`AdaptiveMap.add_training_data`."
-        # self.sum_f = None
-        # self.n_f = None
-        # if self.sum_f is not None:
         self.sum_f.zero_()
-        # self.n_f.f
         self.n_f.zero_()
 
     @torch.no_grad()
@@ -603,36 +371,6 @@ class Vegas(Map):
 
         return x, log_detJ
 
-    # @torch.no_grad()
-    # def inverse(self, x):
-    #     """Inverse map from x-space to u-space."""
-    #     # Find indices where x falls in the grid
-    #     iu = torch.searchsorted(self.grid, x, right=True) - 1
-    #     iu = torch.clamp(iu, 0, self.ninc - 1)
-
-    #     # Compute du
-    #     du = (x - torch.gather(self.grid, 1, iu)) / torch.gather(self.inc, 1, iu)
-
-    #     # Compute u
-    #     u = (iu.float() + du) / self.ninc.float()
-
-    #     # Compute detJ
-    #     detJ = torch.gather(self.inc, 1, iu) * self.ninc.float()
-    #     log_detJ = torch.log(detJ).sum(dim=1)
-
-    #     # Handle out-of-bounds
-    #     lower_bound = x <= self.grid[:, 0]
-    #     upper_bound = x >= self.grid[:, -1]
-    #     u = torch.where(lower_bound, torch.zeros_like(u), u)
-    #     u = torch.where(upper_bound, torch.ones_like(u), u)
-    #     log_detJ = torch.where(
-    #         lower_bound | upper_bound,
-    #         torch.log(self.inc[:, -1] * self.ninc.float()),
-    #         log_detJ,
-    #     )
-
-    #     return u, log_detJ
-
     @torch.no_grad()
     def inverse(self, x):
         """
@@ -664,7 +402,7 @@ class Vegas(Map):
             # Perform searchsorted to find indices where x should be inserted to maintain order
             # torch.searchsorted returns indices in [0, max_ninc +1]
             iu = (
-                torch.searchsorted(grid_d, x[:, d], right=True) - 1
+                torch.searchsorted(grid_d, x[:, d].contiguous(), right=True) - 1
             )  # Shape: (batch_size,)
 
             # Clamp indices to [0, ninc_d - 1] to ensure they are within valid range
@@ -698,42 +436,6 @@ class Vegas(Map):
                 log_detJ += (inc_d[ninc_d - 1] * ninc_d + TINY).log_()
 
         return u, log_detJ
-
-    # @torch.no_grad()
-    # def inverse(self, x):
-    #     # self.detJ.fill_(1.0)
-    #     x = x.to(self.device)
-    #     u = torch.empty_like(x)
-    #     detJ = torch.ones(x.shape[0], device=x.device)
-    #     for d in range(self.dim):
-    #         ninc = self.ninc[d]
-    #         iu = torch.searchsorted(self.grid[d, :], x[:, d].contiguous(), right=True)
-
-    #         mask_valid = (iu > 0) & (iu <= ninc)
-    #         mask_lower = iu <= 0
-    #         mask_upper = iu > ninc
-
-    #         # Handle valid range (0 < iu <= ninc)
-    #         if mask_valid.any():
-    #             iui_valid = iu[mask_valid] - 1
-    #             u[mask_valid, d] = (
-    #                 iui_valid
-    #                 + (x[mask_valid, d] - self.grid[d, iui_valid])
-    #                 / self.inc[d, iui_valid]
-    #             ) / ninc
-    #             detJ[mask_valid] *= self.inc[d, iui_valid] * ninc
-
-    #         # Handle lower bound (iu <= 0)\
-    #         if mask_lower.any():
-    #             u[mask_lower, d] = 0.0
-    #             detJ[mask_lower] *= self.inc[d, 0] * ninc
-
-    #         # Handle upper bound (iu > ninc)
-    #         if mask_upper.any():
-    #             u[mask_upper, d] = 1.0
-    #             detJ[mask_upper] *= self.inc[d, ninc - 1] * ninc
-
-    #     return u, detJ.log_()
 
 
 # class NormalizingFlow(Map):
