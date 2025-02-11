@@ -2,8 +2,7 @@ import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
 import os
-import MCintegration
-from MCintegration import MonteCarlo, MarkovChainMonteCarlo
+from integrators import MonteCarlo, MarkovChainMonteCarlo
 
 
 def init_process(rank, world_size, fn, backend="gloo"):
@@ -53,7 +52,6 @@ def run_mcmc(rank, world_size):
         # Only rank 0 prints the result
         print("MarkovChainMonteCarlo Result:", mcmc_result)
 
-
-if __name__ == "__main__":
+def test_mcmc():
     world_size = 8  # Number of processes to launch
     mp.spawn(init_process, args=(world_size, run_mcmc), nprocs=world_size, join=True)

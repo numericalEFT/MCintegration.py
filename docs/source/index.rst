@@ -4,14 +4,14 @@
    contain the root `toctree` directive.
 
 MCintegration documentation
-===============
-
+===========================
 
 Contents:
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
+
+   test_result.rst
 
 Indices and tables
 ==================

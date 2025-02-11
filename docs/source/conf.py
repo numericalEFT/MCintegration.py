@@ -8,7 +8,7 @@
 import os
 import sys
 
-sys.path.insert(0, os.path.abspath('../../src'))
+sys.path.insert(0, os.path.abspath('../..'))
 
 project = 'MCintegration'
 copyright = '2024, Authors'
@@ -24,11 +24,6 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.autosummary'
 ]
-
-templates_path = ['_templates']
-exclude_patterns = []
-
-
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
@@ -56,7 +51,5 @@ napoleon_use_ivar = False
 napoleon_use_param = True
 napoleon_use_rtype = True
 
-html_theme = 'sphinxdoc'
-html_theme = 'nature'
 html_theme = 'pyramid'
 html_static_path = ['_static']
