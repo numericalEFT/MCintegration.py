@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCintegration.utils &#8212; MCintegration 1.0.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=0c472235" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=4848ba22" />
     <link rel="stylesheet" type="text/css" href="../../_static/pyramid.css?v=424f8d56" />
     <script src="../../_static/documentation_options.js?v=8d563738"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
@@ -41,11 +41,11 @@
           <div class="body" role="main">
             
   <h1>Source code for MCintegration.utils</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">gvar</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">gvar</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="n">MINVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">min_10_exp</span> <span class="o">+</span> <span class="mi">50</span><span class="p">)</span>
 <span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">max_10_exp</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span>
@@ -54,8 +54,8 @@
 
 <div class="viewcode-block" id="RAvg">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">RAvg</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">GVar</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">itn_results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sum_neval</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">RAvg</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">GVar</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">itn_results</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">sum_neval</span><span class="o">=</span><span class="mi">0</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">weighted</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">_wlist</span> <span class="o">=</span> <span class="p">[]</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">weighted</span> <span class="o">=</span> <span class="kc">True</span>
@@ -80,7 +80,7 @@
 
 <div class="viewcode-block" id="RAvg.update">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.update">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">last_neval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="p">,</span> <span class="n">last_neval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">gvar</span><span class="o">.</span><span class="n">gvar</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">var</span><span class="o">**</span><span class="mf">0.5</span><span class="p">))</span>
         <span class="k">if</span> <span class="n">last_neval</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="n">last_neval</span></div>
@@ -88,7 +88,7 @@
 
 <div class="viewcode-block" id="RAvg.add">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.add">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">add</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">res</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">res</span><span class="p">)</span>
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">res</span><span class="p">,</span> <span class="n">gvar</span><span class="o">.</span><span class="n">GVarRef</span><span class="p">):</span>
             <span class="k">return</span>
@@ -110,14 +110,14 @@
 
 <div class="viewcode-block" id="RAvg.extend">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.extend">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ravg</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">extend</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ravg</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge results from :class:`RAvg` object ``ravg`` after results currently in ``self``.&quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">ravg</span><span class="o">.</span><span class="n">itn_results</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">+=</span> <span class="n">ravg</span><span class="o">.</span><span class="n">sum_neval</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">__reduce_ex__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">__reduce_ex__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">protocol</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="n">RAvg</span><span class="p">,</span>
             <span class="p">(</span>
@@ -127,7 +127,7 @@
             <span class="p">),</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_remove_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_remove_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
         <span class="n">tmp</span> <span class="o">=</span> <span class="n">RAvg</span><span class="p">(</span>
             <span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
             <span class="n">itn_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span>
@@ -138,14 +138,14 @@
         <span class="nb">super</span><span class="p">(</span><span class="n">RAvg</span><span class="p">,</span> <span class="n">tmp</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">tgvar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">internaldata</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">tmp</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_distribute_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_distribute_gvars</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">):</span>
         <span class="k">return</span> <span class="n">RAvg</span><span class="p">(</span>
             <span class="n">weighted</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">,</span>
             <span class="n">itn_results</span><span class="o">=</span><span class="n">gvar</span><span class="o">.</span><span class="n">distribute_gvars</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">,</span> <span class="n">gvlist</span><span class="p">),</span>
             <span class="n">sum_neval</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span><span class="p">,</span>
         <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_chi2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_chi2</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
             <span class="k">return</span> <span class="mf">0.0</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">weighted</span><span class="p">:</span>
@@ -163,19 +163,19 @@
 
     <span class="n">chi2</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_chi2</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;*chi**2* of weighted average.&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_dof</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
 
     <span class="n">dof</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span>
         <span class="n">_dof</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Number of degrees of freedom in weighted average.&quot;</span>
     <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_nitn</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_nitn</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">itn_results</span><span class="p">)</span>
 
     <span class="n">nitn</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span><span class="n">_nitn</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;Number of iterations.&quot;</span><span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_Q</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_Q</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="p">(</span>
             <span class="n">gvar</span><span class="o">.</span><span class="n">gammaQ</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dof</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">chi2</span> <span class="o">/</span> <span class="mf">2.0</span><span class="p">)</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">dof</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">chi2</span> <span class="o">&gt;=</span> <span class="mi">0</span>
@@ -189,7 +189,7 @@
         <span class="s2">&quot;*Q* or *p-value* of weighted average&#39;s *chi**2*.&quot;</span><span class="p">,</span>
     <span class="p">)</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">_avg_neval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">_avg_neval</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_neval</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">nitn</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">nitn</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">0</span>
 
     <span class="n">avg_neval</span> <span class="o">=</span> <span class="nb">property</span><span class="p">(</span>
@@ -198,7 +198,7 @@
 
 <div class="viewcode-block" id="RAvg.summary">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.summary">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">summary</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">weighted</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Assemble summary of results, iteration-by-iteration, into a string.</span>
 
 <span class="sd">        Args:</span>
@@ -242,11 +242,11 @@
 
 <div class="viewcode-block" id="RAvg.converged">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.RAvg.converged">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">converged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">atol</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">converged</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rtol</span><span class="p">,</span> <span class="n">atol</span><span class="p">):</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">sdev</span> <span class="o">&lt;</span> <span class="n">atol</span> <span class="o">+</span> <span class="n">rtol</span> <span class="o">*</span> <span class="nb">abs</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mean</span><span class="p">)</span></div>
 
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__mul__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__mul__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">yy</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_VECTOR_TYPES</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># let ndarray handle it</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
@@ -274,7 +274,7 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">NotImplemented</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="fm">__truediv__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__truediv__</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">):</span>
         <span class="k">if</span> <span class="nb">type</span><span class="p">(</span><span class="n">yy</span><span class="p">)</span> <span class="ow">in</span> <span class="n">_VECTOR_TYPES</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">NotImplemented</span>  <span class="c1"># let ndarray handle it</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">RAvg</span><span class="p">):</span>
@@ -306,7 +306,7 @@
 
 <div class="viewcode-block" id="set_seed">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.set_seed">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
+<span class="k">def</span> <span class="nf">set_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">):</span>
     <span class="n">torch</span><span class="o">.</span><span class="n">manual_seed</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
         <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">manual_seed_all</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span></div>
@@ -315,7 +315,7 @@
 
 <div class="viewcode-block" id="get_device">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.utils.get_device">[docs]</a>
-<span class="k">def</span><span class="w"> </span><span class="nf">get_device</span><span class="p">():</span>
+<span class="k">def</span> <span class="nf">get_device</span><span class="p">():</span>
     <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">is_available</span><span class="p">():</span>
         <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">cuda</span><span class="o">.</span><span class="n">current_device</span><span class="p">()</span>
     <span class="k">else</span><span class="p">:</span>

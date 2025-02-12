@@ -5,7 +5,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>MCintegration.maps &#8212; MCintegration 1.0.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=0c472235" />
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=4848ba22" />
     <link rel="stylesheet" type="text/css" href="../../_static/pyramid.css?v=424f8d56" />
     <script src="../../_static/documentation_options.js?v=8d563738"></script>
     <script src="../../_static/doctools.js?v=9bcbadda"></script>
@@ -41,20 +41,20 @@
           <div class="body" role="main">
             
   <h1>Source code for MCintegration.maps</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">torch</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">torch</span><span class="w"> </span><span class="kn">import</span> <span class="n">nn</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">MCintegration.base</span><span class="w"> </span><span class="kn">import</span> <span class="n">Uniform</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">MCintegration.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_device</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">sys</span>
+<span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+<span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
+<span class="kn">from</span> <span class="nn">MCintegration.base</span> <span class="kn">import</span> <span class="n">Uniform</span>
+<span class="kn">from</span> <span class="nn">MCintegration.utils</span> <span class="kn">import</span> <span class="n">get_device</span>
+<span class="kn">import</span> <span class="nn">sys</span>
 
 <span class="n">TINY</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">min_10_exp</span> <span class="o">+</span> <span class="mi">50</span><span class="p">)</span>
 
 
 <div class="viewcode-block" id="Configuration">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Configuration">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Configuration</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">Configuration</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
         <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">get_device</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
@@ -62,18 +62,18 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="n">dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">f_dim</span> <span class="o">=</span> <span class="n">f_dim</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span> <span class="o">=</span> <span class="n">batch_size</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">fx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">fx</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">weight</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span></div>
 
 
 
 <div class="viewcode-block" id="Map">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Map">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Map</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">Map</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">get_device</span><span class="p">()</span>
@@ -83,13 +83,13 @@
 
 <div class="viewcode-block" id="Map.forward">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Map.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="Map.forward_with_detJ">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Map.forward_with_detJ">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward_with_detJ</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward_with_detJ</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
         <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
         <span class="n">detJ</span><span class="o">.</span><span class="n">exp_</span><span class="p">()</span>
         <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span></div>
@@ -97,7 +97,7 @@
 
 <div class="viewcode-block" id="Map.inverse">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Map.inverse">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method&quot;</span><span class="p">)</span></div>
 </div>
 
@@ -105,8 +105,8 @@
 
 <div class="viewcode-block" id="CompositeMap">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.CompositeMap">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">CompositeMap</span><span class="p">(</span><span class="n">Map</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">CompositeMap</span><span class="p">(</span><span class="n">Map</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">maps</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Maps can not be empty.&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">dtype</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -121,7 +121,7 @@
 
 <div class="viewcode-block" id="CompositeMap.forward">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.CompositeMap.forward">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
         <span class="n">log_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">u</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">u</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">for</span> <span class="nb">map</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="p">:</span>
             <span class="n">u</span><span class="p">,</span> <span class="n">log_detj</span> <span class="o">=</span> <span class="nb">map</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
@@ -131,7 +131,7 @@
 
 <div class="viewcode-block" id="CompositeMap.inverse">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.CompositeMap.inverse">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
         <span class="n">log_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">):</span>
             <span class="n">x</span><span class="p">,</span> <span class="n">log_detj</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="o">.</span><span class="n">inverse</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
@@ -143,8 +143,8 @@
 
 <div class="viewcode-block" id="Vegas">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">Vegas</span><span class="p">(</span><span class="n">Map</span><span class="p">):</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">ninc</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="k">class</span> <span class="nc">Vegas</span><span class="p">(</span><span class="n">Map</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">ninc</span><span class="o">=</span><span class="mi">1000</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="n">dim</span>
@@ -168,11 +168,27 @@
                 <span class="sa">f</span><span class="s2">&quot;&#39;ninc&#39; must be a scalar or a 1D array of length </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="si">}</span><span class="s2">.&quot;</span>
             <span class="p">)</span>
 
+        <span class="c1"># Preallocate tensors to minimize memory allocations</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+        <span class="c1"># Preallocate temporary tensors for adapt</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">avg_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">tmp_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+        <span class="p">)</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">make_uniform</span><span class="p">()</span>
 
 <div class="viewcode-block" id="Vegas.adaptive_training">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.adaptive_training">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">adaptive_training</span><span class="p">(</span>
+    <span class="k">def</span> <span class="nf">adaptive_training</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">batch_size</span><span class="p">,</span>
         <span class="n">f</span><span class="p">,</span>
@@ -180,6 +196,16 @@
         <span class="n">epoch</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
         <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">            Perform adaptive training to adjust the grid based on the training function.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            batch_size (int): Number of samples per batch.</span>
+<span class="sd">            f (callable): Training function that takes x and fx as inputs.</span>
+<span class="sd">            f_dim (int, optional): Dimension of the function f. Defaults to 1.</span>
+<span class="sd">            epoch (int, optional): Number of training epochs. Defaults to 10.</span>
+<span class="sd">            alpha (float, optional): Adaptation rate. Defaults to 0.5.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">q0</span> <span class="o">=</span> <span class="n">Uniform</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="n">sample</span> <span class="o">=</span> <span class="n">Configuration</span><span class="p">(</span>
             <span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span>
@@ -196,7 +222,8 @@
 
 <div class="viewcode-block" id="Vegas.add_training_data">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.add_training_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">add_training_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">add_training_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">sample</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Add training data ``f`` for ``u``-space points ``u``.</span>
 
 <span class="sd">        Accumulates training data for later use by ``self.adapt()``.</span>
@@ -213,9 +240,6 @@
 <span class="sd">                point ``u[j, d]`` in ``u``-space.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">fval</span> <span class="o">=</span> <span class="p">(</span><span class="n">sample</span><span class="o">.</span><span class="n">detJ</span> <span class="o">*</span> <span class="n">sample</span><span class="o">.</span><span class="n">weight</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">)</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">)</span> <span class="o">+</span> <span class="n">TINY</span>
         <span class="n">iu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">sample</span><span class="o">.</span><span class="n">u</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">)</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
             <span class="n">indices</span> <span class="o">=</span> <span class="n">iu</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span>
@@ -225,115 +249,130 @@
 
 <div class="viewcode-block" id="Vegas.adapt">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.adapt">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">adapt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Adapt grid to accumulated training data.</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">adapt</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Adapt the grid based on accumulated training data.</span>
 
-<span class="sd">        ``self.adapt(...)`` projects the training data onto</span>
-<span class="sd">        each axis independently and maps it into ``x`` space.</span>
-<span class="sd">        It shrinks ``x``-grid increments in regions where the</span>
-<span class="sd">        projected training data is large, and grows increments</span>
-<span class="sd">        where the projected data is small. The grid along</span>
-<span class="sd">        any direction is unchanged if the training data</span>
-<span class="sd">        is constant along that direction.</span>
-
-<span class="sd">        The number of increments along a direction can be</span>
-<span class="sd">        changed by setting parameter ``ninc`` (array or number).</span>
-
-<span class="sd">        The grid does not change if no training data has</span>
-<span class="sd">        been accumulated, unless ``ninc`` is specified, in</span>
-<span class="sd">        which case the number of increments is adjusted</span>
-<span class="sd">        while preserving the relative density of increments</span>
-<span class="sd">        at different values of ``x``.</span>
+<span class="sd">        Shrinks grid increments in regions where the accumulated f is large,</span>
+<span class="sd">        and grows them where f is small. The adaptation speed is controlled by alpha.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">            alpha (float): Determines the speed with which the grid</span>
-<span class="sd">                adapts to training data. Large (postive) values imply</span>
+<span class="sd">            alpha (float, optional): Determines the speed with which the grid</span>
+<span class="sd">                adapts to training data. Large (positive) values imply</span>
 <span class="sd">                rapid evolution; small values (much less than one) imply</span>
 <span class="sd">                slow evolution. Typical values are of order one. Choosing</span>
 <span class="sd">                ``alpha&lt;0`` causes adaptation to the unmodified training</span>
 <span class="sd">                data (usually not a good idea).</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># Aggregate training data across distributed processes if applicable</span>
         <span class="k">if</span> <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">is_initialized</span><span class="p">():</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
             <span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">all_reduce</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="p">,</span> <span class="n">op</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">distributed</span><span class="o">.</span><span class="n">ReduceOp</span><span class="o">.</span><span class="n">SUM</span><span class="p">)</span>
+
+        <span class="c1"># Initialize a new grid tensor</span>
         <span class="n">new_grid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span>
-            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
-            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
+            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
         <span class="p">)</span>
-        <span class="n">avg_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
         <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-            <span class="n">tmp_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+            <span class="n">tmp_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+
+        <span class="c1"># avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)</span>
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
-            <span class="n">ninc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
+            <span class="n">ninc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">item</span><span class="p">()</span>
+
             <span class="k">if</span> <span class="n">alpha</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-                    <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:]</span> <span class="o">&gt;</span> <span class="mi">0</span>
-                    <span class="n">avg_f</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">mask</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">mask</span><span class="p">]</span>
-                    <span class="n">avg_f</span><span class="p">[</span><span class="o">~</span><span class="n">mask</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>  <span class="c1"># smooth</span>
-                    <span class="n">tmp_f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mf">7.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mf">8.0</span>
+                <span class="c1"># Compute average f for current dimension where n_f &gt; 0</span>
+                <span class="n">mask</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">0</span>  <span class="c1"># Shape: (ninc,)</span>
+                <span class="n">avg_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+                    <span class="n">mask</span><span class="p">,</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ninc</span><span class="p">],</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ninc</span><span class="p">]),</span>
+                <span class="p">)</span>  <span class="c1"># Shape: (ninc,)</span>
+
+                <span class="k">if</span> <span class="n">alpha</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="c1"># Smooth avg_f</span>
+                    <span class="n">tmp_f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="mf">7.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="mf">8.0</span>  <span class="c1"># Shape: ()</span>
                     <span class="n">tmp_f</span><span class="p">[</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="mf">7.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">2</span><span class="p">])</span> <span class="o">/</span> <span class="mf">8.0</span>
-                    <span class="p">)</span>
+                        <span class="mf">7.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="mf">8.0</span>  <span class="c1"># Shape: ()</span>
                     <span class="n">tmp_f</span><span class="p">[</span><span class="mi">1</span> <span class="p">:</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="n">torch</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span>
-                            <span class="mf">6.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">1</span> <span class="p">:</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
-                            <span class="o">+</span> <span class="n">avg_f</span><span class="p">[:</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span>
-                            <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="n">ninc</span><span class="p">]</span>
-                        <span class="p">)</span>
-                        <span class="o">/</span> <span class="mf">8.0</span>
-                    <span class="p">)</span>
-                    <span class="n">sum_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">tmp_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">])</span>
-                    <span class="k">if</span> <span class="n">sum_f</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
-                        <span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="n">tmp_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">/</span> <span class="n">sum_f</span> <span class="o">+</span> <span class="n">TINY</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="n">TINY</span>
-                    <span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="o">-</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">])</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">])</span>
-                    <span class="p">)</span> <span class="o">**</span> <span class="n">alpha</span>
+                        <span class="mf">6.0</span> <span class="o">*</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">1</span> <span class="p">:</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[:</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">2</span><span class="p">]</span> <span class="o">+</span> <span class="n">avg_f</span><span class="p">[</span><span class="mi">2</span><span class="p">:</span><span class="n">ninc</span><span class="p">]</span>
+                    <span class="p">)</span><span class="o">.</span><span class="n">abs</span><span class="p">()</span> <span class="o">/</span> <span class="mf">8.0</span>
 
-            <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
-            <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span><span class="p">]</span>
-            <span class="n">f_ninc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">avg_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">])</span> <span class="o">/</span> <span class="n">ninc</span>
+                    <span class="c1"># Normalize tmp_f to ensure the sum is 1</span>
+                    <span class="n">sum_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">tmp_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">])</span><span class="o">.</span><span class="n">clamp_min_</span><span class="p">(</span><span class="n">TINY</span><span class="p">)</span>  <span class="c1"># Scalar</span>
+                    <span class="n">avg_f</span> <span class="o">=</span> <span class="n">tmp_f</span><span class="p">[:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">/</span> <span class="n">sum_f</span> <span class="o">+</span> <span class="n">TINY</span>  <span class="c1"># Shape: (ninc,)</span>
 
-            <span class="n">j</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
-            <span class="n">acc_f</span> <span class="o">=</span> <span class="mi">0</span>
-            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ninc</span><span class="p">):</span>
-                <span class="k">while</span> <span class="n">acc_f</span> <span class="o">&lt;</span> <span class="n">f_ninc</span><span class="p">:</span>
-                    <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
-                    <span class="k">if</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">ninc</span><span class="p">:</span>
-                        <span class="n">acc_f</span> <span class="o">+=</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">j</span><span class="p">]</span>
-                    <span class="k">else</span><span class="p">:</span>
-                        <span class="k">break</span>
-                <span class="k">else</span><span class="p">:</span>
-                    <span class="n">acc_f</span> <span class="o">-=</span> <span class="n">f_ninc</span>
-                    <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                        <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">j</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="p">(</span><span class="n">acc_f</span> <span class="o">/</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">j</span><span class="p">])</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span>
+                    <span class="c1"># Apply non-linear transformation controlled by alpha</span>
+                    <span class="n">avg_f</span> <span class="o">=</span> <span class="p">(</span><span class="o">-</span><span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">avg_f</span><span class="p">)</span> <span class="o">/</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">avg_f</span><span class="p">))</span><span class="o">.</span><span class="n">pow_</span><span class="p">(</span>
+                        <span class="n">alpha</span>
+                    <span class="p">)</span>  <span class="c1"># Shape: (ninc,)</span>
+
+                <span class="c1"># Compute the target accumulated f per increment</span>
+                <span class="n">f_ninc</span> <span class="o">=</span> <span class="n">avg_f</span><span class="o">.</span><span class="n">sum</span><span class="p">()</span> <span class="o">/</span> <span class="n">ninc</span>  <span class="c1"># Scalar</span>
+
+                <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+                <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span><span class="p">]</span>
+
+                <span class="n">target_cumulative_weights</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">ninc</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span> <span class="o">*</span> <span class="n">f_ninc</span>
+                <span class="p">)</span>  <span class="c1"># Calculate the target cumulative weights for each new grid point</span>
+
+                <span class="n">cumulative_avg_f</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span>
+                    <span class="p">(</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span>
+                        <span class="n">torch</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">avg_f</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
                     <span class="p">)</span>
-                    <span class="k">continue</span>
-                <span class="k">break</span>
+                <span class="p">)</span>  <span class="c1"># Calculate the cumulative sum of avg_f</span>
+                <span class="n">interval_indices</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">torch</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span>
+                        <span class="n">cumulative_avg_f</span><span class="p">,</span> <span class="n">target_cumulative_weights</span><span class="p">,</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="o">-</span> <span class="mi">1</span>
+                <span class="p">)</span>  <span class="c1"># Find the intervals in the original grid where the target weights fall</span>
+                <span class="c1"># Extract the necessary values using the interval indices</span>
+                <span class="n">grid_left</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">interval_indices</span><span class="p">]</span>
+                <span class="n">inc_relevant</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">interval_indices</span><span class="p">]</span>
+                <span class="n">avg_f_relevant</span> <span class="o">=</span> <span class="n">avg_f</span><span class="p">[</span><span class="n">interval_indices</span><span class="p">]</span>
+                <span class="n">cumulative_avg_f_relevant</span> <span class="o">=</span> <span class="n">cumulative_avg_f</span><span class="p">[</span><span class="n">interval_indices</span><span class="p">]</span>
+
+                <span class="c1"># Calculate the fractional position within each interval</span>
+                <span class="n">fractional_positions</span> <span class="o">=</span> <span class="p">(</span>
+                    <span class="n">target_cumulative_weights</span> <span class="o">-</span> <span class="n">cumulative_avg_f_relevant</span>
+                <span class="p">)</span> <span class="o">/</span> <span class="n">avg_f_relevant</span>
+
+                <span class="c1"># Calculate the new grid points using vectorized operations</span>
+                <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">1</span><span class="p">:</span><span class="n">ninc</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid_left</span> <span class="o">+</span> <span class="n">fractional_positions</span> <span class="o">*</span> <span class="n">inc_relevant</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="c1"># If alpha == 0 or no training data, retain the existing grid</span>
+                <span class="n">new_grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:]</span>
+
+        <span class="c1"># Assign the newly computed grid</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="n">new_grid</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">inc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
-            <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span><span class="p">),</span>
-            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
-            <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span>
-        <span class="p">)</span>
+
+        <span class="c1"># Update increments based on the new grid</span>
+        <span class="c1"># Compute the difference between consecutive grid points</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>  <span class="c1"># Reset increments to zero</span>
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">1</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]]</span>
             <span class="p">)</span>
+
+        <span class="c1"># Clear accumulated training data for the next adaptation cycle</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="Vegas.make_uniform">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.make_uniform">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">make_uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">make_uniform</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">inc</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="o">.</span><span class="n">max</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">grid</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">max_ninc</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span>
         <span class="p">)</span>
 
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
@@ -352,92 +391,143 @@
 
 <div class="viewcode-block" id="Vegas.extract_grid">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.extract_grid">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">extract_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">extract_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s2">&quot;Return a list of lists specifying the map&#39;s grid.&quot;</span>
-        <span class="n">grid</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">grid_list</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
             <span class="n">ng</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span>
-            <span class="n">grid</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ng</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
-        <span class="k">return</span> <span class="n">grid</span></div>
+            <span class="n">grid_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:</span><span class="n">ng</span><span class="p">]</span><span class="o">.</span><span class="n">tolist</span><span class="p">())</span>
+        <span class="k">return</span> <span class="n">grid_list</span></div>
 
 
 <div class="viewcode-block" id="Vegas.clear">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.clear">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
+    <span class="k">def</span> <span class="nf">clear</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="s2">&quot;Clear information accumulated by :meth:`AdaptiveMap.add_training_data`.&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span> <span class="o">=</span> <span class="kc">None</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span> <span class="o">=</span> <span class="kc">None</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sum_f</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">n_f</span><span class="o">.</span><span class="n">zero_</span><span class="p">()</span></div>
 
 
 <div class="viewcode-block" id="Vegas.forward">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.forward">[docs]</a>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
-        <span class="c1"># u = u.to(self.device)</span>
+    <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
         <span class="n">u_ninc</span> <span class="o">=</span> <span class="n">u</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span>
         <span class="n">iu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">u_ninc</span><span class="p">)</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
-        <span class="n">du_ninc</span> <span class="o">=</span> <span class="n">u_ninc</span> <span class="o">-</span> <span class="n">torch</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span><span class="n">u_ninc</span><span class="p">)</span><span class="o">.</span><span class="n">long</span><span class="p">()</span>
+        <span class="n">du_ninc</span> <span class="o">=</span> <span class="n">u_ninc</span> <span class="o">-</span> <span class="n">iu</span>
 
-        <span class="n">x</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
-        <span class="n">detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="c1"># self.detJ.fill_(1.0)</span>
-        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
-            <span class="c1"># Handle the case where iu &lt; ninc</span>
-            <span class="n">ninc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
-            <span class="n">mask</span> <span class="o">=</span> <span class="n">iu</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">ninc</span>
-            <span class="k">if</span> <span class="n">mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">x</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iu</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">d</span><span class="p">]]</span>
-                    <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iu</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">d</span><span class="p">]]</span> <span class="o">*</span> <span class="n">du_ninc</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span>
-                <span class="p">)</span>
-                <span class="n">detJ</span><span class="p">[</span><span class="n">mask</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iu</span><span class="p">[</span><span class="n">mask</span><span class="p">,</span> <span class="n">d</span><span class="p">]]</span> <span class="o">*</span> <span class="n">ninc</span>
+        <span class="n">batch_size</span> <span class="o">=</span> <span class="n">u</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Clamp iu to [0, ninc-1] to handle out-of-bounds indices</span>
+        <span class="n">min_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">iu</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">max_tensor</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">iu</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>  <span class="c1"># Shape: (1, dim)</span>
+        <span class="n">iu_clamped</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">iu</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="n">min_tensor</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">max_tensor</span><span class="p">)</span>
 
-            <span class="c1"># Handle the case where iu &gt;= ninc</span>
-            <span class="n">mask_inv</span> <span class="o">=</span> <span class="o">~</span><span class="n">mask</span>
-            <span class="k">if</span> <span class="n">mask_inv</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">x</span><span class="p">[</span><span class="n">mask_inv</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span><span class="p">]</span>
-                <span class="n">detJ</span><span class="p">[</span><span class="n">mask_inv</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc</span>
+        <span class="n">grid_expanded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">inc_expanded</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
 
-        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">detJ</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span></div>
+        <span class="n">grid_gather</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">grid_expanded</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">iu_clamped</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span>
+            <span class="mi">2</span>
+        <span class="p">)</span>  <span class="c1"># Shape: (batch_size, dim)</span>
+        <span class="n">inc_gather</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">inc_expanded</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">iu_clamped</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">2</span><span class="p">))</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span>
+
+        <span class="n">x</span> <span class="o">=</span> <span class="n">grid_gather</span> <span class="o">+</span> <span class="n">inc_gather</span> <span class="o">*</span> <span class="n">du_ninc</span>
+        <span class="n">log_detJ</span> <span class="o">=</span> <span class="p">(</span><span class="n">inc_gather</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">)</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">dim</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Handle out-of-bounds by setting x to grid boundary and adjusting detJ</span>
+        <span class="n">out_of_bounds</span> <span class="o">=</span> <span class="n">iu</span> <span class="o">&gt;=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span>
+        <span class="k">if</span> <span class="n">out_of_bounds</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="c1"># Create indices for out-of-bounds</span>
+            <span class="c1"># For each sample and dimension, set x to grid[d, ninc[d]]</span>
+            <span class="c1"># and log_detJ += log(inc[d, ninc[d]-1] * ninc[d])</span>
+            <span class="n">boundary_grid</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="c1"># x = torch.where(out_of_bounds, boundary_grid, x)</span>
+            <span class="n">x</span><span class="p">[</span><span class="n">out_of_bounds</span><span class="p">]</span> <span class="o">=</span> <span class="n">boundary_grid</span><span class="p">[</span><span class="n">out_of_bounds</span><span class="p">]</span>
+
+            <span class="n">boundary_inc</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">),</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+                <span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+                <span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">adj_log_detJ</span> <span class="o">=</span> <span class="p">((</span><span class="n">boundary_inc</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">)</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span> <span class="o">*</span> <span class="n">out_of_bounds</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span>
+                <span class="n">dim</span><span class="o">=</span><span class="mi">1</span>
+            <span class="p">)</span>
+            <span class="n">log_detJ</span> <span class="o">+=</span> <span class="n">adj_log_detJ</span>
+
+        <span class="k">return</span> <span class="n">x</span><span class="p">,</span> <span class="n">log_detJ</span></div>
 
 
 <div class="viewcode-block" id="Vegas.inverse">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.maps.Vegas.inverse">[docs]</a>
     <span class="nd">@torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">()</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
-        <span class="c1"># self.detJ.fill_(1.0)</span>
-        <span class="n">x</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Inverse map from x-space to u-space.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor): Tensor of shape (batch_size, dim) representing points in x-space.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            u (torch.Tensor): Tensor of shape (batch_size, dim) representing points in u-space.</span>
+<span class="sd">            log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log determinant of the Jacobian.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">x</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+        <span class="n">batch_size</span><span class="p">,</span> <span class="n">dim</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="c1"># Initialize output tensors</span>
         <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
-        <span class="n">detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">):</span>
-            <span class="n">ninc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>
-            <span class="n">iu</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="p">:],</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">contiguous</span><span class="p">(),</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">log_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
 
-            <span class="n">mask_valid</span> <span class="o">=</span> <span class="p">(</span><span class="n">iu</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">iu</span> <span class="o">&lt;=</span> <span class="n">ninc</span><span class="p">)</span>
-            <span class="n">mask_lower</span> <span class="o">=</span> <span class="n">iu</span> <span class="o">&lt;=</span> <span class="mi">0</span>
-            <span class="n">mask_upper</span> <span class="o">=</span> <span class="n">iu</span> <span class="o">&gt;</span> <span class="n">ninc</span>
+        <span class="c1"># Loop over each dimension to perform inverse mapping</span>
+        <span class="k">for</span> <span class="n">d</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">dim</span><span class="p">):</span>
+            <span class="c1"># Extract the grid and increment for dimension d</span>
+            <span class="n">grid_d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>  <span class="c1"># Shape: (max_ninc + 1,)</span>
+            <span class="n">inc_d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>  <span class="c1"># Shape: (max_ninc,)</span>
 
-            <span class="c1"># Handle valid range (0 &lt; iu &lt;= ninc)</span>
-            <span class="k">if</span> <span class="n">mask_valid</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">iui_valid</span> <span class="o">=</span> <span class="n">iu</span><span class="p">[</span><span class="n">mask_valid</span><span class="p">]</span> <span class="o">-</span> <span class="mi">1</span>
-                <span class="n">u</span><span class="p">[</span><span class="n">mask_valid</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
-                    <span class="n">iui_valid</span>
-                    <span class="o">+</span> <span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="n">mask_valid</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">grid</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iui_valid</span><span class="p">])</span>
-                    <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iui_valid</span><span class="p">]</span>
-                <span class="p">)</span> <span class="o">/</span> <span class="n">ninc</span>
-                <span class="n">detJ</span><span class="p">[</span><span class="n">mask_valid</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">iui_valid</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc</span>
+            <span class="c1"># ninc_d = self.ninc[d].float()  # Scalar tensor</span>
+            <span class="n">ninc_d</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ninc</span><span class="p">[</span><span class="n">d</span><span class="p">]</span>  <span class="c1"># Scalar tensor</span>
 
-            <span class="c1"># Handle lower bound (iu &lt;= 0)\</span>
-            <span class="k">if</span> <span class="n">mask_lower</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">u</span><span class="p">[</span><span class="n">mask_lower</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mf">0.0</span>
-                <span class="n">detJ</span><span class="p">[</span><span class="n">mask_lower</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc</span>
+            <span class="c1"># Perform searchsorted to find indices where x should be inserted to maintain order</span>
+            <span class="c1"># torch.searchsorted returns indices in [0, max_ninc +1]</span>
+            <span class="n">iu</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">torch</span><span class="o">.</span><span class="n">searchsorted</span><span class="p">(</span><span class="n">grid_d</span><span class="p">,</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">contiguous</span><span class="p">(),</span> <span class="n">right</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+            <span class="p">)</span>  <span class="c1"># Shape: (batch_size,)</span>
 
-            <span class="c1"># Handle upper bound (iu &gt; ninc)</span>
-            <span class="k">if</span> <span class="n">mask_upper</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
-                <span class="n">u</span><span class="p">[</span><span class="n">mask_upper</span><span class="p">,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1.0</span>
-                <span class="n">detJ</span><span class="p">[</span><span class="n">mask_upper</span><span class="p">]</span> <span class="o">*=</span> <span class="bp">self</span><span class="o">.</span><span class="n">inc</span><span class="p">[</span><span class="n">d</span><span class="p">,</span> <span class="n">ninc</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc</span>
+            <span class="c1"># Clamp indices to [0, ninc_d - 1] to ensure they are within valid range</span>
+            <span class="n">iu_clamped</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">iu</span><span class="p">,</span> <span class="nb">min</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">ninc_d</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span>  <span class="c1"># Shape: (batch_size,)</span>
 
-        <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span></div>
+            <span class="c1"># Gather grid and increment values based on iu_clamped</span>
+            <span class="c1"># grid_gather and inc_gather have shape (batch_size,)</span>
+            <span class="n">grid_gather</span> <span class="o">=</span> <span class="n">grid_d</span><span class="p">[</span><span class="n">iu_clamped</span><span class="p">]</span>  <span class="c1"># Shape: (batch_size,)</span>
+            <span class="n">inc_gather</span> <span class="o">=</span> <span class="n">inc_d</span><span class="p">[</span><span class="n">iu_clamped</span><span class="p">]</span>  <span class="c1"># Shape: (batch_size,)</span>
+
+            <span class="c1"># Compute du: fractional part within the increment</span>
+            <span class="n">du</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span> <span class="o">-</span> <span class="n">grid_gather</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="n">inc_gather</span> <span class="o">+</span> <span class="n">TINY</span><span class="p">)</span>  <span class="c1"># Shape: (batch_size,)</span>
+
+            <span class="c1"># Compute u for dimension d</span>
+            <span class="n">u</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">du</span> <span class="o">+</span> <span class="n">iu_clamped</span><span class="p">)</span> <span class="o">/</span> <span class="n">ninc_d</span>  <span class="c1"># Shape: (batch_size,)</span>
+
+            <span class="c1"># Compute log determinant contribution for dimension d</span>
+            <span class="n">log_detJ</span> <span class="o">+=</span> <span class="p">(</span><span class="n">inc_gather</span> <span class="o">*</span> <span class="n">ninc_d</span> <span class="o">+</span> <span class="n">TINY</span><span class="p">)</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span>  <span class="c1"># Shape: (batch_size,)</span>
+
+            <span class="c1"># Handle out-of-bounds cases</span>
+            <span class="c1"># Lower bound: x &lt;= grid[d, 0]</span>
+            <span class="n">lower_mask</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">grid_d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># Shape: (batch_size,)</span>
+            <span class="k">if</span> <span class="n">lower_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">u</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">lower_mask</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">)</span>
+                <span class="n">log_detJ</span> <span class="o">+=</span> <span class="p">(</span><span class="n">inc_d</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc_d</span> <span class="o">+</span> <span class="n">TINY</span><span class="p">)</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span>
+
+            <span class="c1"># Upper bound: x &gt;= grid[d, ninc_d]</span>
+            <span class="n">upper_mask</span> <span class="o">=</span> <span class="n">x</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">grid_d</span><span class="p">[</span><span class="n">ninc_d</span><span class="p">]</span>  <span class="c1"># Shape: (batch_size,)</span>
+            <span class="k">if</span> <span class="n">upper_mask</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+                <span class="n">u</span><span class="p">[:,</span> <span class="n">d</span><span class="p">]</span><span class="o">.</span><span class="n">masked_fill_</span><span class="p">(</span><span class="n">upper_mask</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">)</span>
+                <span class="n">log_detJ</span> <span class="o">+=</span> <span class="p">(</span><span class="n">inc_d</span><span class="p">[</span><span class="n">ninc_d</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">ninc_d</span> <span class="o">+</span> <span class="n">TINY</span><span class="p">)</span><span class="o">.</span><span class="n">log_</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">log_detJ</span></div>
 </div>
 
 

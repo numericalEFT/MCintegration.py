@@ -5,7 +5,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="width=device-width, initial-scale=1" name="viewport"/>
 <title>MCintegration package — MCintegration 1.0.0 documentation</title>
-<link href="_static/pygments.css?v=0c472235" rel="stylesheet" type="text/css"/>
+<link href="_static/pygments.css?v=4848ba22" rel="stylesheet" type="text/css"/>
 <link href="_static/pyramid.css?v=424f8d56" rel="stylesheet" type="text/css"/>
 <script src="_static/documentation_options.js?v=8d563738"></script>
 <script src="_static/doctools.js?v=9bcbadda"></script>
@@ -232,26 +232,14 @@ registered hooks while the latter silently ignores them.</p>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.maps.Map" title="MCintegration.maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.adapt">
-<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.adapt" title="Link to this definition">¶</a></dt>
-<dd><p>Adapt grid to accumulated training data.</p>
-<p><code class="docutils literal notranslate"><span class="pre">self.adapt(...)</span></code> projects the training data onto
-each axis independently and maps it into <code class="docutils literal notranslate"><span class="pre">x</span></code> space.
-It shrinks <code class="docutils literal notranslate"><span class="pre">x</span></code>-grid increments in regions where the
-projected training data is large, and grows increments
-where the projected data is small. The grid along
-any direction is unchanged if the training data
-is constant along that direction.</p>
-<p>The number of increments along a direction can be
-changed by setting parameter <code class="docutils literal notranslate"><span class="pre">ninc</span></code> (array or number).</p>
-<p>The grid does not change if no training data has
-been accumulated, unless <code class="docutils literal notranslate"><span class="pre">ninc</span></code> is specified, in
-which case the number of increments is adjusted
-while preserving the relative density of increments
-at different values of <code class="docutils literal notranslate"><span class="pre">x</span></code>.</p>
+<span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.adapt" title="Link to this definition">¶</a></dt>
+<dd><p>Adapt the grid based on accumulated training data.</p>
+<p>Shrinks grid increments in regions where the accumulated f is large,
+and grows them where f is small. The adaptation speed is controlled by alpha.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>alpha</strong> (<em>float</em>) – Determines the speed with which the grid
-adapts to training data. Large (postive) values imply
+<dd class="field-odd"><p><strong>alpha</strong> (<em>float</em><em>, </em><em>optional</em>) – Determines the speed with which the grid
+adapts to training data. Large (positive) values imply
 rapid evolution; small values (much less than one) imply
 slow evolution. Typical values are of order one. Choosing
 <code class="docutils literal notranslate"><span class="pre">alpha&lt;0</span></code> causes adaptation to the unmodified training
@@ -262,7 +250,21 @@ data (usually not a good idea).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.adaptive_training">
 <span class="sig-name descname"><span class="pre">adaptive_training</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.adaptive_training"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.adaptive_training" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><blockquote>
+<div><p>Perform adaptive training to adjust the grid based on the training function.</p>
+</div></blockquote>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size</strong> (<em>int</em>) – Number of samples per batch.</p></li>
+<li><p><strong>f</strong> (<em>callable</em>) – Training function that takes x and fx as inputs.</p></li>
+<li><p><strong>f_dim</strong> (<em>int</em><em>, </em><em>optional</em>) – Dimension of the function f. Defaults to 1.</p></li>
+<li><p><strong>epoch</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of training epochs. Defaults to 10.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em><em>, </em><em>optional</em>) – Adaptation rate. Defaults to 0.5.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.add_training_data">
 <span class="sig-name descname"><span class="pre">add_training_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.add_training_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.add_training_data" title="Link to this definition">¶</a></dt>
@@ -310,7 +312,20 @@ registered hooks while the latter silently ignores them.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.inverse">
 <span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Inverse map from x-space to u-space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – Tensor of shape (batch_size, dim) representing points in x-space.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tensor of shape (batch_size, dim) representing points in u-space.
+log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log determinant of the Jacobian.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>u (torch.Tensor)</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.make_uniform">
 <span class="sig-name descname"><span class="pre">make_uniform</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.make_uniform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.make_uniform" title="Link to this definition">¶</a></dt>
