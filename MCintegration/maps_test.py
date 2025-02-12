@@ -81,6 +81,11 @@ class TestVegas(unittest.TestCase):
         self.sample = Configuration(
             batch_size=3, dim=2, f_dim=1, device=self.device, dtype=self.dtype
         )
+        self.sample.u.uniform_(0, 1)
+        self.sample.x[:] = self.sample.u
+        self.sample.fx.uniform_(0, 1)
+        self.sample.weight.fill_(1.0)
+        self.sample.detJ.fill_(1.0)
 
     def tearDown(self):
         # Teardown after each test
