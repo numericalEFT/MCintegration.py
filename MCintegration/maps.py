@@ -17,11 +17,11 @@ class Configuration:
         self.dim = dim
         self.f_dim = f_dim
         self.batch_size = batch_size
-        self.u = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
-        self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
-        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
-        self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
-        self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
+        self.u = torch.rand((batch_size, dim), dtype=dtype, device=self.device)
+        self.x = torch.rand((batch_size, dim), dtype=dtype, device=self.device)
+        self.fx = torch.zeros((batch_size, f_dim), dtype=dtype, device=self.device)
+        self.weight = torch.ones((batch_size,), dtype=dtype, device=self.device)
+        self.detJ = torch.ones((batch_size,), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
