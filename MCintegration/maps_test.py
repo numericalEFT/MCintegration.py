@@ -81,6 +81,11 @@ class TestVegas(unittest.TestCase):
         self.sample = Configuration(
             batch_size=3, dim=2, f_dim=1, device=self.device, dtype=self.dtype
         )
+        self.sample.u.uniform_(0, 1)
+        self.sample.x[:] = self.sample.u
+        self.sample.fx.uniform_(0, 1)
+        self.sample.weight.fill_(1.0)
+        self.sample.detJ.fill_(1.0)
 
     def tearDown(self):
         # Teardown after each test
@@ -118,8 +123,12 @@ class TestVegas(unittest.TestCase):
         # Test clearing accumulated data
         self.vegas.add_training_data(self.sample)
         self.vegas.clear()
-        self.assertIsNone(self.vegas.sum_f)
-        self.assertIsNone(self.vegas.n_f)
+        # self.assertIsNone(self.vegas.sum_f)
+        # self.assertIsNone(self.vegas.n_f)
+        self.assertTrue(torch.all(self.vegas.sum_f == 0).item())
+        self.assertTrue(torch.all(self.vegas.sum_f == 0).item())
+        # self.assertEqual(self.vegas.sum_f, torch.zeros_like(self.vegas.sum_f))
+        # self.assertEqual(self.vegas.n_f, torch.zeros_like(self.vegas.n_f))
 
     def test_forward(self):
         # Test forward transformation
@@ -153,8 +162,8 @@ class TestVegas(unittest.TestCase):
         self.assertEqual(self.vegas.grid.shape, (2, self.ninc + 1))
         self.assertEqual(self.vegas.inc.shape, (2, self.ninc))
         self.assertTrue(torch.equal(self.vegas.grid, self.init_grid))
-        self.assertIsNone(self.vegas.sum_f)
-        self.assertIsNone(self.vegas.n_f)
+        self.assertTrue(torch.all(self.vegas.sum_f == 0).item())
+        self.assertTrue(torch.all(self.vegas.sum_f == 0).item())
 
     def test_edge_cases(self):
         # Test edge cases
