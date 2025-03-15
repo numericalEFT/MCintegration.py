@@ -9,37 +9,37 @@ base module
 
 .. automodule:: MCintegration.base
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 integrators module
 --------------------------------
 
 .. automodule:: MCintegration.integrators
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 maps module
 -------------------------
 
 .. automodule:: MCintegration.maps
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 utils module
 --------------------------
 
 .. automodule:: MCintegration.utils
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: MCintegration
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
