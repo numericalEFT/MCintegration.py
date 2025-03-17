@@ -1,10 +1,39 @@
 import unittest
+from unittest.mock import patch
+import os
 import torch
 import numpy as np
 from integrators import Integrator, MonteCarlo, MarkovChainMonteCarlo
+from integrators import get_ip, get_open_port, setup
 
 # from base import LinearMap, Uniform
 from maps import Configuration
+
+
+class TestIntegrators(unittest.TestCase):
+    @patch("socket.socket")
+    def test_get_ip(self, mock_socket):
+        # Mock the socket behavior
+        mock_socket_instance = mock_socket.return_value
+        mock_socket_instance.getsockname.return_value = ("192.168.1.1", 12345)
+        ip = get_ip()
+        self.assertEqual(ip, "192.168.1.1")
+
+    @patch("socket.socket")
+    def test_get_open_port(self, mock_socket):
+        # Mock the socket behavior
+        mock_socket_instance = mock_socket.return_value.__enter__.return_value
+        mock_socket_instance.getsockname.return_value = ("0.0.0.0", 54321)
+        port = get_open_port()
+        self.assertEqual(port, 54321)
+
+    @patch("torch.distributed.init_process_group")
+    @patch("torch.cuda.set_device")
+    @patch.dict(os.environ, {"LOCAL_RANK": "0"})
+    def test_setup(self, mock_set_device, mock_init_process_group):
+        setup(backend="gloo")
+        mock_init_process_group.assert_called_once_with(backend="gloo")
+        mock_set_device.assert_called_once_with(0)
 
 
 class TestIntegrator(unittest.TestCase):
