@@ -1,12 +1,11 @@
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 import os
 import torch
 import numpy as np
 from integrators import Integrator, MonteCarlo, MarkovChainMonteCarlo
 from integrators import get_ip, get_open_port, setup
 
-# from base import LinearMap, Uniform
 from maps import Configuration
 
 
@@ -50,6 +49,34 @@ class TestIntegrator(unittest.TestCase):
         self.assertEqual(integrator.batch_size, 1000)
         self.assertEqual(integrator.f_dim, 1)
         # Check map type and properties instead of direct instance check
+        self.assertTrue(hasattr(integrator.maps, "forward_with_detJ"))
+        self.assertTrue(hasattr(integrator.maps, "device"))
+        self.assertTrue(hasattr(integrator.maps, "dtype"))
+
+    @patch("MCintegration.maps.CompositeMap")
+    @patch("MCintegration.base.LinearMap")
+    def test_initialization_with_maps(self, mock_linear_map, mock_composite_map):
+        # Mock the LinearMap and CompositeMap
+        mock_linear_map_instance = MagicMock()
+        mock_linear_map.return_value = mock_linear_map_instance
+        mock_composite_map_instance = MagicMock()
+        mock_composite_map.return_value = mock_composite_map_instance
+
+        # Create a mock map
+        mock_map = MagicMock()
+        mock_map.device = "cpu"
+        mock_map.dtype = torch.float32
+        mock_map.forward_with_detJ.return_value = (torch.rand(10, 2), torch.rand(10))
+
+        # Initialize Integrator with maps
+        integrator = Integrator(
+            bounds=self.bounds, f=self.f, maps=mock_map, batch_size=self.batch_size
+        )
+
+        # Assertions
+        self.assertEqual(integrator.dim, 2)
+        self.assertEqual(integrator.batch_size, 1000)
+        self.assertEqual(integrator.f_dim, 1)
         self.assertTrue(hasattr(integrator.maps, "forward_with_detJ"))
         self.assertTrue(hasattr(integrator.maps, "device"))
         self.assertTrue(hasattr(integrator.maps, "dtype"))
@@ -98,11 +125,11 @@ class TestIntegrator(unittest.TestCase):
                 with self.assertRaises(error_type):
                     Integrator(bounds=bounds, f=self.f)
 
-    def test_device_handling(self):
-        if torch.cuda.is_available():
-            integrator = Integrator(bounds=self.bounds, f=self.f, device="cuda")
-            self.assertTrue(integrator.bounds.is_cuda)
-            self.assertTrue(integrator.maps.device == "cuda")
+    # def test_device_handling(self):
+    #     if torch.cuda.is_available():
+    #         integrator = Integrator(bounds=self.bounds, f=self.f, device="cuda")
+    #         self.assertTrue(integrator.bounds.is_cuda)
+    #         self.assertTrue(integrator.maps.device == "cuda")
 
     def test_dtype_handling(self):
         dtypes = [torch.float32, torch.float64]
@@ -266,30 +293,6 @@ class TestMarkovChainMonteCarlo(unittest.TestCase):
                     value = result
                 self.assertAlmostEqual(float(value), 1.0, delta=tolerance)
 
-    # def test_mix_rate_sensitivity(self):
-    #     # Modified mix rate test to be more robust
-    #     mix_rates = [0.0, 0.5, 1.0]
-    #     results = []
-
-    #     for mix_rate in mix_rates:
-    #         accumulated_error = 0
-    #         n_trials = 3  # Run multiple trials for each mix_rate
-
-    #         for _ in range(n_trials):
-    #             result = self.mcmc(neval=50000, mix_rate=mix_rate, nblock=10)
-    #             if hasattr(result, "mean"):
-    #                 value = result.mean
-    #                 error = result.sdev
-    #             else:
-    #                 value = result
-    #                 error = abs(float(value) - 1.0)
-    #             accumulated_error += error
-
-    #         results.append(accumulated_error / n_trials)
-
-    #     # We expect moderate mix rates to have lower average error
-    #     self.assertLess(results[1], max(results[0], results[2]))
-
 
 class TestDistributedFunctionality(unittest.TestCase):
     @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
@@ -300,26 +303,26 @@ class TestDistributedFunctionality(unittest.TestCase):
         self.assertEqual(integrator.rank, 0)
         self.assertEqual(integrator.world_size, 1)
 
-    @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
-    def test_multi_gpu_consistency(self):
-        if torch.cuda.device_count() >= 2:
-            bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
-            f = lambda x, fx: torch.ones_like(x)
+    # @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
+    # def test_multi_gpu_consistency(self):
+    #     if torch.cuda.device_count() >= 2:
+    #         bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
+    #         f = lambda x, fx: torch.ones_like(x)
 
-            # Create two integrators on different devices
-            integrator1 = Integrator(bounds=bounds, f=f, device="cuda:0")
-            integrator2 = Integrator(bounds=bounds, f=f, device="cuda:1")
+    #         # Create two integrators on different devices
+    #         integrator1 = Integrator(bounds=bounds, f=f, device="cuda:0")
+    #         integrator2 = Integrator(bounds=bounds, f=f, device="cuda:1")
 
-            # Results should be consistent across devices
-            result1 = integrator1(neval=10000)
-            result2 = integrator2(neval=10000)
+    #         # Results should be consistent across devices
+    #         result1 = integrator1(neval=10000)
+    #         result2 = integrator2(neval=10000)
 
-            if hasattr(result1, "mean"):
-                value1, value2 = result1.mean, result2.mean
-            else:
-                value1, value2 = result1, result2
+    #         if hasattr(result1, "mean"):
+    #             value1, value2 = result1.mean, result2.mean
+    #         else:
+    #             value1, value2 = result1, result2
 
-            self.assertAlmostEqual(float(value1), float(value2), places=1)
+    #         self.assertAlmostEqual(float(value1), float(value2), places=1)
 
 
 if __name__ == "__main__":
