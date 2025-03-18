@@ -233,7 +233,7 @@ class MonteCarlo(Integrator):
 
         if verbose > 0:
             print(
-                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size*epoch_perblock*nblock}"
+                f"nblock = {nblock}, n_steps_perblock = {epoch_perblock}, batch_size = {self.batch_size}, actual neval = {self.batch_size * epoch_perblock * nblock}"
             )
 
         config = Configuration(
@@ -356,13 +356,13 @@ class MarkovChainMonteCarlo(Integrator):
         else:
             nblock = epoch // nsteps_perblock
         n_meas_perblock = nsteps_perblock // meas_freq
-        assert (
-            n_meas_perblock > 0
-        ), f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
+        assert n_meas_perblock > 0, (
+            f"neval ({neval}) should be larger than batch_size * nblock * meas_freq ({self.batch_size} * {nblock} * {meas_freq})"
+        )
 
         if verbose > 0:
             print(
-                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size*nsteps_perblock*nblock}"
+                f"nblock = {nblock}, n_meas_perblock = {n_meas_perblock}, meas_freq = {meas_freq}, batch_size = {self.batch_size}, actual neval = {self.batch_size * nsteps_perblock * nblock}"
             )
 
         config = Configuration(

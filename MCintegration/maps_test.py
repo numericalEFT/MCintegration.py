@@ -137,11 +137,39 @@ class TestVegas(unittest.TestCase):
         self.assertEqual(x.shape, u.shape)
         self.assertEqual(log_jac.shape, (u.shape[0],))
 
+    def test_forward_out_of_bounds(self):
+        # Test forward transformation with out-of-bounds u values
+        u = torch.tensor(
+            [[1.5, 0.5], [-0.1, 0.5]], dtype=torch.float64
+        )  # Out-of-bounds values
+        x, log_jac = self.vegas.forward(u)
+
+        # Check that out-of-bounds x values are clamped to grid boundaries
+        self.assertTrue(torch.all(x >= 0.0))
+        self.assertTrue(torch.all(x <= 1.0))
+
+        # Check log determinant adjustment for out-of-bounds cases
+        self.assertEqual(log_jac.shape, (u.shape[0],))
+
     def test_inverse(self):
         # Test inverse transformation
         x = torch.tensor([[0.1, 0.2], [0.3, 0.4]], dtype=torch.float64)
         u, log_jac = self.vegas.inverse(x)
         self.assertEqual(u.shape, x.shape)
+        self.assertEqual(log_jac.shape, (x.shape[0],))
+
+    def test_inverse_out_of_bounds(self):
+        # Test inverse transformation with out-of-bounds x values
+        x = torch.tensor(
+            [[1.5, 0.5], [-0.1, 0.5]], dtype=torch.float64
+        )  # Out-of-bounds values
+        u, log_jac = self.vegas.inverse(x)
+
+        # Check that out-of-bounds u values are clamped to [0, 1]
+        self.assertTrue(torch.all(u >= 0.0))
+        self.assertTrue(torch.all(u <= 1.0))
+
+        # Check log determinant adjustment for out-of-bounds cases
         self.assertEqual(log_jac.shape, (x.shape[0],))
 
     def test_train(self):
