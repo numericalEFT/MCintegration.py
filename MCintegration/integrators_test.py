@@ -5,8 +5,10 @@ import torch
 import numpy as np
 from integrators import Integrator, MonteCarlo, MarkovChainMonteCarlo
 from integrators import get_ip, get_open_port, setup
+from integrators import gaussian, random_walk
 
 from maps import Configuration
+from base import EPSILON
 
 
 class TestIntegrators(unittest.TestCase):
@@ -33,6 +35,50 @@ class TestIntegrators(unittest.TestCase):
         setup(backend="gloo")
         mock_init_process_group.assert_called_once_with(backend="gloo")
         mock_set_device.assert_called_once_with(0)
+
+    def test_random_walk(self):
+        # Test random_walk function with default parameters
+        dim = 3
+        device = "cpu"
+        dtype = torch.float32
+        u = torch.rand(dim, device=device, dtype=dtype)
+        step_size = 0.2
+
+        new_u = random_walk(dim, device, dtype, u, step_size=step_size)
+
+        # Validate output shape and range
+        self.assertEqual(new_u.shape, u.shape)
+        self.assertTrue(torch.all(new_u >= 0) and torch.all(new_u <= 1))
+
+        # Test with custom step size
+        custom_step_size = 0.5
+        new_u_custom = random_walk(dim, device, dtype, u, step_size=custom_step_size)
+        self.assertEqual(new_u_custom.shape, u.shape)
+        self.assertTrue(torch.all(new_u_custom >= 0) and torch.all(new_u_custom <= 1))
+
+    def test_gaussian(self):
+        # Test gaussian function with default parameters
+        dim = 3
+        device = "cpu"
+        dtype = torch.float32
+        u = torch.rand(dim, device=device, dtype=dtype)
+
+        mean = torch.zeros_like(u)
+        std = torch.ones_like(u)
+
+        new_u = gaussian(dim, device, dtype, u, mean=mean, std=std)
+
+        # Validate output shape
+        self.assertEqual(new_u.shape, u.shape)
+
+        # Test with custom mean and std
+        custom_mean = torch.full_like(u, 0.5)
+        custom_std = torch.full_like(u, 0.1)
+        new_u_custom = gaussian(dim, device, dtype, u, mean=custom_mean, std=custom_std)
+
+        self.assertEqual(new_u_custom.shape, u.shape)
+        self.assertTrue(torch.all(new_u_custom > custom_mean - 3 * custom_std))
+        self.assertTrue(torch.all(new_u_custom < custom_mean + 3 * custom_std))
 
 
 class TestIntegrator(unittest.TestCase):
@@ -80,6 +126,18 @@ class TestIntegrator(unittest.TestCase):
         self.assertTrue(hasattr(integrator.maps, "forward_with_detJ"))
         self.assertTrue(hasattr(integrator.maps, "device"))
         self.assertTrue(hasattr(integrator.maps, "dtype"))
+
+        integrator = Integrator(
+            bounds=self.bounds,
+            f=self.f,
+            maps=mock_map,
+            batch_size=self.batch_size,
+            device="cpu",
+        )
+
+        # Assertions
+        self.assertEqual(integrator.device, "cpu")
+        self.assertTrue(hasattr(integrator.maps, "device"))
 
     def test_bounds_conversion(self):
         # Test various input types
@@ -223,6 +281,27 @@ class TestMonteCarlo(unittest.TestCase):
                     # Should not raise warning
                     self.mc(neval=neval, nblock=nblock)
 
+    def test_block_size_warning(self):
+        mc = MonteCarlo(bounds=self.bounds, f=self.simple_integral, batch_size=1000)
+        with self.assertWarns(UserWarning):
+            mc(neval=500, nblock=10)  # neval too small for nblock
+
+    def test_varying_nblock(self):
+        test_cases = [
+            (10000, 10),  # Standard case
+            (10000, 1),  # Single block
+            (10000, 100),  # Many blocks
+        ]
+
+        for neval, nblock in test_cases:
+            with self.subTest(neval=neval, nblock=nblock):
+                result = self.mc(neval=neval, nblock=nblock)
+                if hasattr(result, "mean"):
+                    value = result.mean
+                else:
+                    value = result
+                self.assertAlmostEqual(float(value), 1.0, delta=0.1)
+
 
 class TestMarkovChainMonteCarlo(unittest.TestCase):
     def setUp(self):
@@ -287,6 +366,41 @@ class TestMarkovChainMonteCarlo(unittest.TestCase):
                     nburnin=nburnin,
                 )
                 result = mcmc(neval=50000, mix_rate=0.5, nblock=10)
+                if hasattr(result, "mean"):
+                    value = result.mean
+                else:
+                    value = result
+                self.assertAlmostEqual(float(value), 1.0, delta=tolerance)
+
+    def test_sample_acceptance(self):
+        config = Configuration(
+            self.mcmc.batch_size,
+            self.mcmc.dim,
+            self.mcmc.f_dim,
+            self.mcmc.device,
+            self.mcmc.dtype,
+        )
+        config.u, config.detJ = self.mcmc.q0.sample_with_detJ(self.mcmc.batch_size)
+        config.x, detj = self.mcmc.maps.forward_with_detJ(config.u)
+        config.detJ *= detj
+        config.weight = torch.rand(self.mcmc.batch_size, device=self.mcmc.device)
+
+        self.mcmc.sample(config, nsteps=1, mix_rate=0.5)
+
+        # Validate acceptance logic
+        self.assertTrue(torch.all(config.weight >= EPSILON))
+        self.assertEqual(config.u.shape, config.x.shape)
+
+    def test_varying_mix_rate(self):
+        test_cases = [
+            (0.1, 0.2),  # Low mix rate
+            (0.5, 0.1),  # Medium mix rate
+            (0.9, 0.05),  # High mix rate
+        ]
+
+        for mix_rate, tolerance in test_cases:
+            with self.subTest(mix_rate=mix_rate):
+                result = self.mcmc(neval=50000, mix_rate=mix_rate, nblock=10)
                 if hasattr(result, "mean"):
                     value = result.mean
                 else:

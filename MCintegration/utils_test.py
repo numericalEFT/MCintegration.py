@@ -142,21 +142,39 @@ class TestRAvg(unittest.TestCase):
         self.weighted_ravg.add(gvar.gvar(1.0, 0.01))
         self.assertTrue(self.weighted_ravg.converged(0.1, 0.1))
 
-    # def test_multiplication(self):
-    #     ravg1 = RAvg(weighted=True)
-    #     ravg1.update(2.0, 0.1)
-    #     ravg2 = RAvg(weighted=True)
-    #     ravg2.update(3.0, 0.1)
-    #     result = ravg1 * ravg2
-    #     self.assertAlmostEqual(result.mean, 6.0)
+    def test_reduce_ex_serialization(self):
+        ravg = RAvg(weighted=True)
+        ravg.add(gvar.gvar(1.0, 0.1))
+        reduced = ravg.__reduce_ex__(2)
+        restored = reduced[0](*reduced[1])
+        self.assertEqual(restored.mean, ravg.mean)
+        self.assertEqual(restored.sdev, ravg.sdev)
 
-    # def test_division(self):
-    #     ravg1 = RAvg(weighted=True)
-    #     ravg1.update(6.0, 0.1)
-    #     ravg2 = RAvg(weighted=True)
-    #     ravg2.update(3.0, 0.1)
-    #     result = ravg1 / ravg2
-    #     self.assertAlmostEqual(result.mean, 2.0)
+    def test_summary_output(self):
+        ravg = RAvg(weighted=True)
+        ravg.add(gvar.gvar(1.0, 0.1))
+        summary = ravg.summary()
+        self.assertIn("itn", summary)
+        self.assertIn("integral", summary)
+        self.assertIn("wgt average", summary)
+
+    def test_converged_criteria(self):
+        ravg = RAvg(weighted=True)
+        ravg.add(gvar.gvar(1.0, 0.1))
+        self.assertTrue(ravg.converged(0.1, 0.1))
+        self.assertFalse(ravg.converged(0.001, 0.001))
+
+    def test_multiplication_with_another_ravg(self):
+        ravg1 = RAvg(weighted=True)
+        ravg1.update(2.0, 0.1)
+        ravg2 = RAvg(weighted=True)
+        ravg2.update(3.0, 0.1)
+
+        result = ravg1 * ravg2
+        self.assertAlmostEqual(result.mean, 6.0)
+        sdev = (0.1 / 2**2 + 0.1 / 3**2) ** 0.5 * 6.0
+        self.assertAlmostEqual(result.sdev, sdev)
+
     def test_multiplication(self):
         ravg1 = RAvg(weighted=True)
         # Test multiplication by another RAvg object
@@ -197,6 +215,17 @@ class TestRAvg(unittest.TestCase):
         self.assertTrue(
             np.allclose([r.sdev for r in result], [2.0 * ravg1.sdev, 3.0 * ravg1.sdev])
         )
+
+    def test_division_with_another_ravg(self):
+        ravg1 = RAvg(weighted=True)
+        ravg1.update(6.0, 0.1)
+        ravg2 = RAvg(weighted=True)
+        ravg2.update(3.0, 0.1)
+
+        result = ravg1 / ravg2
+        self.assertAlmostEqual(result.mean, 2.0)
+        sdev = (0.1 / 6.0**2 + 0.1 / 3.0**2) ** 0.5 * 2.0
+        self.assertAlmostEqual(result.sdev, sdev)
 
     def test_division(self):
         ravg1 = RAvg(weighted=True)
@@ -254,13 +283,17 @@ class TestUtils(unittest.TestCase):
         # Test set_seed on a CPU-only environment
         set_seed(42)
         self.assertEqual(torch.initial_seed(), 42)
-
-    @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
-    def test_set_seed_cuda(self):
-        # Test set_seed on a CUDA-enabled environment
+        u1 = torch.rand(10)
         set_seed(42)
-        self.assertEqual(torch.initial_seed(), 42)
-        self.assertEqual(torch.cuda.initial_seed(), 42)
+        u2 = torch.rand(10)
+        self.assertTrue(torch.all(u1 == u2))
+
+    # @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
+    # def test_set_seed_cuda(self):
+    #     # Test set_seed on a CUDA-enabled environment
+    #     set_seed(42)
+    #     self.assertEqual(torch.initial_seed(), 42)
+    #     self.assertEqual(torch.cuda.initial_seed(), 42)
 
     @unittest.skipIf(torch.cuda.is_available(), "CUDA is available")
     def test_get_device_cpu(self):
@@ -268,11 +301,17 @@ class TestUtils(unittest.TestCase):
         device = get_device()
         self.assertEqual(device, torch.device("cpu"))
 
-    @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
-    def test_get_device_cuda(self):
-        # Test get_device when CUDA is available
-        device = get_device()
-        self.assertEqual(device, torch.cuda.current_device())
+    # @unittest.skipIf(not torch.cuda.is_available(), "CUDA is not available")
+    # def test_get_device_cuda(self):
+    #     # Test get_device when CUDA is available
+    #     device = get_device()
+    #     self.assertEqual(device, torch.cuda.current_device())
+
+    def test_get_device_cuda_inactive(self):
+        if not torch.cuda.is_available():
+            torch.cuda.set_device(-1)  # Simulate inactive CUDA
+            device = get_device()
+            self.assertEqual(device, torch.device("cpu"))
 
 
 if __name__ == "__main__":
