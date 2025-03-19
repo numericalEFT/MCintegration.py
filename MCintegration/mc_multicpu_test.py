@@ -13,19 +13,19 @@ backend = "gloo"
 
 
 def init_process(rank, world_size, fn, backend=backend):
-    try:
-        # Initialize the process group
-        dist.init_process_group(backend, rank=rank, world_size=world_size)
-        # Call the function
-        fn(rank, world_size)
-    except Exception as e:
-        print(f"Error in process {rank}: {e}")
-        traceback.print_exc()
-        # Make sure to clean up
-        if dist.is_initialized():
-            dist.destroy_process_group()
-        # Return non-zero to indicate error
-        raise e
+    # try:
+    # Initialize the process group
+    dist.init_process_group(backend, rank=rank, world_size=world_size)
+    # Call the function
+    fn(rank, world_size)
+    # except Exception as e:
+    #     print(f"Error in process {rank}: {e}")
+    #     traceback.print_exc()
+    #     # Make sure to clean up
+    #     if dist.is_initialized():
+    #         dist.destroy_process_group()
+    #     # Return non-zero to indicate error
+    #     raise e
 
 
 def run_mcmc(rank, world_size):
@@ -70,10 +70,10 @@ def run_mcmc(rank, world_size):
         if rank == 0:
             print("MarkovChainMonteCarlo Result:", mcmc_result)
 
-    except Exception as e:
-        print(f"Error in run_mcmc for rank {rank}: {e}")
-        traceback.print_exc()
-        raise e
+    # except Exception as e:
+    #     print(f"Error in run_mcmc for rank {rank}: {e}")
+    #     traceback.print_exc()
+    #     raise e
     finally:
         # Clean up
         if dist.is_initialized():
@@ -86,21 +86,16 @@ def test_mcmc(world_size=2):
     print(f"Starting with {world_size} processes")
 
     # Start processes with proper error handling
-    try:
-        mp.spawn(
-            init_process,
-            args=(world_size, run_mcmc),
-            nprocs=world_size,
-            join=True,
-            daemon=False,
-        )
-    except Exception as e:
-        print(f"Error in test_mcmc: {e}")
-        # Make sure all processes are terminated
-        # This is handled automatically by spawn when join=True
+    mp.spawn(
+        init_process,
+        args=(world_size, run_mcmc),
+        nprocs=world_size,
+        join=True,
+        daemon=False,
+    )
 
 
 # if __name__ == "__main__":
-# Prevent issues with multiprocessing on some platforms
-# mp.set_start_method("spawn", force=True)
-# test_mcmc(2)
+#     # Prevent issues with multiprocessing on some platforms
+#     mp.set_start_method("spawn", force=True)
+#     test_mcmc(2)
