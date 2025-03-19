@@ -1,16 +1,37 @@
+# utils.py
+# Utility functions and classes for Monte Carlo integration.
+# This file includes the RAvg class for running averages and error estimation,
+# along with various utility functions.
+
 import torch
 from torch import nn
 import numpy as np
 import gvar
 import sys
 
+# Constants for numerical stability
+# Small but safe non-zero value
 MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
-MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)
+MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)  # Large but safe value
 _VECTOR_TYPES = [np.ndarray, list]
 
 
 class RAvg(gvar.GVar):
+    """
+    Running Average class that extends gvar.GVar.
+    This class maintains a running average of measurements and keeps track of
+    errors, providing statistical analysis of the integration results.
+    """
+
     def __init__(self, weighted=True, itn_results=None, sum_neval=0):
+        """
+        Initialize a Running Average object.
+
+        Args:
+            weighted (bool): Whether to use weighted averaging
+            itn_results (list): Initial list of iteration results
+            sum_neval (int): Initial sum of function evaluations
+        """
         if weighted:
             self._wlist = []
             self.weighted = True
@@ -34,36 +55,68 @@ class RAvg(gvar.GVar):
         self.sum_neval = sum_neval
 
     def update(self, mean, var, last_neval=None):
+        """
+        Update the running average with a new mean and variance.
+
+        Args:
+            mean (float): Mean value to add
+            var (float): Variance to add
+            last_neval (int, optional): Number of evaluations for this update
+        """
         self.add(gvar.gvar(mean, var**0.5))
         if last_neval is not None:
             self.sum_neval += last_neval
 
     def add(self, res):
+        """
+        Add a new result to the running average.
+
+        Args:
+            res (gvar.GVar): Result to add to the running average
+        """
         self.itn_results.append(res)
         if isinstance(res, gvar.GVarRef):
             return
         self._mlist.append(res.mean)
         if self.weighted:
+            # Weighted average with weights proportional to 1/variance
             self._wlist.append(1 / (res.var if res.var > MINVAL else MINVAL))
             var = 1.0 / np.sum(self._wlist)
             sdev = np.sqrt(var)
-            mean = np.sum([w * m for w, m in zip(self._wlist, self._mlist)]) * var
+            mean = np.sum(
+                [w * m for w, m in zip(self._wlist, self._mlist)]) * var
             super(RAvg, self).__init__(*gvar.gvar(mean, sdev).internaldata)
         else:
+            # Simple average
             self._sum += res.mean
             self._varsum += res.var
             self._count += 1
             mean = self._sum / self._count
             var = self._varsum / self._count**2
-            super(RAvg, self).__init__(*gvar.gvar(mean, np.sqrt(var)).internaldata)
+            super(RAvg, self).__init__(
+                *gvar.gvar(mean, np.sqrt(var)).internaldata)
 
     def extend(self, ravg):
-        """Merge results from :class:`RAvg` object ``ravg`` after results currently in ``self``."""
+        """
+        Merge results from another RAvg object after results currently in self.
+
+        Args:
+            ravg (RAvg): Another RAvg object to merge with this one
+        """
         for r in ravg.itn_results:
             self.add(r)
         self.sum_neval += ravg.sum_neval
 
     def __reduce_ex__(self, protocol):
+        """
+        Support for pickling RAvg objects.
+
+        Args:
+            protocol (int): The protocol version
+
+        Returns:
+            tuple: Data for reconstruction
+        """
         return (
             RAvg,
             (
@@ -74,6 +127,15 @@ class RAvg(gvar.GVar):
         )
 
     def _remove_gvars(self, gvlist):
+        """
+        Create a copy with references to gvars in gvlist removed.
+
+        Args:
+            gvlist (list): List of gvars to remove
+
+        Returns:
+            RAvg: New RAvg instance with gvars removed
+        """
         tmp = RAvg(
             weighted=self.weighted,
             itn_results=self.itn_results,
@@ -85,6 +147,15 @@ class RAvg(gvar.GVar):
         return tmp
 
     def _distribute_gvars(self, gvlist):
+        """
+        Create a copy with references to gvars in gvlist.
+
+        Args:
+            gvlist (list): List of gvars to distribute
+
+        Returns:
+            RAvg: New RAvg instance with distributed gvars
+        """
         return RAvg(
             weighted=self.weighted,
             itn_results=gvar.distribute_gvars(self.itn_results, gvlist),
@@ -92,6 +163,12 @@ class RAvg(gvar.GVar):
         )
 
     def _chi2(self):
+        """
+        Calculate chi-squared of the weighted average.
+
+        Returns:
+            float: chi-squared value
+        """
         if len(self.itn_results) <= 1:
             return 0.0
         if self.weighted:
@@ -110,6 +187,12 @@ class RAvg(gvar.GVar):
     chi2 = property(_chi2, None, None, "*chi**2* of weighted average.")
 
     def _dof(self):
+        """
+        Calculate degrees of freedom.
+
+        Returns:
+            int: Degrees of freedom (number of iterations - 1)
+        """
         return len(self.itn_results) - 1
 
     dof = property(
@@ -117,11 +200,23 @@ class RAvg(gvar.GVar):
     )
 
     def _nitn(self):
+        """
+        Get number of iterations.
+
+        Returns:
+            int: Number of iterations
+        """
         return len(self.itn_results)
 
     nitn = property(_nitn, None, None, "Number of iterations.")
 
     def _Q(self):
+        """
+        Calculate Q value (p-value) of the chi-squared.
+
+        Returns:
+            float: Q value
+        """
         return (
             gvar.gammaQ(self.dof / 2.0, self.chi2 / 2.0)
             if self.dof > 0 and self.chi2 >= 0
@@ -136,19 +231,27 @@ class RAvg(gvar.GVar):
     )
 
     def _avg_neval(self):
+        """
+        Calculate average number of evaluations per iteration.
+
+        Returns:
+            float: Average number of evaluations
+        """
         return self.sum_neval / self.nitn if self.nitn > 0 else 0
 
     avg_neval = property(
-        _avg_neval, None, None, "Average number of integrand evaluations per iteration."
+        _avg_neval, None, None, "Average number of function evaluations per iteration."
     )
 
     def summary(self, weighted=None):
-        """Assemble summary of results, iteration-by-iteration, into a string.
+        """
+        Produce a summary of the running average statistics.
 
         Args:
-            weighted (bool): Display weighted averages of results from different
-                iterations if ``True``; otherwise show unweighted averages.
-                Default behavior is determined by vegas.
+            weighted (bool, optional): Whether to use weighted averaging
+
+        Returns:
+            str: Summary string with statistics
         """
         if weighted is None:
             weighted = self.weighted
@@ -184,6 +287,16 @@ class RAvg(gvar.GVar):
         return ans
 
     def converged(self, rtol, atol):
+        """
+        Check if the running average has converged within tolerance.
+
+        Args:
+            rtol (float): Relative tolerance
+            atol (float): Absolute tolerance
+
+        Returns:
+            bool: True if converged, False otherwise
+        """
         return self.sdev < atol + rtol * abs(self.mean)
 
     def __mul__(xx, yy):
@@ -244,13 +357,21 @@ class RAvg(gvar.GVar):
 
 
 def set_seed(seed):
+    """
+    Set random seed for reproducibility.
+
+    Args:
+        seed (int): Random seed to set
+    """
+    np.random.seed(seed)
     torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
 
 
 def get_device():
-    if torch.cuda.is_available():
-        return torch.cuda.current_device()
-    else:
-        return torch.device("cpu")
+    """
+    Get the best available device (CUDA GPU if available, otherwise CPU).
+
+    Returns:
+        torch.device: The selected device
+    """
+    return torch.device("cuda" if torch.cuda.is_available() else "cpu")
