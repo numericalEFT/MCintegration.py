@@ -103,4 +103,4 @@ def test_mcmc(world_size):
 if __name__ == "__main__":
     # Prevent issues with multiprocessing on some platforms
     mp.set_start_method("spawn", force=True)
-    test_mcmc(8)
+    test_mcmc(2)
