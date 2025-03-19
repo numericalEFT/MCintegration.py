@@ -41,7 +41,11 @@
           <div class="body" role="main">
             
   <h1>Source code for MCintegration.integrators</h1><div class="highlight"><pre>
-<span></span><span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span>
+<span></span><span class="c1"># integrators.py</span>
+<span class="c1"># This file contains Monte Carlo integration methods and related utilities.</span>
+<span class="c1"># It implements various integration techniques including plain Monte Carlo and MCMC.</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span>
 <span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">MCintegration.utils</span> <span class="kn">import</span> <span class="n">RAvg</span><span class="p">,</span> <span class="n">get_device</span>
 <span class="kn">from</span> <span class="nn">MCintegration.maps</span> <span class="kn">import</span> <span class="n">Configuration</span><span class="p">,</span> <span class="n">CompositeMap</span>
@@ -57,6 +61,13 @@
 <div class="viewcode-block" id="get_ip">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.get_ip">[docs]</a>
 <span class="k">def</span> <span class="nf">get_ip</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get the current machine&#39;s IP address.</span>
+<span class="sd">    Used for distributed computing setup.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        str: IP address of the current machine</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">s</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_DGRAM</span><span class="p">)</span>
     <span class="n">s</span><span class="o">.</span><span class="n">connect</span><span class="p">((</span><span class="s2">&quot;8.8.8.8&quot;</span><span class="p">,</span> <span class="mi">80</span><span class="p">))</span>  <span class="c1"># Doesn&#39;t need to be reachable</span>
     <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[</span><span class="mi">0</span><span class="p">]</span></div>
@@ -66,6 +77,13 @@
 <div class="viewcode-block" id="get_open_port">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.get_open_port">[docs]</a>
 <span class="k">def</span> <span class="nf">get_open_port</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Find an available open port on the current machine.</span>
+<span class="sd">    Used for distributed computing setup.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        int: Available port number</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">with</span> <span class="n">socket</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">socket</span><span class="o">.</span><span class="n">AF_INET</span><span class="p">,</span> <span class="n">socket</span><span class="o">.</span><span class="n">SOCK_STREAM</span><span class="p">)</span> <span class="k">as</span> <span class="n">s</span><span class="p">:</span>
         <span class="n">s</span><span class="o">.</span><span class="n">bind</span><span class="p">((</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
         <span class="k">return</span> <span class="n">s</span><span class="o">.</span><span class="n">getsockname</span><span class="p">()[</span><span class="mi">1</span><span class="p">]</span></div>
@@ -75,6 +93,12 @@
 <div class="viewcode-block" id="setup">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.setup">[docs]</a>
 <span class="k">def</span> <span class="nf">setup</span><span class="p">(</span><span class="n">backend</span><span class="o">=</span><span class="s2">&quot;gloo&quot;</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Set up distributed processing environment for multi-GPU/CPU computation.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        backend (str): Backend to use for distributed computing (&#39;gloo&#39;, &#39;nccl&#39;, etc.)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="c1"># get IDs of reserved GPU</span>
     <span class="n">distributed_init_method</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;tcp://</span><span class="si">{</span><span class="n">get_ip</span><span class="p">()</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">get_open_port</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span>
     <span class="n">dist</span><span class="o">.</span><span class="n">init_process_group</span><span class="p">(</span>
@@ -90,6 +114,10 @@
 <div class="viewcode-block" id="cleanup">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.cleanup">[docs]</a>
 <span class="k">def</span> <span class="nf">cleanup</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clean up distributed processing environment.</span>
+<span class="sd">    Should be called after distributed computing is no longer needed.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">dist</span><span class="o">.</span><span class="n">destroy_process_group</span><span class="p">()</span></div>
 
 
@@ -114,6 +142,19 @@
         <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the Integrator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            bounds (list): Integration bounds as list of (min, max) tuples for each dimension</span>
+<span class="sd">            f (Callable): Integrand function to evaluate</span>
+<span class="sd">            f_dim (int): Dimension of the output of f</span>
+<span class="sd">            maps (Map, optional): Transformation maps for importance sampling</span>
+<span class="sd">            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)</span>
+<span class="sd">            batch_size (int): Number of points to sample at once</span>
+<span class="sd">            device (str or torch.device): Device for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">f</span> <span class="o">=</span> <span class="n">f</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">f_dim</span> <span class="o">=</span> <span class="n">f_dim</span>
 
@@ -178,12 +219,29 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">rank</span> <span class="o">=</span> <span class="mi">0</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">world_size</span> <span class="o">=</span> <span class="mi">1</span>
 
+<div class="viewcode-block" id="Integrator.__call__">
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.Integrator.__call__">[docs]</a>
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method&quot;</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Call the integrator to perform the integration.</span>
+<span class="sd">        This should be implemented by subclasses.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Integration result</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="s2">&quot;Subclasses must implement this method.&quot;</span><span class="p">)</span></div>
+
 
 <div class="viewcode-block" id="Integrator.sample">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.Integrator.sample">[docs]</a>
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate samples for integration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config (Configuration): The configuration object to store samples</span>
+<span class="sd">            **kwargs: Additional parameters</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">config</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">q0</span><span class="o">.</span><span class="n">sample_with_detJ</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">maps</span><span class="p">:</span>
             <span class="n">config</span><span class="o">.</span><span class="n">x</span><span class="p">[:]</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">u</span>
@@ -196,6 +254,17 @@
 <div class="viewcode-block" id="Integrator.statistics">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.Integrator.statistics">[docs]</a>
     <span class="k">def</span> <span class="nf">statistics</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">means</span><span class="p">,</span> <span class="nb">vars</span><span class="p">,</span> <span class="n">neval</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate statistics of the integration results.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            means (torch.Tensor): Mean values from integration</span>
+<span class="sd">            vars (torch.Tensor): Variance values from integration</span>
+<span class="sd">            neval (int, optional): Number of function evaluations</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: Statistics of the integration including mean, error, and chi-squared</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">nblock</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
         <span class="n">f_dim</span> <span class="o">=</span> <span class="n">means</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
         <span class="n">nblock_total</span> <span class="o">=</span> <span class="n">nblock</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">world_size</span>
@@ -269,6 +338,11 @@
 <div class="viewcode-block" id="MonteCarlo">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.MonteCarlo">[docs]</a>
 <span class="k">class</span> <span class="nc">MonteCarlo</span><span class="p">(</span><span class="n">Integrator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plain Monte Carlo integration method.</span>
+<span class="sd">    Uses uniform or importance sampling to estimate integrals.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">bounds</span><span class="p">,</span>
@@ -280,10 +354,39 @@
         <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the Monte Carlo integrator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            bounds (list): Integration bounds as list of (min, max) tuples for each dimension</span>
+<span class="sd">            f (Callable): Integrand function to evaluate</span>
+<span class="sd">            f_dim (int): Dimension of the output of f</span>
+<span class="sd">            maps (Map, optional): Transformation maps for importance sampling</span>
+<span class="sd">            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)</span>
+<span class="sd">            batch_size (int): Number of points to sample at once</span>
+<span class="sd">            device (str or torch.device): Device for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MonteCarlo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">bounds</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_rangebounds</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">bounds</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>
 
+<div class="viewcode-block" id="MonteCarlo.__call__">
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.MonteCarlo.__call__">[docs]</a>
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">neval</span><span class="p">,</span> <span class="n">nblock</span><span class="o">=</span><span class="mi">32</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform Monte Carlo integration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            neval (int): Number of function evaluations</span>
+<span class="sd">            nblock (int): Number of blocks for error estimation</span>
+<span class="sd">            verbose (int): Verbosity level (-1: silent, 0: minimal, 1+: more details)</span>
+<span class="sd">            **kwargs: Additional parameters passed to the sample method</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RAvg or list of RAvg: Integration results with error estimates</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">neval</span> <span class="o">=</span> <span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">world_size</span>
         <span class="n">neval</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
         <span class="n">epoch</span> <span class="o">=</span> <span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
@@ -331,12 +434,26 @@
             <span class="k">else</span><span class="p">:</span>
                 <span class="c1"># return results / self._rangebounds.prod().item()</span>
                 <span class="k">return</span> <span class="n">results</span></div>
+</div>
 
 
 
 <div class="viewcode-block" id="random_walk">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.random_walk">[docs]</a>
 <span class="k">def</span> <span class="nf">random_walk</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Random walk proposal distribution for MCMC.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dim (int): Dimensionality of the space</span>
+<span class="sd">        device (str or torch.device): Computation device</span>
+<span class="sd">        dtype (torch.dtype): Data type</span>
+<span class="sd">        u (torch.Tensor): Current position</span>
+<span class="sd">        **kwargs: Additional parameters</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Proposed new position</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">step_size</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;step_size&quot;</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">)</span>
     <span class="n">step_sizes</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span> <span class="o">*</span> <span class="n">step_size</span>
     <span class="n">step</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">empty</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span><span class="o">.</span><span class="n">uniform_</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">*</span> <span class="n">step_sizes</span>
@@ -348,6 +465,19 @@
 <div class="viewcode-block" id="uniform">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.uniform">[docs]</a>
 <span class="k">def</span> <span class="nf">uniform</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Uniform proposal distribution for MCMC.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dim (int): Dimensionality of the space</span>
+<span class="sd">        device (str or torch.device): Computation device</span>
+<span class="sd">        dtype (torch.dtype): Data type</span>
+<span class="sd">        u (torch.Tensor): Current position (ignored)</span>
+<span class="sd">        **kwargs: Additional parameters</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Uniformly sampled new position</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand_like</span><span class="p">(</span><span class="n">u</span><span class="p">)</span></div>
 
 
@@ -355,6 +485,19 @@
 <div class="viewcode-block" id="gaussian">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.gaussian">[docs]</a>
 <span class="k">def</span> <span class="nf">gaussian</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">,</span> <span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Gaussian proposal distribution for MCMC.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        dim (int): Dimensionality of the space</span>
+<span class="sd">        device (str or torch.device): Computation device</span>
+<span class="sd">        dtype (torch.dtype): Data type</span>
+<span class="sd">        u (torch.Tensor): Current position</span>
+<span class="sd">        **kwargs: Additional parameters</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        torch.Tensor: Proposed new position from Gaussian distribution centered at u</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">mean</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros_like</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
     <span class="n">std</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;std&quot;</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">u</span><span class="p">))</span>
     <span class="k">return</span> <span class="n">torch</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">std</span><span class="p">)</span></div>
@@ -364,6 +507,11 @@
 <div class="viewcode-block" id="MarkovChainMonteCarlo">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.MarkovChainMonteCarlo">[docs]</a>
 <span class="k">class</span> <span class="nc">MarkovChainMonteCarlo</span><span class="p">(</span><span class="n">Integrator</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Markov Chain Monte Carlo (MCMC) integration method.</span>
+<span class="sd">    Uses Metropolis-Hastings algorithm to generate samples from the target distribution.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">bounds</span><span class="p">,</span>
@@ -377,7 +525,24 @@
         <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
     <span class="p">):</span>
-        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">bounds</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize the MCMC integrator.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            bounds (list): Integration bounds as list of (min, max) tuples for each dimension</span>
+<span class="sd">            f (Callable): Integrand function to evaluate</span>
+<span class="sd">            f_dim (int): Dimension of the output of f</span>
+<span class="sd">            maps (Map, optional): Transformation maps for importance sampling</span>
+<span class="sd">            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)</span>
+<span class="sd">            proposal_dist (Callable, optional): Proposal distribution for MCMC (default: random_walk)</span>
+<span class="sd">            batch_size (int): Number of points to sample at once</span>
+<span class="sd">            nburnin (int): Number of burn-in steps before sampling</span>
+<span class="sd">            device (str or torch.device): Device for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computation</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">(</span><span class="n">MarkovChainMonteCarlo</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span>
+            <span class="n">bounds</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">f_dim</span><span class="p">,</span> <span class="n">maps</span><span class="p">,</span> <span class="n">q0</span><span class="p">,</span> <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span>
+        <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">nburnin</span> <span class="o">=</span> <span class="n">nburnin</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">proposal_dist</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">proposal_dist</span> <span class="o">=</span> <span class="n">uniform</span>
@@ -390,6 +555,18 @@
 <div class="viewcode-block" id="MarkovChainMonteCarlo.sample">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.MarkovChainMonteCarlo.sample">[docs]</a>
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">,</span> <span class="n">nsteps</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">mix_rate</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate samples using MCMC.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config (Configuration): Configuration object to store samples</span>
+<span class="sd">            nsteps (int): Number of MCMC steps</span>
+<span class="sd">            mix_rate (float): Mixing rate between previous and new samples (0-1)</span>
+<span class="sd">            **kwargs: Additional parameters</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Configuration: Updated configuration with new samples</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">nsteps</span><span class="p">):</span>
             <span class="n">proposed_y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proposal_dist</span><span class="p">(</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">u</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
@@ -415,6 +592,8 @@
             <span class="n">config</span><span class="o">.</span><span class="n">detJ</span><span class="o">.</span><span class="n">mul_</span><span class="p">(</span><span class="o">~</span><span class="n">accept</span><span class="p">)</span><span class="o">.</span><span class="n">add_</span><span class="p">(</span><span class="n">new_detJ</span> <span class="o">*</span> <span class="n">accept</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="MarkovChainMonteCarlo.__call__">
+<a class="viewcode-back" href="../../MCintegration.html#MCintegration.integrators.MarkovChainMonteCarlo.__call__">[docs]</a>
     <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">neval</span><span class="p">,</span>
@@ -424,6 +603,20 @@
         <span class="n">verbose</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span>
         <span class="o">**</span><span class="n">kwargs</span><span class="p">,</span>
     <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Perform MCMC integration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            neval (int): Number of function evaluations</span>
+<span class="sd">            mix_rate (float): Mixing rate between previous and new samples (0-1)</span>
+<span class="sd">            nblock (int): Number of blocks for error estimation</span>
+<span class="sd">            meas_freq (int): Measurement frequency</span>
+<span class="sd">            verbose (int): Verbosity level (-1: silent, 0: minimal, 1+: more details)</span>
+<span class="sd">            **kwargs: Additional parameters passed to the sample method</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RAvg or list of RAvg: Integration results with error estimates</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">neval</span> <span class="o">=</span> <span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">world_size</span>
         <span class="n">neval</span> <span class="o">=</span> <span class="o">-</span><span class="p">(</span><span class="o">-</span><span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span><span class="p">)</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
         <span class="n">epoch</span> <span class="o">=</span> <span class="n">neval</span> <span class="o">//</span> <span class="bp">self</span><span class="o">.</span><span class="n">batch_size</span>
@@ -495,6 +688,7 @@
                 <span class="k">return</span> <span class="n">results_unnorm</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">/</span> <span class="n">results_ref</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
             <span class="k">else</span><span class="p">:</span>
                 <span class="k">return</span> <span class="n">results_unnorm</span> <span class="o">/</span> <span class="n">results_ref</span></div>
+</div>
 
 </pre></div>
 

@@ -44,67 +44,129 @@
 <dt class="sig sig-object py" id="MCintegration.base.BaseDistribution">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.base.</span></span><span class="sig-name descname"><span class="pre">BaseDistribution</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#BaseDistribution"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.BaseDistribution" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
-<p>Base distribution of a flow-based model
-Parameters do not depend of target variable (as is the case for a VAE encoder)</p>
+<p>Base distribution class for flow-based models.
+This is an abstract base class that provides structure for probability distributions
+used in Monte Carlo integration. Parameters do not depend on target variables
+(unlike a VAE encoder).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.BaseDistribution.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#BaseDistribution.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.BaseDistribution.sample" title="Link to this definition">¶</a></dt>
-<dd><p>Samples from base distribution</p>
+<dd><p>Sample from the base distribution.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>num_samples</strong> – Number of samples to draw from the distriubtion</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size</strong> (<em>int</em>) – Number of samples to draw</p></li>
+<li><p><strong>**kwargs</strong> – Additional arguments</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Samples drawn from the distribution</p>
+<dd class="field-even"><p>(samples, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – This is an abstract method</p>
 </dd>
 </dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.BaseDistribution.sample_with_detJ">
 <span class="sig-name descname"><span class="pre">sample_with_detJ</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#BaseDistribution.sample_with_detJ"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.BaseDistribution.sample_with_detJ" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Sample from base distribution with Jacobian determinant (not log).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size</strong> (<em>int</em>) – Number of samples to draw</p></li>
+<li><p><strong>**kwargs</strong> – Additional arguments</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(samples, det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.base.LinearMap">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.base.</span></span><span class="sig-name descname"><span class="pre">LinearMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">b</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#LinearMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.LinearMap" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Linear transformation map of the form x = u * A + b.
+Maps points from one space to another using a linear transformation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.LinearMap.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#LinearMap.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.LinearMap.forward" title="Link to this definition">¶</a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
+<dd><p>Apply forward transformation: x = u * A + b.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Input points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.LinearMap.forward_with_detJ">
 <span class="sig-name descname"><span class="pre">forward_with_detJ</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#LinearMap.forward_with_detJ"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.LinearMap.forward_with_detJ" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Apply forward transformation with Jacobian determinant (not log).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Input points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.LinearMap.inverse">
 <span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#LinearMap.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.LinearMap.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Apply inverse transformation: u = (x - b) / A.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – Input points</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.base.Uniform">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.base.</span></span><span class="sig-name descname"><span class="pre">Uniform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#Uniform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.Uniform" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.base.BaseDistribution" title="MCintegration.base.BaseDistribution"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseDistribution</span></code></a></p>
-<p>Multivariate uniform distribution</p>
+<p>Multivariate uniform distribution over [0,1]^dim.
+Samples from a uniform distribution in the hypercube [0,1]^dim.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.base.Uniform.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/base.html#Uniform.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.base.Uniform.sample" title="Link to this definition">¶</a></dt>
-<dd><p>Samples from base distribution</p>
+<dd><p>Sample from uniform distribution over [0,1]^dim.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>num_samples</strong> – Number of samples to draw from the distriubtion</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size</strong> (<em>int</em>) – Number of samples to draw</p></li>
+<li><p><strong>**kwargs</strong> – Additional arguments</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Samples drawn from the distribution</p>
+<dd class="field-even"><p>(uniform samples, log_det_jacobian=0)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
 </dd>
 </dl>
 </dd></dl>
@@ -120,56 +182,239 @@ registered hooks while the latter silently ignores them.</p>
 over a specified domain (bounds) using a sampling method (q0) and optional
 transformation maps.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="MCintegration.integrators.Integrator.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#Integrator.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.Integrator.__call__" title="Link to this definition">¶</a></dt>
+<dd><p>Call the integrator to perform the integration.
+This should be implemented by subclasses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Integration result</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.integrators.Integrator.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#Integrator.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.Integrator.sample" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Generate samples for integration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="#MCintegration.maps.Configuration" title="MCintegration.maps.Configuration"><em>Configuration</em></a>) – The configuration object to store samples</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.integrators.Integrator.statistics">
 <span class="sig-name descname"><span class="pre">statistics</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">means</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">vars</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#Integrator.statistics"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.Integrator.statistics" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Calculate statistics of the integration results.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>means</strong> (<em>torch.Tensor</em>) – Mean values from integration</p></li>
+<li><p><strong>vars</strong> (<em>torch.Tensor</em>) – Variance values from integration</p></li>
+<li><p><strong>neval</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of function evaluations</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Statistics of the integration including mean, error, and chi-squared</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.integrators.MarkovChainMonteCarlo">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">MarkovChainMonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proposal_dist</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nburnin</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#MarkovChainMonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.MarkovChainMonteCarlo" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.integrators.Integrator" title="MCintegration.integrators.Integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Integrator</span></code></a></p>
+<p>Markov Chain Monte Carlo (MCMC) integration method.
+Uses Metropolis-Hastings algorithm to generate samples from the target distribution.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="MCintegration.integrators.MarkovChainMonteCarlo.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">neval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mix_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nblock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meas_freq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#MarkovChainMonteCarlo.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.MarkovChainMonteCarlo.__call__" title="Link to this definition">¶</a></dt>
+<dd><p>Perform MCMC integration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>neval</strong> (<em>int</em>) – Number of function evaluations</p></li>
+<li><p><strong>mix_rate</strong> (<em>float</em>) – Mixing rate between previous and new samples (0-1)</p></li>
+<li><p><strong>nblock</strong> (<em>int</em>) – Number of blocks for error estimation</p></li>
+<li><p><strong>meas_freq</strong> (<em>int</em>) – Measurement frequency</p></li>
+<li><p><strong>verbose</strong> (<em>int</em>) – Verbosity level (-1: silent, 0: minimal, 1+: more details)</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters passed to the sample method</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Integration results with error estimates</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg">RAvg</a> or list of <a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg">RAvg</a></p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.integrators.MarkovChainMonteCarlo.sample">
 <span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nsteps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mix_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#MarkovChainMonteCarlo.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.MarkovChainMonteCarlo.sample" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Generate samples using MCMC.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>config</strong> (<a class="reference internal" href="#MCintegration.maps.Configuration" title="MCintegration.maps.Configuration"><em>Configuration</em></a>) – Configuration object to store samples</p></li>
+<li><p><strong>nsteps</strong> (<em>int</em>) – Number of MCMC steps</p></li>
+<li><p><strong>mix_rate</strong> (<em>float</em>) – Mixing rate between previous and new samples (0-1)</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Updated configuration with new samples</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#MCintegration.maps.Configuration" title="MCintegration.maps.Configuration">Configuration</a></p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.integrators.MonteCarlo">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">MonteCarlo</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">bounds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_dim</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">q0</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#MonteCarlo"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.MonteCarlo" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.integrators.Integrator" title="MCintegration.integrators.Integrator"><code class="xref py py-class docutils literal notranslate"><span class="pre">Integrator</span></code></a></p>
+<p>Plain Monte Carlo integration method.
+Uses uniform or importance sampling to estimate integrals.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="MCintegration.integrators.MonteCarlo.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">neval</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nblock</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">32</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">-1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#MonteCarlo.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.MonteCarlo.__call__" title="Link to this definition">¶</a></dt>
+<dd><p>Perform Monte Carlo integration.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>neval</strong> (<em>int</em>) – Number of function evaluations</p></li>
+<li><p><strong>nblock</strong> (<em>int</em>) – Number of blocks for error estimation</p></li>
+<li><p><strong>verbose</strong> (<em>int</em>) – Verbosity level (-1: silent, 0: minimal, 1+: more details)</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters passed to the sample method</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Integration results with error estimates</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg">RAvg</a> or list of <a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg">RAvg</a></p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.cleanup">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">cleanup</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#cleanup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.cleanup" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Clean up distributed processing environment.
+Should be called after distributed computing is no longer needed.</p>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.gaussian">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">gaussian</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#gaussian"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.gaussian" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Gaussian proposal distribution for MCMC.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> (<em>int</em>) – Dimensionality of the space</p></li>
+<li><p><strong>device</strong> (<em>str</em><em> or </em><em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Data type</p></li>
+<li><p><strong>u</strong> (<em>torch.Tensor</em>) – Current position</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Proposed new position from Gaussian distribution centered at u</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.get_ip">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">get_ip</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="_modules/MCintegration/integrators.html#get_ip"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.get_ip" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the current machine’s IP address.
+Used for distributed computing setup.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>IP address of the current machine</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.get_open_port">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">get_open_port</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">→</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="_modules/MCintegration/integrators.html#get_open_port"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.get_open_port" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Find an available open port on the current machine.
+Used for distributed computing setup.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Available port number</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>int</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.random_walk">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">random_walk</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#random_walk"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.random_walk" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Random walk proposal distribution for MCMC.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> (<em>int</em>) – Dimensionality of the space</p></li>
+<li><p><strong>device</strong> (<em>str</em><em> or </em><em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Data type</p></li>
+<li><p><strong>u</strong> (<em>torch.Tensor</em>) – Current position</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Proposed new position</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.setup">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">setup</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">backend</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'gloo'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#setup"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.setup" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Set up distributed processing environment for multi-GPU/CPU computation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>backend</strong> (<em>str</em>) – Backend to use for distributed computing (‘gloo’, ‘nccl’, etc.)</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.integrators.uniform">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.integrators.</span></span><span class="sig-name descname"><span class="pre">uniform</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">u</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/integrators.html#uniform"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.integrators.uniform" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Uniform proposal distribution for MCMC.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>dim</strong> (<em>int</em>) – Dimensionality of the space</p></li>
+<li><p><strong>device</strong> (<em>str</em><em> or </em><em>torch.device</em>) – Computation device</p></li>
+<li><p><strong>dtype</strong> (<em>torch.dtype</em>) – Data type</p></li>
+<li><p><strong>u</strong> (<em>torch.Tensor</em>) – Current position (ignored)</p></li>
+<li><p><strong>**kwargs</strong> – Additional parameters</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Uniformly sampled new position</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 <section id="module-MCintegration.maps">
 <span id="maps-module"></span><h2>maps module<a class="headerlink" href="#module-MCintegration.maps" title="Link to this heading">¶</a></h2>
@@ -177,59 +422,118 @@ transformation maps.</p>
 <dt class="sig sig-object py" id="MCintegration.maps.CompositeMap">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.maps.</span></span><span class="sig-name descname"><span class="pre">CompositeMap</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">maps</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#CompositeMap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.CompositeMap" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.maps.Map" title="MCintegration.maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
+<p>Composite transformation map that applies multiple maps sequentially.
+Allows for complex transformations by composing simpler ones.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.CompositeMap.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#CompositeMap.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.CompositeMap.forward" title="Link to this definition">¶</a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
+<dd><p>Apply all maps in sequence to transform points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Points in the unit hypercube</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.CompositeMap.inverse">
 <span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#CompositeMap.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.CompositeMap.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Apply all maps in reverse sequence to transform points back.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – Points in the target domain</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.maps.Configuration">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.maps.</span></span><span class="sig-name descname"><span class="pre">Configuration</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">f_dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Configuration"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Configuration" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Configuration class to store samples and integration results.
+This class holds batches of points in both the original and transformed space,
+along with function values and weights.</p>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.maps.Map">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.maps.</span></span><span class="sig-name descname"><span class="pre">Map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Map" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code></p>
+<p>Base class for all transformation maps.
+Maps transform points from the unit hypercube to the target integration domain
+with potentially better sampling distribution.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Map.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Map.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Map.forward" title="Link to this definition">¶</a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
+<dd><p>Transform points from the unit hypercube to the target domain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Points in the unit hypercube</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – This is an abstract method</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Map.forward_with_detJ">
 <span class="sig-name descname"><span class="pre">forward_with_detJ</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Map.forward_with_detJ"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Map.forward_with_detJ" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Transform points with Jacobian determinant (not log).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Points in the unit hypercube</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Map.inverse">
 <span class="sig-name descname"><span class="pre">inverse</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Map.inverse"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Map.inverse" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Transform points from the target domain back to the unit hypercube.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>x</strong> (<em>torch.Tensor</em>) – Points in the target domain</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – This is an abstract method</p>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py class">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.maps.</span></span><span class="sig-name descname"><span class="pre">Vegas</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dim</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ninc</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dtype</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">torch.float32</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <a class="reference internal" href="#MCintegration.maps.Map" title="MCintegration.maps.Map"><code class="xref py py-class docutils literal notranslate"><span class="pre">Map</span></code></a></p>
+<p>VEGAS algorithm implementation as a transformation map.
+VEGAS adapts to the integrand by adjusting the sampling density
+based on the magnitude of the integrand in different regions.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.adapt">
 <span class="sig-name descname"><span class="pre">adapt</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.adapt"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.adapt" title="Link to this definition">¶</a></dt>
@@ -299,15 +603,21 @@ point <code class="docutils literal notranslate"><span class="pre">u[j,</span> <
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.forward">
 <span class="sig-name descname"><span class="pre">forward</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">u</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/maps.html#Vegas.forward"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.maps.Vegas.forward" title="Link to this definition">¶</a></dt>
-<dd><p>Define the computation performed at every call.</p>
-<p>Should be overridden by all subclasses.</p>
-<div class="admonition note">
-<p class="admonition-title">Note</p>
-<p>Although the recipe for forward pass needs to be defined within
-this function, one should call the <code class="xref py py-class docutils literal notranslate"><span class="pre">Module</span></code> instance afterwards
-instead of this since the former takes care of running the
-registered hooks while the latter silently ignores them.</p>
-</div>
+<dd><p>Transform points from the unit hypercube to the target domain.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>u</strong> (<em>torch.Tensor</em>) – Points in the unit hypercube</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>(transformed points, log_det_jacobian)</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – This is an abstract method</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.maps.Vegas.inverse">
@@ -338,19 +648,44 @@ log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log dete
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg">
 <em class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">MCintegration.utils.</span></span><span class="sig-name descname"><span class="pre">RAvg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weighted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">itn_results</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sum_neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">GVar</span></code></p>
+<p>Running Average class that extends gvar.GVar.
+This class maintains a running average of measurements and keeps track of
+errors, providing statistical analysis of the integration results.</p>
 <dl class="py property">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.Q">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Q</span></span><a class="headerlink" href="#MCintegration.utils.RAvg.Q" title="Link to this definition">¶</a></dt>
 <dd><p><em>Q</em> or <em>p-value</em> of weighted average’s <em>chi**2</em>.</p>
 </dd></dl>
 <dl class="py method">
+<dt class="sig sig-object py" id="MCintegration.utils.RAvg.__reduce_ex__">
+<span class="sig-name descname"><span class="pre">__reduce_ex__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">protocol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.__reduce_ex__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.__reduce_ex__" title="Link to this definition">¶</a></dt>
+<dd><p>Support for pickling RAvg objects.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>protocol</strong> (<em>int</em>) – The protocol version</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Data for reconstruction</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
+<dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.add">
 <span class="sig-name descname"><span class="pre">add</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">res</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.add"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.add" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Add a new result to the running average.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>res</strong> (<em>gvar.GVar</em>) – Result to add to the running average</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.avg_neval">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">avg_neval</span></span><a class="headerlink" href="#MCintegration.utils.RAvg.avg_neval" title="Link to this definition">¶</a></dt>
-<dd><p>Average number of integrand evaluations per iteration.</p>
+<dd><p>Average number of function evaluations per iteration.</p>
 </dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.chi2">
@@ -360,7 +695,22 @@ log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log dete
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.converged">
 <span class="sig-name descname"><span class="pre">converged</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">rtol</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">atol</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.converged"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.converged" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Check if the running average has converged within tolerance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>rtol</strong> (<em>float</em>) – Relative tolerance</p></li>
+<li><p><strong>atol</strong> (<em>float</em>) – Absolute tolerance</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>True if converged, False otherwise</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>bool</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.dof">
 <em class="property"><span class="k"><span class="pre">property</span></span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dof</span></span><a class="headerlink" href="#MCintegration.utils.RAvg.dof" title="Link to this definition">¶</a></dt>
@@ -369,7 +719,12 @@ log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log dete
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.extend">
 <span class="sig-name descname"><span class="pre">extend</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ravg</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.extend"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.extend" title="Link to this definition">¶</a></dt>
-<dd><p>Merge results from <a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg"><code class="xref py py-class docutils literal notranslate"><span class="pre">RAvg</span></code></a> object <code class="docutils literal notranslate"><span class="pre">ravg</span></code> after results currently in <code class="docutils literal notranslate"><span class="pre">self</span></code>.</p>
+<dd><p>Merge results from another RAvg object after results currently in self.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ravg</strong> (<a class="reference internal" href="#MCintegration.utils.RAvg" title="MCintegration.utils.RAvg"><em>RAvg</em></a>) – Another RAvg object to merge with this one</p>
+</dd>
+</dl>
 </dd></dl>
 <dl class="py property">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.nitn">
@@ -379,28 +734,57 @@ log_detJ (torch.Tensor): Tensor of shape (batch_size,) representing the log dete
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.summary">
 <span class="sig-name descname"><span class="pre">summary</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">weighted</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.summary" title="Link to this definition">¶</a></dt>
-<dd><p>Assemble summary of results, iteration-by-iteration, into a string.</p>
+<dd><p>Produce a summary of the running average statistics.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>weighted</strong> (<em>bool</em>) – Display weighted averages of results from different
-iterations if <code class="docutils literal notranslate"><span class="pre">True</span></code>; otherwise show unweighted averages.
-Default behavior is determined by vegas.</p>
+<dd class="field-odd"><p><strong>weighted</strong> (<em>bool</em><em>, </em><em>optional</em>) – Whether to use weighted averaging</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Summary string with statistics</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
 </dd>
 </dl>
 </dd></dl>
 <dl class="py method">
 <dt class="sig sig-object py" id="MCintegration.utils.RAvg.update">
 <span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mean</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">var</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">last_neval</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#RAvg.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.RAvg.update" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Update the running average with a new mean and variance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mean</strong> (<em>float</em>) – Mean value to add</p></li>
+<li><p><strong>var</strong> (<em>float</em>) – Variance to add</p></li>
+<li><p><strong>last_neval</strong> (<em>int</em><em>, </em><em>optional</em>) – Number of evaluations for this update</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 </dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.utils.get_device">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.utils.</span></span><span class="sig-name descname"><span class="pre">get_device</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#get_device"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.get_device" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Get the best available device (CUDA GPU if available, otherwise CPU).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The selected device</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>torch.device</p>
+</dd>
+</dl>
+</dd></dl>
 <dl class="py function">
 <dt class="sig sig-object py" id="MCintegration.utils.set_seed">
 <span class="sig-prename descclassname"><span class="pre">MCintegration.utils.</span></span><span class="sig-name descname"><span class="pre">set_seed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seed</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/MCintegration/utils.html#set_seed"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#MCintegration.utils.set_seed" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Set random seed for reproducibility.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>seed</strong> (<em>int</em>) – Random seed to set</p>
+</dd>
+</dl>
+</dd></dl>
 </section>
 <section id="module-MCintegration">
 <span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-MCintegration" title="Link to this heading">¶</a></h2>
@@ -437,15 +821,20 @@ Default behavior is determined by vegas.</p>
 </li>
 <li><a class="reference internal" href="#module-MCintegration.integrators">integrators module</a><ul>
 <li><a class="reference internal" href="#MCintegration.integrators.Integrator"><code class="docutils literal notranslate"><span class="pre">Integrator</span></code></a><ul>
+<li><a class="reference internal" href="#MCintegration.integrators.Integrator.__call__"><code class="docutils literal notranslate"><span class="pre">__call__()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.integrators.Integrator.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.integrators.Integrator.statistics"><code class="docutils literal notranslate"><span class="pre">statistics()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#MCintegration.integrators.MarkovChainMonteCarlo"><code class="docutils literal notranslate"><span class="pre">MarkovChainMonteCarlo</span></code></a><ul>
+<li><a class="reference internal" href="#MCintegration.integrators.MarkovChainMonteCarlo.__call__"><code class="docutils literal notranslate"><span class="pre">__call__()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.integrators.MarkovChainMonteCarlo.sample"><code class="docutils literal notranslate"><span class="pre">sample()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#MCintegration.integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a></li>
+<li><a class="reference internal" href="#MCintegration.integrators.MonteCarlo"><code class="docutils literal notranslate"><span class="pre">MonteCarlo</span></code></a><ul>
+<li><a class="reference internal" href="#MCintegration.integrators.MonteCarlo.__call__"><code class="docutils literal notranslate"><span class="pre">__call__()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#MCintegration.integrators.cleanup"><code class="docutils literal notranslate"><span class="pre">cleanup()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.integrators.gaussian"><code class="docutils literal notranslate"><span class="pre">gaussian()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.integrators.get_ip"><code class="docutils literal notranslate"><span class="pre">get_ip()</span></code></a></li>
@@ -484,6 +873,7 @@ Default behavior is determined by vegas.</p>
 <li><a class="reference internal" href="#module-MCintegration.utils">utils module</a><ul>
 <li><a class="reference internal" href="#MCintegration.utils.RAvg"><code class="docutils literal notranslate"><span class="pre">RAvg</span></code></a><ul>
 <li><a class="reference internal" href="#MCintegration.utils.Q"><code class="docutils literal notranslate"><span class="pre">Q</span></code></a></li>
+<li><a class="reference internal" href="#MCintegration.utils.RAvg.__reduce_ex__"><code class="docutils literal notranslate"><span class="pre">__reduce_ex__()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.utils.RAvg.add"><code class="docutils literal notranslate"><span class="pre">add()</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.utils.avg_neval"><code class="docutils literal notranslate"><span class="pre">avg_neval</span></code></a></li>
 <li><a class="reference internal" href="#MCintegration.utils.chi2"><code class="docutils literal notranslate"><span class="pre">chi2</span></code></a></li>

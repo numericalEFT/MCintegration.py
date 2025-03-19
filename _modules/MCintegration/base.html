@@ -41,14 +41,20 @@
           <div class="body" role="main">
             
   <h1>Source code for MCintegration.base</h1><div class="highlight"><pre>
-<span></span><span class="kn">import</span> <span class="nn">torch</span>
+<span></span><span class="c1"># base.py</span>
+<span class="c1"># This file contains the base distribution classes for Monte Carlo integration methods</span>
+<span class="c1"># It defines foundational classes for sampling distributions and transformations</span>
+
+<span class="kn">import</span> <span class="nn">torch</span>
 <span class="kn">from</span> <span class="nn">torch</span> <span class="kn">import</span> <span class="n">nn</span>
 <span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
 <span class="kn">import</span> <span class="nn">sys</span>
 <span class="kn">from</span> <span class="nn">MCintegration.utils</span> <span class="kn">import</span> <span class="n">get_device</span>
 
+<span class="c1"># Constants for numerical stability</span>
+<span class="c1"># Small but safe non-zero value</span>
 <span class="n">MINVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">min_10_exp</span> <span class="o">+</span> <span class="mi">50</span><span class="p">)</span>
-<span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">max_10_exp</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span>
+<span class="n">MAXVAL</span> <span class="o">=</span> <span class="mi">10</span> <span class="o">**</span> <span class="p">(</span><span class="n">sys</span><span class="o">.</span><span class="n">float_info</span><span class="o">.</span><span class="n">max_10_exp</span> <span class="o">-</span> <span class="mi">50</span><span class="p">)</span>  <span class="c1"># Large but safe value</span>
 <span class="n">EPSILON</span> <span class="o">=</span> <span class="mf">1e-16</span>  <span class="c1"># Small value to ensure numerical stability</span>
 
 
@@ -56,11 +62,21 @@
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.BaseDistribution">[docs]</a>
 <span class="k">class</span> <span class="nc">BaseDistribution</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Base distribution of a flow-based model</span>
-<span class="sd">    Parameters do not depend of target variable (as is the case for a VAE encoder)</span>
+<span class="sd">    Base distribution class for flow-based models.</span>
+<span class="sd">    This is an abstract base class that provides structure for probability distributions</span>
+<span class="sd">    used in Monte Carlo integration. Parameters do not depend on target variables</span>
+<span class="sd">    (unlike a VAE encoder).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize BaseDistribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dim (int): Dimensionality of the distribution</span>
+<span class="sd">            device (str or torch.device): Device to use for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dtype</span> <span class="o">=</span> <span class="n">dtype</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">dim</span> <span class="o">=</span> <span class="n">dim</span>
@@ -69,13 +85,18 @@
 <div class="viewcode-block" id="BaseDistribution.sample">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.BaseDistribution.sample">[docs]</a>
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Samples from base distribution</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample from the base distribution.</span>
 
 <span class="sd">        Args:</span>
-<span class="sd">          num_samples: Number of samples to draw from the distriubtion</span>
+<span class="sd">            batch_size (int): Number of samples to draw</span>
+<span class="sd">            **kwargs: Additional arguments</span>
 
 <span class="sd">        Returns:</span>
-<span class="sd">          Samples drawn from the distribution</span>
+<span class="sd">            tuple: (samples, log_det_jacobian)</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            NotImplementedError: This is an abstract method</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
 
@@ -83,8 +104,18 @@
 <div class="viewcode-block" id="BaseDistribution.sample_with_detJ">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.BaseDistribution.sample_with_detJ">[docs]</a>
     <span class="k">def</span> <span class="nf">sample_with_detJ</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample from base distribution with Jacobian determinant (not log).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            batch_size (int): Number of samples to draw</span>
+<span class="sd">            **kwargs: Additional arguments</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (samples, det_jacobian)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
-        <span class="n">detJ</span><span class="o">.</span><span class="n">exp_</span><span class="p">()</span>
+        <span class="n">detJ</span><span class="o">.</span><span class="n">exp_</span><span class="p">()</span>  <span class="c1"># Convert log_det to det</span>
         <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span></div>
 </div>
 
@@ -94,18 +125,39 @@
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.Uniform">[docs]</a>
 <span class="k">class</span> <span class="nc">Uniform</span><span class="p">(</span><span class="n">BaseDistribution</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    Multivariate uniform distribution</span>
+<span class="sd">    Multivariate uniform distribution over [0,1]^dim.</span>
+<span class="sd">    Samples from a uniform distribution in the hypercube [0,1]^dim.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cpu&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize Uniform distribution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            dim (int): Dimensionality of the distribution</span>
+<span class="sd">            device (str or torch.device): Device to use for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">dim</span><span class="p">,</span> <span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="p">)</span>
 
 <div class="viewcode-block" id="Uniform.sample">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.Uniform.sample">[docs]</a>
     <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample from uniform distribution over [0,1]^dim.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            batch_size (int): Number of samples to draw</span>
+<span class="sd">            **kwargs: Additional arguments</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (uniform samples, log_det_jacobian=0)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># torch.manual_seed(0) # test seed</span>
-        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
-        <span class="n">log_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">u</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">rand</span><span class="p">((</span><span class="n">batch_size</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">dim</span><span class="p">),</span>
+                       <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">log_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span>
+            <span class="n">batch_size</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
         <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">log_detJ</span></div>
 </div>
 
@@ -114,7 +166,21 @@
 <div class="viewcode-block" id="LinearMap">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.LinearMap">[docs]</a>
 <span class="k">class</span> <span class="nc">LinearMap</span><span class="p">(</span><span class="n">nn</span><span class="o">.</span><span class="n">Module</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Linear transformation map of the form x = u * A + b.</span>
+<span class="sd">    Maps points from one space to another using a linear transformation.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">A</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Initialize LinearMap with scaling A and offset b.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            A (list, numpy.ndarray, torch.Tensor): Scaling factors</span>
+<span class="sd">            b (list, numpy.ndarray, torch.Tensor): Offset values</span>
+<span class="sd">            device (str or torch.device): Device to use for computation</span>
+<span class="sd">            dtype (torch.dtype): Data type for computations</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">device</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">device</span> <span class="o">=</span> <span class="n">get_device</span><span class="p">()</span>
         <span class="k">else</span><span class="p">:</span>
@@ -127,34 +193,64 @@
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">A</span> <span class="o">=</span> <span class="n">A</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;A&#39; must be a list, numpy array, or torch tensor.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;&#39;A&#39; must be a list, numpy array, or torch tensor.&quot;</span><span class="p">)</span>
 
         <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="p">(</span><span class="nb">list</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">b</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">b</span> <span class="o">=</span> <span class="n">b</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
         <span class="k">else</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;&#39;b&#39; must be a list, numpy array, or torch tensor.&quot;</span><span class="p">)</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;&#39;b&#39; must be a list, numpy array, or torch tensor.&quot;</span><span class="p">)</span>
 
+        <span class="c1"># Pre-compute determinant of Jacobian for efficiency</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_detJ</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">A</span><span class="p">)</span>
 
 <div class="viewcode-block" id="LinearMap.forward">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.LinearMap.forward">[docs]</a>
     <span class="k">def</span> <span class="nf">forward</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply forward transformation: x = u * A + b.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            u (torch.Tensor): Input points</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (transformed points, log_det_jacobian)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">u</span> <span class="o">*</span> <span class="bp">self</span><span class="o">.</span><span class="n">A</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_detJ</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">u</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span></div>
 
 
 <div class="viewcode-block" id="LinearMap.forward_with_detJ">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.LinearMap.forward_with_detJ">[docs]</a>
     <span class="k">def</span> <span class="nf">forward_with_detJ</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">u</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply forward transformation with Jacobian determinant (not log).</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            u (torch.Tensor): Input points</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (transformed points, det_jacobian)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">forward</span><span class="p">(</span><span class="n">u</span><span class="p">)</span>
-        <span class="n">detJ</span><span class="o">.</span><span class="n">exp_</span><span class="p">()</span>
+        <span class="n">detJ</span><span class="o">.</span><span class="n">exp_</span><span class="p">()</span>  <span class="c1"># Convert log_det to det</span>
         <span class="k">return</span> <span class="n">u</span><span class="p">,</span> <span class="n">detJ</span></div>
 
 
 <div class="viewcode-block" id="LinearMap.inverse">
 <a class="viewcode-back" href="../../MCintegration.html#MCintegration.base.LinearMap.inverse">[docs]</a>
     <span class="k">def</span> <span class="nf">inverse</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply inverse transformation: u = (x - b) / A.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            x (torch.Tensor): Input points</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple: (transformed points, log_det_jacobian)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">b</span><span class="p">)</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">A</span><span class="p">,</span> <span class="n">torch</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_detJ</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span></div>
 </div>
 
