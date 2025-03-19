@@ -1,3 +1,7 @@
+# maps.py
+# This file defines transformation maps used for importance sampling in Monte Carlo integration.
+# It includes the Configuration class for storing samples and various Map implementations.
+
 import numpy as np
 import torch
 from torch import nn
@@ -5,11 +9,27 @@ from MCintegration.base import Uniform
 from MCintegration.utils import get_device
 import sys
 
-TINY = 10 ** (sys.float_info.min_10_exp + 50)
+TINY = 10 ** (sys.float_info.min_10_exp + 50)  # Small but safe non-zero value
 
 
 class Configuration:
+    """
+    Configuration class to store samples and integration results.
+    This class holds batches of points in both the original and transformed space,
+    along with function values and weights.
+    """
+
     def __init__(self, batch_size, dim, f_dim, device=None, dtype=torch.float32):
+        """
+        Initialize a Configuration object.
+
+        Args:
+            batch_size (int): Number of samples in a batch
+            dim (int): Dimensionality of the integration space
+            f_dim (int): Dimensionality of the function output
+            device (str or torch.device): Device to use for computation
+            dtype (torch.dtype): Data type for computations
+        """
         if device is None:
             self.device = get_device()
         else:
@@ -17,15 +37,33 @@ class Configuration:
         self.dim = dim
         self.f_dim = f_dim
         self.batch_size = batch_size
-        self.u = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
-        self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
-        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
-        self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
+        # Initialize tensors for storing samples and results
+        self.u = torch.empty(
+            (batch_size, dim), dtype=dtype, device=self.device)
+        self.x = torch.empty(
+            (batch_size, dim), dtype=dtype, device=self.device)
+        self.fx = torch.empty((batch_size, f_dim),
+                              dtype=dtype, device=self.device)
+        self.weight = torch.empty(
+            (batch_size,), dtype=dtype, device=self.device)
         self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
 
 
 class Map(nn.Module):
+    """
+    Base class for all transformation maps.
+    Maps transform points from the unit hypercube to the target integration domain
+    with potentially better sampling distribution.
+    """
+
     def __init__(self, device=None, dtype=torch.float32):
+        """
+        Initialize a Map object.
+
+        Args:
+            device (str or torch.device): Device to use for computation
+            dtype (torch.dtype): Data type for computations
+        """
         super().__init__()
         if device is None:
             self.device = get_device()
@@ -34,19 +72,65 @@ class Map(nn.Module):
         self.dtype = dtype
 
     def forward(self, u):
+        """
+        Transform points from the unit hypercube to the target domain.
+
+        Args:
+            u (torch.Tensor): Points in the unit hypercube
+
+        Returns:
+            tuple: (transformed points, log_det_jacobian)
+
+        Raises:
+            NotImplementedError: This is an abstract method
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
     def forward_with_detJ(self, u):
+        """
+        Transform points with Jacobian determinant (not log).
+
+        Args:
+            u (torch.Tensor): Points in the unit hypercube
+
+        Returns:
+            tuple: (transformed points, det_jacobian)
+        """
         u, detJ = self.forward(u)
-        detJ.exp_()
+        detJ.exp_()  # Convert log_det to det
         return u, detJ
 
     def inverse(self, x):
+        """
+        Transform points from the target domain back to the unit hypercube.
+
+        Args:
+            x (torch.Tensor): Points in the target domain
+
+        Returns:
+            tuple: (transformed points, log_det_jacobian)
+
+        Raises:
+            NotImplementedError: This is an abstract method
+        """
         raise NotImplementedError("Subclasses must implement this method")
 
 
 class CompositeMap(Map):
+    """
+    Composite transformation map that applies multiple maps sequentially.
+    Allows for complex transformations by composing simpler ones.
+    """
+
     def __init__(self, maps, device=None, dtype=None):
+        """
+        Initialize a CompositeMap with a list of maps.
+
+        Args:
+            maps (list): List of Map objects to apply in sequence
+            device (str or torch.device): Device to use for computation
+            dtype (torch.dtype): Data type for computations
+        """
         if not maps:
             raise ValueError("Maps can not be empty.")
         if dtype is None:
@@ -60,6 +144,15 @@ class CompositeMap(Map):
         self.maps = maps
 
     def forward(self, u):
+        """
+        Apply all maps in sequence to transform points.
+
+        Args:
+            u (torch.Tensor): Points in the unit hypercube
+
+        Returns:
+            tuple: (transformed points, log_det_jacobian)
+        """
         log_detJ = torch.zeros(len(u), device=u.device, dtype=self.dtype)
         for map in self.maps:
             u, log_detj = map.forward(u)
@@ -67,6 +160,15 @@ class CompositeMap(Map):
         return u, log_detJ
 
     def inverse(self, x):
+        """
+        Apply all maps in reverse sequence to transform points back.
+
+        Args:
+            x (torch.Tensor): Points in the target domain
+
+        Returns:
+            tuple: (transformed points, log_det_jacobian)
+        """
         log_detJ = torch.zeros(len(x), device=x.device, dtype=self.dtype)
         for i in range(len(self.maps) - 1, -1, -1):
             x, log_detj = self.maps[i].inverse(x)
@@ -75,7 +177,22 @@ class CompositeMap(Map):
 
 
 class Vegas(Map):
+    """
+    VEGAS algorithm implementation as a transformation map.
+    VEGAS adapts to the integrand by adjusting the sampling density
+    based on the magnitude of the integrand in different regions.
+    """
+
     def __init__(self, dim, ninc=1000, device=None, dtype=torch.float32):
+        """
+        Initialize a VEGAS map.
+
+        Args:
+            dim (int): Dimensionality of the integration space
+            ninc (int): Number of increments for the grid
+            device (str or torch.device): Device to use for computation
+            dtype (torch.dtype): Data type for computations
+        """
         super().__init__(device, dtype)
 
         self.dim = dim
@@ -85,7 +202,8 @@ class Vegas(Map):
                 (self.dim,), ninc, dtype=torch.int32, device=self.device
             )
         elif isinstance(ninc, (list, np.ndarray)):
-            self.ninc = torch.tensor(ninc, dtype=torch.int32, device=self.device)
+            self.ninc = torch.tensor(
+                ninc, dtype=torch.int32, device=self.device)
         elif isinstance(ninc, torch.Tensor):
             self.ninc = ninc.to(dtype=torch.int32, device=self.device)
         else:
@@ -190,8 +308,10 @@ class Vegas(Map):
         """
         # Aggregate training data across distributed processes if applicable
         if torch.distributed.is_initialized():
-            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
-            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(
+                self.sum_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(
+                self.n_f, op=torch.distributed.ReduceOp.SUM)
 
         # Initialize a new grid tensor
         new_grid = torch.empty(
@@ -199,7 +319,8 @@ class Vegas(Map):
         )
 
         if alpha > 0:
-            tmp_f = torch.empty(self.max_ninc, dtype=self.dtype, device=self.device)
+            tmp_f = torch.empty(
+                self.max_ninc, dtype=self.dtype, device=self.device)
 
         # avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
         for d in range(self.dim):
@@ -216,12 +337,14 @@ class Vegas(Map):
 
                 if alpha > 0:
                     # Smooth avg_f
-                    tmp_f[0] = (7.0 * avg_f[0] + avg_f[1]).abs() / 8.0  # Shape: ()
+                    tmp_f[0] = (7.0 * avg_f[0] + avg_f[1]
+                                ).abs() / 8.0  # Shape: ()
                     tmp_f[ninc - 1] = (
                         7.0 * avg_f[ninc - 1] + avg_f[ninc - 2]
                     ).abs() / 8.0  # Shape: ()
-                    tmp_f[1 : ninc - 1] = (
-                        6.0 * avg_f[1 : ninc - 1] + avg_f[: ninc - 2] + avg_f[2:ninc]
+                    tmp_f[1: ninc - 1] = (
+                        6.0 * avg_f[1: ninc - 1] +
+                        avg_f[: ninc - 2] + avg_f[2:ninc]
                     ).abs() / 8.0
 
                     # Normalize tmp_f to ensure the sum is 1
@@ -267,7 +390,8 @@ class Vegas(Map):
                 ) / avg_f_relevant
 
                 # Calculate the new grid points using vectorized operations
-                new_grid[d, 1:ninc] = grid_left + fractional_positions * inc_relevant
+                new_grid[d, 1:ninc] = grid_left + \
+                    fractional_positions * inc_relevant
             else:
                 # If alpha == 0 or no training data, retain the existing grid
                 new_grid[d, :] = self.grid[d, :]
@@ -280,7 +404,8 @@ class Vegas(Map):
         self.inc.zero_()  # Reset increments to zero
         for d in range(self.dim):
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
+                self.grid[d, 1: self.ninc[d] + 1] -
+                self.grid[d, : self.ninc[d]]
             )
 
         # Clear accumulated training data for the next adaptation cycle
@@ -304,7 +429,8 @@ class Vegas(Map):
                 device=self.device,
             )
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
+                self.grid[d, 1: self.ninc[d] + 1] -
+                self.grid[d, : self.ninc[d]]
             )
         self.clear()
 
@@ -330,8 +456,10 @@ class Vegas(Map):
 
         batch_size = u.size(0)
         # Clamp iu to [0, ninc-1] to handle out-of-bounds indices
-        min_tensor = torch.zeros((1, self.dim), dtype=iu.dtype, device=self.device)
-        max_tensor = (self.ninc - 1).unsqueeze(0).to(iu.dtype)  # Shape: (1, dim)
+        min_tensor = torch.zeros(
+            (1, self.dim), dtype=iu.dtype, device=self.device)
+        # Shape: (1, dim)
+        max_tensor = (self.ninc - 1).unsqueeze(0).to(iu.dtype)
         iu_clamped = torch.clamp(iu, min=min_tensor, max=max_tensor)
 
         grid_expanded = self.grid.unsqueeze(0).expand(batch_size, -1, -1)
@@ -340,7 +468,8 @@ class Vegas(Map):
         grid_gather = torch.gather(grid_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(
             2
         )  # Shape: (batch_size, dim)
-        inc_gather = torch.gather(inc_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(2)
+        inc_gather = torch.gather(
+            inc_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(2)
 
         x = grid_gather + inc_gather * du_ninc
         log_detJ = (inc_gather * self.ninc).log_().sum(dim=1)
@@ -352,7 +481,8 @@ class Vegas(Map):
             # For each sample and dimension, set x to grid[d, ninc[d]]
             # and log_detJ += log(inc[d, ninc[d]-1] * ninc[d])
             boundary_grid = (
-                self.grid[torch.arange(self.dim, device=self.device), self.ninc]
+                self.grid[torch.arange(
+                    self.dim, device=self.device), self.ninc]
                 .unsqueeze(0)
                 .expand(batch_size, -1)
             )
@@ -360,7 +490,8 @@ class Vegas(Map):
             x[out_of_bounds] = boundary_grid[out_of_bounds]
 
             boundary_inc = (
-                self.inc[torch.arange(self.dim, device=self.device), self.ninc - 1]
+                self.inc[torch.arange(
+                    self.dim, device=self.device), self.ninc - 1]
                 .unsqueeze(0)
                 .expand(batch_size, -1)
             )
@@ -388,7 +519,8 @@ class Vegas(Map):
 
         # Initialize output tensors
         u = torch.empty_like(x)
-        log_detJ = torch.zeros(batch_size, device=self.device, dtype=self.dtype)
+        log_detJ = torch.zeros(
+            batch_size, device=self.device, dtype=self.dtype)
 
         # Loop over each dimension to perform inverse mapping
         for d in range(dim):
@@ -402,11 +534,13 @@ class Vegas(Map):
             # Perform searchsorted to find indices where x should be inserted to maintain order
             # torch.searchsorted returns indices in [0, max_ninc +1]
             iu = (
-                torch.searchsorted(grid_d, x[:, d].contiguous(), right=True) - 1
+                torch.searchsorted(
+                    grid_d, x[:, d].contiguous(), right=True) - 1
             )  # Shape: (batch_size,)
 
             # Clamp indices to [0, ninc_d - 1] to ensure they are within valid range
-            iu_clamped = torch.clamp(iu, min=0, max=ninc_d - 1)  # Shape: (batch_size,)
+            # Shape: (batch_size,)
+            iu_clamped = torch.clamp(iu, min=0, max=ninc_d - 1)
 
             # Gather grid and increment values based on iu_clamped
             # grid_gather and inc_gather have shape (batch_size,)
@@ -414,13 +548,15 @@ class Vegas(Map):
             inc_gather = inc_d[iu_clamped]  # Shape: (batch_size,)
 
             # Compute du: fractional part within the increment
-            du = (x[:, d] - grid_gather) / (inc_gather + TINY)  # Shape: (batch_size,)
+            du = (x[:, d] - grid_gather) / \
+                (inc_gather + TINY)  # Shape: (batch_size,)
 
             # Compute u for dimension d
             u[:, d] = (du + iu_clamped) / ninc_d  # Shape: (batch_size,)
 
             # Compute log determinant contribution for dimension d
-            log_detJ += (inc_gather * ninc_d + TINY).log_()  # Shape: (batch_size,)
+            # Shape: (batch_size,)
+            log_detJ += (inc_gather * ninc_d + TINY).log_()
 
             # Handle out-of-bounds cases
             # Lower bound: x <= grid[d, 0]
