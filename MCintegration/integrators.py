@@ -1,3 +1,7 @@
+# integrators.py
+# This file contains Monte Carlo integration methods and related utilities.
+# It implements various integration techniques including plain Monte Carlo and MCMC.
+
 from typing import Callable
 import torch
 from MCintegration.utils import RAvg, get_device
@@ -12,18 +16,38 @@ import socket
 
 
 def get_ip() -> str:
+    """
+    Get the current machine's IP address.
+    Used for distributed computing setup.
+
+    Returns:
+        str: IP address of the current machine
+    """
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     s.connect(("8.8.8.8", 80))  # Doesn't need to be reachable
     return s.getsockname()[0]
 
 
 def get_open_port() -> int:
+    """
+    Find an available open port on the current machine.
+    Used for distributed computing setup.
+
+    Returns:
+        int: Available port number
+    """
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("", 0))
         return s.getsockname()[1]
 
 
 def setup(backend="gloo"):
+    """
+    Set up distributed processing environment for multi-GPU/CPU computation.
+
+    Args:
+        backend (str): Backend to use for distributed computing ('gloo', 'nccl', etc.)
+    """
     # get IDs of reserved GPU
     distributed_init_method = f"tcp://{get_ip()}:{get_open_port()}"
     dist.init_process_group(
@@ -36,6 +60,10 @@ def setup(backend="gloo"):
 
 
 def cleanup():
+    """
+    Clean up distributed processing environment.
+    Should be called after distributed computing is no longer needed.
+    """
     dist.destroy_process_group()
 
 
@@ -57,6 +85,19 @@ class Integrator:
         device=None,
         dtype=None,
     ):
+        """
+        Initialize the Integrator.
+
+        Args:
+            bounds (list): Integration bounds as list of (min, max) tuples for each dimension
+            f (Callable): Integrand function to evaluate
+            f_dim (int): Dimension of the output of f
+            maps (Map, optional): Transformation maps for importance sampling
+            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)
+            batch_size (int): Number of points to sample at once
+            device (str or torch.device): Device for computation
+            dtype (torch.dtype): Data type for computation
+        """
         self.f = f
         self.f_dim = f_dim
 
@@ -122,9 +163,23 @@ class Integrator:
             self.world_size = 1
 
     def __call__(self, **kwargs):
-        raise NotImplementedError("Subclasses must implement this method")
+        """
+        Call the integrator to perform the integration.
+        This should be implemented by subclasses.
+
+        Returns:
+            Integration result
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
     def sample(self, config, **kwargs):
+        """
+        Generate samples for integration.
+
+        Args:
+            config (Configuration): The configuration object to store samples
+            **kwargs: Additional parameters
+        """
         config.u, config.detJ = self.q0.sample_with_detJ(config.batch_size)
         if not self.maps:
             config.x[:] = config.u
@@ -134,6 +189,17 @@ class Integrator:
         self.f(config.x, config.fx)
 
     def statistics(self, means, vars, neval=None):
+        """
+        Calculate statistics of the integration results.
+
+        Args:
+            means (torch.Tensor): Mean values from integration
+            vars (torch.Tensor): Variance values from integration
+            neval (int, optional): Number of function evaluations
+
+        Returns:
+            tuple: Statistics of the integration including mean, error, and chi-squared
+        """
         nblock = means.shape[0]
         f_dim = means.shape[1]
         nblock_total = nblock * self.world_size
@@ -203,6 +269,11 @@ class Integrator:
 
 
 class MonteCarlo(Integrator):
+    """
+    Plain Monte Carlo integration method.
+    Uses uniform or importance sampling to estimate integrals.
+    """
+
     def __init__(
         self,
         bounds,
@@ -214,10 +285,37 @@ class MonteCarlo(Integrator):
         device=None,
         dtype=None,
     ):
-        super().__init__(bounds, f, f_dim, maps, q0, batch_size, device, dtype)
+        """
+        Initialize the Monte Carlo integrator.
+
+        Args:
+            bounds (list): Integration bounds as list of (min, max) tuples for each dimension
+            f (Callable): Integrand function to evaluate
+            f_dim (int): Dimension of the output of f
+            maps (Map, optional): Transformation maps for importance sampling
+            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)
+            batch_size (int): Number of points to sample at once
+            device (str or torch.device): Device for computation
+            dtype (torch.dtype): Data type for computation
+        """
+        super(MonteCarlo, self).__init__(
+            bounds, f, f_dim, maps, q0, batch_size, device, dtype
+        )
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def __call__(self, neval, nblock=32, verbose=-1, **kwargs):
+        """
+        Perform Monte Carlo integration.
+
+        Args:
+            neval (int): Number of function evaluations
+            nblock (int): Number of blocks for error estimation
+            verbose (int): Verbosity level (-1: silent, 0: minimal, 1+: more details)
+            **kwargs: Additional parameters passed to the sample method
+
+        Returns:
+            RAvg or list of RAvg: Integration results with error estimates
+        """
         neval = neval // self.world_size
         neval = -(-neval // self.batch_size) * self.batch_size
         epoch = neval // self.batch_size
@@ -268,6 +366,19 @@ class MonteCarlo(Integrator):
 
 
 def random_walk(dim, device, dtype, u, **kwargs):
+    """
+    Random walk proposal distribution for MCMC.
+
+    Args:
+        dim (int): Dimensionality of the space
+        device (str or torch.device): Computation device
+        dtype (torch.dtype): Data type
+        u (torch.Tensor): Current position
+        **kwargs: Additional parameters
+
+    Returns:
+        torch.Tensor: Proposed new position
+    """
     step_size = kwargs.get("step_size", 0.2)
     step_sizes = torch.ones(dim, device=device) * step_size
     step = torch.empty(dim, device=device, dtype=dtype).uniform_(-1, 1) * step_sizes
@@ -276,16 +387,47 @@ def random_walk(dim, device, dtype, u, **kwargs):
 
 
 def uniform(dim, device, dtype, u, **kwargs):
+    """
+    Uniform proposal distribution for MCMC.
+
+    Args:
+        dim (int): Dimensionality of the space
+        device (str or torch.device): Computation device
+        dtype (torch.dtype): Data type
+        u (torch.Tensor): Current position (ignored)
+        **kwargs: Additional parameters
+
+    Returns:
+        torch.Tensor: Uniformly sampled new position
+    """
     return torch.rand_like(u)
 
 
 def gaussian(dim, device, dtype, u, **kwargs):
+    """
+    Gaussian proposal distribution for MCMC.
+
+    Args:
+        dim (int): Dimensionality of the space
+        device (str or torch.device): Computation device
+        dtype (torch.dtype): Data type
+        u (torch.Tensor): Current position
+        **kwargs: Additional parameters
+
+    Returns:
+        torch.Tensor: Proposed new position from Gaussian distribution centered at u
+    """
     mean = kwargs.get("mean", torch.zeros_like(u))
     std = kwargs.get("std", torch.ones_like(u))
     return torch.normal(mean, std)
 
 
 class MarkovChainMonteCarlo(Integrator):
+    """
+    Markov Chain Monte Carlo (MCMC) integration method.
+    Uses Metropolis-Hastings algorithm to generate samples from the target distribution.
+    """
+
     def __init__(
         self,
         bounds,
@@ -299,7 +441,24 @@ class MarkovChainMonteCarlo(Integrator):
         device=None,
         dtype=None,
     ):
-        super().__init__(bounds, f, f_dim, maps, q0, batch_size, device, dtype)
+        """
+        Initialize the MCMC integrator.
+
+        Args:
+            bounds (list): Integration bounds as list of (min, max) tuples for each dimension
+            f (Callable): Integrand function to evaluate
+            f_dim (int): Dimension of the output of f
+            maps (Map, optional): Transformation maps for importance sampling
+            q0 (BaseDistribution, optional): Base sampling distribution (default: Uniform)
+            proposal_dist (Callable, optional): Proposal distribution for MCMC (default: random_walk)
+            batch_size (int): Number of points to sample at once
+            nburnin (int): Number of burn-in steps before sampling
+            device (str or torch.device): Device for computation
+            dtype (torch.dtype): Data type for computation
+        """
+        super(MarkovChainMonteCarlo, self).__init__(
+            bounds, f, f_dim, maps, q0, batch_size, device, dtype
+        )
         self.nburnin = nburnin
         if not proposal_dist:
             self.proposal_dist = uniform
@@ -310,6 +469,18 @@ class MarkovChainMonteCarlo(Integrator):
         self._rangebounds = self.bounds[:, 1] - self.bounds[:, 0]
 
     def sample(self, config, nsteps=1, mix_rate=0.5, **kwargs):
+        """
+        Generate samples using MCMC.
+
+        Args:
+            config (Configuration): Configuration object to store samples
+            nsteps (int): Number of MCMC steps
+            mix_rate (float): Mixing rate between previous and new samples (0-1)
+            **kwargs: Additional parameters
+
+        Returns:
+            Configuration: Updated configuration with new samples
+        """
         for _ in range(nsteps):
             proposed_y = self.proposal_dist(
                 self.dim, self.device, self.dtype, config.u, **kwargs
@@ -343,6 +514,20 @@ class MarkovChainMonteCarlo(Integrator):
         verbose=-1,
         **kwargs,
     ):
+        """
+        Perform MCMC integration.
+
+        Args:
+            neval (int): Number of function evaluations
+            mix_rate (float): Mixing rate between previous and new samples (0-1)
+            nblock (int): Number of blocks for error estimation
+            meas_freq (int): Measurement frequency
+            verbose (int): Verbosity level (-1: silent, 0: minimal, 1+: more details)
+            **kwargs: Additional parameters passed to the sample method
+
+        Returns:
+            RAvg or list of RAvg: Integration results with error estimates
+        """
         neval = neval // self.world_size
         neval = -(-neval // self.batch_size) * self.batch_size
         epoch = neval // self.batch_size
