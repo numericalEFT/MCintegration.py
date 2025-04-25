@@ -20,6 +20,7 @@ import os
 import sys
 import traceback
 from MCintegration import MonteCarlo, MarkovChainMonteCarlo, Vegas
+
 os.environ["NCCL_DEBUG"] = "OFF"
 os.environ["TORCH_DISTRIBUTED_DEBUG"] = "OFF"
 os.environ["GLOG_minloglevel"] = "2"
@@ -27,6 +28,7 @@ os.environ["MASTER_ADDR"] = os.getenv("MASTER_ADDR", "localhost")
 os.environ["MASTER_PORT"] = os.getenv("MASTER_PORT", "12355")
 
 backend = "nccl"
+
 
 def init_process(rank, world_size, fn, backend=backend):
     try:
@@ -38,6 +40,7 @@ def init_process(rank, world_size, fn, backend=backend):
             dist.destroy_process_group()
         raise e
 
+
 def run_mcmc(rank, world_size):
     try:
         if rank != 0:
@@ -48,7 +51,6 @@ def run_mcmc(rank, world_size):
         def unit_circle_integrand(x, f):
             f[:, 0] = (x[:, 0] ** 2 + x[:, 1] ** 2 < 1).double()
             return f[:, 0]
-
 
         def half_sphere_integrand(x, f):
             f[:, 0] = torch.clamp(1 - (x[:, 0] ** 2 + x[:, 1] ** 2), min=0) * 2
@@ -66,12 +68,14 @@ def run_mcmc(rank, world_size):
 
         # Monte Carlo and MCMC for Unit Circle
         mc_integrator = MonteCarlo(
-            f=unit_circle_integrand, bounds=bounds, batch_size=batch_size,
-            device=device
+            f=unit_circle_integrand, bounds=bounds, batch_size=batch_size, device=device
         )
         mcmc_integrator = MarkovChainMonteCarlo(
-            f=unit_circle_integrand, bounds=bounds, batch_size=batch_size, nburnin=n_therm,
-            device=device
+            f=unit_circle_integrand,
+            bounds=bounds,
+            batch_size=batch_size,
+            nburnin=n_therm,
+            device=device,
         )
 
         print("Unit Circle Integration Results:")
@@ -81,8 +85,11 @@ def run_mcmc(rank, world_size):
         # Train VEGAS map for Unit Circle
         vegas_map.adaptive_training(batch_size, unit_circle_integrand, alpha=0.5)
         vegas_integrator = MonteCarlo(
-            bounds, f=unit_circle_integrand, maps=vegas_map, batch_size=batch_size,
-            device=device
+            bounds,
+            f=unit_circle_integrand,
+            maps=vegas_map,
+            batch_size=batch_size,
+            device=device,
         )
         vegasmcmc_integrator = MarkovChainMonteCarlo(
             bounds,
@@ -90,7 +97,7 @@ def run_mcmc(rank, world_size):
             maps=vegas_map,
             batch_size=batch_size,
             nburnin=n_therm,
-            device=device
+            device=device,
         )
 
         print("VEGAS:", vegas_integrator(n_eval))
@@ -105,13 +112,14 @@ def run_mcmc(rank, world_size):
         print("MCMC:", mcmc_integrator(n_eval, mix_rate=0.5))
 
         vegas_map.make_uniform()
-        vegas_map.adaptive_training(batch_size, half_sphere_integrand, epoch=10, alpha=0.5)
+        vegas_map.adaptive_training(
+            batch_size, half_sphere_integrand, epoch=10, alpha=0.5
+        )
         vegas_integrator.f = half_sphere_integrand
         vegasmcmc_integrator.f = half_sphere_integrand
 
         print("VEGAS:", vegas_integrator(n_eval))
         print("VEGAS-MCMC:", vegasmcmc_integrator(n_eval, mix_rate=0.5))
-
 
     except Exception as e:
         print(f"Error in run_mcmc for rank {rank}: {e}")
@@ -134,6 +142,7 @@ def test_mcmc(world_size):
         )
     except Exception as e:
         print(f"Error in test_mcmc: {e}")
+
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)

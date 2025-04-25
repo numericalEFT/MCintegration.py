@@ -1,5 +1,3 @@
-# Example 3: Integration of log(x)/sqrt(x) using VEGAS
-
 import torch
 import torch.distributed as dist
 import torch.multiprocessing as mp
