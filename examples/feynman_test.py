@@ -19,7 +19,7 @@ order = 2
 beta = 10.0
 feynfunc = init_feynfunc(order, beta, batch_size)
 feynfunc.to(device)
-f_dim = num_roots[order - 1]
+f_dim = num_roots[order]
 
 
 vegas_map = Vegas(feynfunc.ndims, ninc=1000, device=device)

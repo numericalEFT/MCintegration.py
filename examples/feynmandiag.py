@@ -4,11 +4,11 @@ from torch import nn
 import mpmath
 from mpmath import polylog, gamma, findroot
 from funcs_sigma import *
+from funcs_sigmadk import *
 import pandas as pd
 import os
 import re
 
-root_dir = os.path.join(os.path.dirname(__file__), "funcs_sigma/")
 num_loops = [2, 6, 15, 39, 111, 448]
 
 
@@ -31,7 +31,7 @@ def load_leaf_info(root_dir, name, key_str):
     df = pd.read_csv(os.path.join(root_dir, f"leafinfo_{name}_{key_str}.csv"))
     with torch.no_grad():
         leaftypes = torch.tensor(df.iloc[:, 1].to_numpy())
-        leaforders = torch.tensor([_StringtoIntVector(x) for x in df.iloc[:, 2]]).T
+        leaforders = torch.tensor([_StringtoIntVector(x)[:3] for x in df.iloc[:, 2]]).T
         inTau_idx = torch.tensor(df.iloc[:, 3].to_numpy() - 1)
         outTau_idx = torch.tensor(df.iloc[:, 4].to_numpy() - 1)
         loop_idx = torch.tensor(df.iloc[:, 5].to_numpy() - 1)
@@ -41,11 +41,27 @@ def load_leaf_info(root_dir, name, key_str):
 
 class FeynmanIntegrand(nn.Module):
     @torch.no_grad()
-    def __init__(self, order, beta, loopBasis, leafstates, leafvalues, batchsize):
+    def __init__(
+        self,
+        order,
+        rs,
+        beta,
+        loopBasis,
+        leafstates,
+        leafvalues,
+        batchsize,
+        is_real=True,
+        has_dk=False,
+    ):
         super().__init__()
         # super().__init__(prop_scale=torch.tensor(1.0), prop_shift=torch.tensor(0.0))
 
-        print("beta:", beta, "order:", order, "batchsize:", batchsize)
+        print("rs:", rs, "beta:", beta, "order:", order, "batchsize:", batchsize)
+
+        if is_real:
+            self.is_real = True
+        else:
+            self.is_real = False
 
         # Unpack leafstates for clarity
         lftype, lforders, leaf_tau_i, leaf_tau_o, leafMomIdx = leafstates
@@ -100,6 +116,7 @@ class FeynmanIntegrand(nn.Module):
             "leafvalues",
             torch.broadcast_to(leafvalues, (self.batchsize, leafvalues.shape[0])),
         )
+        # print("lvalue,", self.leafvalues.shape)
         self.register_buffer(
             "p", torch.zeros([self.batchsize, self.dim, self.innerLoopNum + 1])
         )
@@ -127,20 +144,33 @@ class FeynmanIntegrand(nn.Module):
         self.p[:, 0, 0] += self.kF
         self.extk = self.kF
         self.extn = 0
-        self.targetval = 4.0
+        # self.targetval = 4.0
 
         if order == 1:
-            self.eval_graph = torch.jit.script(eval_graph100)
+            if has_dk:
+                self.eval_graph = torch.jit.script(eval_graph1001)
+            else:
+                self.eval_graph = torch.jit.script(eval_graph100)
         elif order == 2:
-            self.eval_graph = torch.jit.script(eval_graph200)
+            if has_dk:
+                self.eval_graph = torch.jit.script(eval_graph2001)
+            else:
+                self.eval_graph = torch.jit.script(eval_graph200)
         elif order == 3:
-            self.eval_graph = torch.jit.script(eval_graph300)
+            if has_dk:
+                self.eval_graph = torch.jit.script(eval_graph3001)
+            else:
+                self.eval_graph = torch.jit.script(eval_graph300)
         elif order == 4:
-            self.eval_graph = torch.jit.script(eval_graph400)
+            if has_dk:
+                self.eval_graph = torch.jit.script(eval_graph4001)
+            else:
+                self.eval_graph = torch.jit.script(eval_graph400)
         elif order == 5:
-            self.eval_graph = torch.jit.script(eval_graph500)
-        elif order == 6:
-            self.eval_graph = torch.jit.script(eval_graph600)
+            if has_dk:
+                self.eval_graph = torch.jit.script(eval_graph5001)
+            else:
+                self.eval_graph = torch.jit.script(eval_graph500)
         else:
             raise ValueError("Invalid order")
 
@@ -215,11 +245,24 @@ class FeynmanIntegrand(nn.Module):
         self.kq2[:] = torch.sum(kq * kq, dim=1)
         self.dispersion[:] = self.kq2 / (2 * self.me) - self.mu
         self.kernelFermiT()
+
+        # print("kq", kq.shape)
+        ad_factor = kq[:, 0, :] * self.loopBasis[0, self.leafMomIdx]
+
+        self.leaf_fermi *= ad_factor / self.me * (self.lforders[2] == 1) + torch.ones(
+            self.batchsize, len(self.leafMomIdx), device=self.tau.device
+        ) * (self.lforders[2] != 1)
+
         # Calculate bosonic leaves
         self.invK[:] = 1.0 / (self.kq2 + self.mass2)
         self.leaf_bose[:] = ((self.e0**2 / self.eps0) * self.invK) * (
             self.mass2 * self.invK
         ) ** self.lforders[1]
+        self.leaf_bose *= ad_factor * self.invK * -2 * (self.lforders[1] + 1) * (
+            self.lforders[2] == 1
+        ) + torch.ones(self.batchsize, len(self.leafMomIdx), device=self.tau.device) * (
+            self.lforders[2] != 1
+        )
         # self.leafvalues[self.isfermi] = self.leaf_fermi[self.isfermi]
         # self.leafvalues[self.isbose] = self.leaf_bose[self.isbose]
         self.leafvalues = torch.where(self.isfermi, self.leaf_fermi, self.leafvalues)
@@ -237,13 +280,58 @@ class FeynmanIntegrand(nn.Module):
             / (2 * np.pi) ** (self.dim * self.innerLoopNum)
         ).unsqueeze(1)
 
+        # phase = torch.ones((self.batchsize, 1), device=root.device)
+        if self.is_real:
+            phase = torch.ones((self.batchsize, 1), device=root.device)
+        else:
+            phase = torch.zeros((self.batchsize, 1), device=root.device)
+
+        if self.totalTauNum > 1:
+            if self.is_real:
+                phase = torch.hstack(
+                    [
+                        phase,
+                        torch.cos(
+                            (2 * self.extn + 1)
+                            * np.pi
+                            / self.beta
+                            * var[:, : self.totalTauNum - 1]
+                        ),
+                    ]
+                )
+            else:
+                phase = torch.hstack(
+                    [
+                        phase,
+                        torch.sin(
+                            (2 * self.extn + 1)
+                            * np.pi
+                            / self.beta
+                            * var[:, : self.totalTauNum - 1]
+                        ),
+                    ]
+                )
+
+        # print(self.totalTauNum, root.shape, phase.shape)
+
+        root *= phase
+
         return root.sum(dim=1)
 
 
-def init_feynfunc(order, beta, batch_size):
-    partition = [(order, 0, 0)]
-    name = "sigma"
-    df = pd.read_csv(os.path.join(root_dir, f"loopBasis_{name}_maxOrder6.csv"))
+def init_feynfunc(order, rs, beta, batch_size, is_real=True, has_dk=False):
+    if has_dk:
+        name = "sigmadk"
+        root_dir = os.path.join(os.path.dirname(__file__), "funcs_sigmadk/")
+        f_loopbasis = f"loopBasis_{name}_maxOrder5.csv"
+        partition = [(order, 0, 0, 1)]
+    else:
+        name = "sigma"
+        root_dir = os.path.join(os.path.dirname(__file__), "funcs_sigma/")
+        f_loopbasis = f"loopBasis_{name}_maxOrder6.csv"
+        partition = [(order, 0, 0)]
+
+    df = pd.read_csv(os.path.join(root_dir, f_loopbasis))
     with torch.no_grad():
         loopBasis = torch.Tensor(
             df.iloc[: order + 1, : num_loops[order - 1]].to_numpy()
@@ -258,7 +346,15 @@ def init_feynfunc(order, beta, batch_size):
         leafvalues.append(values)
 
     feynfunc = FeynmanIntegrand(
-        order, beta, loopBasis, leafstates[0], leafvalues[0], batch_size
+        order,
+        rs,
+        beta,
+        loopBasis,
+        leafstates[0],
+        leafvalues[0],
+        batch_size,
+        is_real=is_real,
+        has_dk=has_dk,
     )
 
     return feynfunc
