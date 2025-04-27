@@ -28,6 +28,7 @@ os.environ["MASTER_ADDR"] = os.getenv("MASTER_ADDR", "localhost")
 os.environ["MASTER_PORT"] = os.getenv("MASTER_PORT", "12355")
 
 backend = "nccl"
+# backend = "gloo"
 
 
 def init_process(rank, world_size, fn, backend=backend):
@@ -60,13 +61,20 @@ def run_mcmc(rank, world_size):
         bounds = [(0, 1)] * dim
         n_eval = 6400000
         batch_size = 40000
+        alpha = 2.0
+        ninc = 1000
         n_therm = 20
 
-        device = torch.device(f"cuda:{rank}")
+        if backend == "gloo":
+            device = torch.device("cpu")
+        elif backend == "nccl":
+            device = torch.device(f"cuda:{rank}")
+        else:
+            raise ValueError(f"Invalid backend: {backend}")
 
         print(f"Process {rank} using device: {device}")
 
-        vegas_map = Vegas(dim, device=device, ninc=1000)
+        vegas_map = Vegas(dim, device=device, ninc=ninc)
 
         # Plain MC and MCMC
         mc_integrator = MonteCarlo(
@@ -91,7 +99,7 @@ def run_mcmc(rank, world_size):
 
         # Train VEGAS map
         vegas_map.adaptive_training(
-            batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=2.0
+            batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=alpha
         )
         vegas_integrator = MonteCarlo(
             bounds,

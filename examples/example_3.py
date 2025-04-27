@@ -5,6 +5,7 @@ import os
 import sys
 import traceback
 from MCintegration import MonteCarlo, MarkovChainMonteCarlo, Vegas
+
 os.environ["NCCL_DEBUG"] = "OFF"
 os.environ["TORCH_DISTRIBUTED_DEBUG"] = "OFF"
 os.environ["GLOG_minloglevel"] = "2"
@@ -12,6 +13,8 @@ os.environ["MASTER_ADDR"] = os.getenv("MASTER_ADDR", "localhost")
 os.environ["MASTER_PORT"] = os.getenv("MASTER_PORT", "12355")
 
 backend = "nccl"
+# backend = "gloo"
+
 
 def init_process(rank, world_size, fn, backend=backend):
     try:
@@ -22,6 +25,7 @@ def init_process(rank, world_size, fn, backend=backend):
         if dist.is_initialized():
             dist.destroy_process_group()
         raise e
+
 
 def run_mcmc(rank, world_size):
     try:
@@ -42,7 +46,12 @@ def run_mcmc(rank, world_size):
         ninc = 1000
         n_therm = 20
 
-        device = torch.device(f"cuda:{rank}")
+        if backend == "gloo":
+            device = torch.device("cpu")
+        elif backend == "nccl":
+            device = torch.device(f"cuda:{rank}")
+        else:
+            raise ValueError(f"Invalid backend: {backend}")
 
         print(f"Process {rank} using device: {device}")
 
@@ -54,26 +63,32 @@ def run_mcmc(rank, world_size):
 
         print("Integration Results for log(x)/sqrt(x):")
 
-
         # Plain MC Integration
-        mc_integrator = MonteCarlo(bounds, func, batch_size=batch_size,device=device)
+        mc_integrator = MonteCarlo(bounds, func, batch_size=batch_size, device=device)
         print("Plain MC Integral Result:", mc_integrator(n_eval))
 
         # MCMC Integration
         mcmc_integrator = MarkovChainMonteCarlo(
-            bounds, func, batch_size=batch_size, nburnin=n_therm,device=device
+            bounds, func, batch_size=batch_size, nburnin=n_therm, device=device
         )
         print("MCMC Integral Result:", mcmc_integrator(n_eval, mix_rate=0.5))
 
         # Perform VEGAS integration
-        vegas_integrator = MonteCarlo(bounds, func, maps=vegas_map, batch_size=batch_size,device=device)
+        vegas_integrator = MonteCarlo(
+            bounds, func, maps=vegas_map, batch_size=batch_size, device=device
+        )
         res = vegas_integrator(n_eval)
 
         print("VEGAS Integral Result:", res)
 
         # VEGAS-MCMC Integration
         vegasmcmc_integrator = MarkovChainMonteCarlo(
-            bounds, func, maps=vegas_map, batch_size=batch_size, nburnin=n_therm,device=device
+            bounds,
+            func,
+            maps=vegas_map,
+            batch_size=batch_size,
+            nburnin=n_therm,
+            device=device,
         )
         res_vegasmcmc = vegasmcmc_integrator(n_eval, mix_rate=0.5)
         print("VEGAS-MCMC Integral Result:", res_vegasmcmc)
@@ -99,6 +114,7 @@ def test_mcmc(world_size):
         )
     except Exception as e:
         print(f"Error in test_mcmc: {e}")
+
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)

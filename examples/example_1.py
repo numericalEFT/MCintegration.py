@@ -28,6 +28,7 @@ os.environ["MASTER_ADDR"] = os.getenv("MASTER_ADDR", "localhost")
 os.environ["MASTER_PORT"] = os.getenv("MASTER_PORT", "12355")
 
 backend = "nccl"
+# backend = "gloo"
 
 
 def init_process(rank, world_size, fn, backend=backend):
@@ -60,11 +61,18 @@ def run_mcmc(rank, world_size):
         bounds = [(-1, 1), (-1, 1)]
         n_eval = 6400000
         batch_size = 40000
+        alpha = 2.0
+        ninc = 1000
         n_therm = 20
 
-        device = torch.device(f"cuda:{rank}")
+        if backend == "gloo":
+            device = torch.device("cpu")
+        elif backend == "nccl":
+            device = torch.device(f"cuda:{rank}")
+        else:
+            raise ValueError(f"Invalid backend: {backend}")
 
-        vegas_map = Vegas(dim, device=device, ninc=10)
+        vegas_map = Vegas(dim, device=device, ninc=ninc)
 
         # Monte Carlo and MCMC for Unit Circle
         mc_integrator = MonteCarlo(
@@ -83,7 +91,7 @@ def run_mcmc(rank, world_size):
         print("MCMC:", mcmc_integrator(n_eval, mix_rate=0.5))
 
         # Train VEGAS map for Unit Circle
-        vegas_map.adaptive_training(batch_size, unit_circle_integrand, alpha=0.5)
+        vegas_map.adaptive_training(batch_size, unit_circle_integrand, alpha=alpha)
         vegas_integrator = MonteCarlo(
             bounds,
             f=unit_circle_integrand,
@@ -113,7 +121,7 @@ def run_mcmc(rank, world_size):
 
         vegas_map.make_uniform()
         vegas_map.adaptive_training(
-            batch_size, half_sphere_integrand, epoch=10, alpha=0.5
+            batch_size, half_sphere_integrand, epoch=10, alpha=alpha
         )
         vegas_integrator.f = half_sphere_integrand
         vegasmcmc_integrator.f = half_sphere_integrand
