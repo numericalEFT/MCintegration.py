@@ -46,6 +46,7 @@ class FeynmanIntegrand(nn.Module):
         order,
         rs,
         beta,
+        mass2,
         loopBasis,
         leafstates,
         leafvalues,
@@ -80,7 +81,7 @@ class FeynmanIntegrand(nn.Module):
         self.register_buffer("mass2", torch.tensor(0.5))
         self.register_buffer("me", torch.tensor(0.5))
         self.register_buffer("spin", torch.tensor(2.0))
-        self.register_buffer("rs", torch.tensor(2.0))
+        self.register_buffer("rs", torch.tensor(rs))
         self.dim = 3
 
         # Derived constants
@@ -319,7 +320,7 @@ class FeynmanIntegrand(nn.Module):
         return root.sum(dim=1)
 
 
-def init_feynfunc(order, rs, beta, batch_size, is_real=True, has_dk=False):
+def init_feynfunc(order, rs, beta, mass2, batch_size, is_real=True, has_dk=False):
     if has_dk:
         name = "sigmadk"
         root_dir = os.path.join(os.path.dirname(__file__), "funcs_sigmadk/")
@@ -349,6 +350,7 @@ def init_feynfunc(order, rs, beta, batch_size, is_real=True, has_dk=False):
         order,
         rs,
         beta,
+        mass2,
         loopBasis,
         leafstates[0],
         leafvalues[0],

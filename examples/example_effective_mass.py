@@ -12,7 +12,8 @@ import numpy as np
 
 maxOrder = 3
 beta = 10.0
-rs = 1.0
+rs = 2.0
+mass2 = 0.5
 
 device = get_device()
 batch_size = 5000
@@ -26,7 +27,7 @@ def zfactor_inv(maxOrder):
     sig_imag = [1.0]
 
     for order in range(1, maxOrder + 1):
-        feynfunc = init_feynfunc(order, rs, beta, batch_size, is_real=False)
+        feynfunc = init_feynfunc(order, rs, beta, mass2, batch_size, is_real=False)
         feynfunc.to(device)
         f_dim = num_roots[order - 1]
 
@@ -58,8 +59,11 @@ def meff_inv(maxOrder):
     sig_real = [1.0]
 
     for order in range(1, maxOrder + 1):
-        feynfunc = init_feynfunc(order, rs, beta, batch_size, is_real=True, has_dk=True)
-        feynfunc.to(device)
+        feynfunc = init_feynfunc(
+            order, rs, beta, mass2, batch_size, is_real=True, has_dk=True
+        )
+        # feynfunc.to(device)
+        device = torch.device("cpu")
         f_dim = num_roots[order - 1]
 
         vegas_map = Vegas(feynfunc.ndims, ninc=1000, device=device)
@@ -94,5 +98,5 @@ m_eff_inv = meff_inv(maxOrder)
 
 meff = sum(z_factor_inv) / sum(m_eff_inv)
 
-print(f"\nEffective mass (up to order {maxOrder}):")
-print(meff)
+print(f"\n z-factor (up to order {maxOrder}): ", 1 / sum(z_factor_inv))
+print(f"\n Effective mass (up to order {maxOrder}): ", meff, "\n")
