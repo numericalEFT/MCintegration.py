@@ -20,6 +20,7 @@ import os
 import sys
 import traceback
 from MCintegration import MonteCarlo, MarkovChainMonteCarlo, Vegas
+
 os.environ["NCCL_DEBUG"] = "OFF"
 os.environ["TORCH_DISTRIBUTED_DEBUG"] = "OFF"
 os.environ["GLOG_minloglevel"] = "2"
@@ -27,6 +28,8 @@ os.environ["MASTER_ADDR"] = os.getenv("MASTER_ADDR", "localhost")
 os.environ["MASTER_PORT"] = os.getenv("MASTER_PORT", "12355")
 
 backend = "nccl"
+# backend = "gloo"
+
 
 def init_process(rank, world_size, fn, backend=backend):
     try:
@@ -37,6 +40,7 @@ def init_process(rank, world_size, fn, backend=backend):
         if dist.is_initialized():
             dist.destroy_process_group()
         raise e
+
 
 def run_mcmc(rank, world_size):
     try:
@@ -53,25 +57,40 @@ def run_mcmc(rank, world_size):
             f[:, 2] = f[:, 0] * x[:, 0] ** 2
             return f.mean(dim=-1)
 
-
         dim = 4
         bounds = [(0, 1)] * dim
         n_eval = 6400000
         batch_size = 40000
+        alpha = 2.0
+        ninc = 1000
         n_therm = 20
 
-        device = torch.device(f"cuda:{rank}")
+        if backend == "gloo":
+            device = torch.device("cpu")
+        elif backend == "nccl":
+            device = torch.device(f"cuda:{rank}")
+        else:
+            raise ValueError(f"Invalid backend: {backend}")
 
         print(f"Process {rank} using device: {device}")
 
-        vegas_map = Vegas(dim, device=device, ninc=1000)
+        vegas_map = Vegas(dim, device=device, ninc=ninc)
 
         # Plain MC and MCMC
         mc_integrator = MonteCarlo(
-            f=sharp_integrands, f_dim=3, bounds=bounds, batch_size=batch_size,device=device
+            f=sharp_integrands,
+            f_dim=3,
+            bounds=bounds,
+            batch_size=batch_size,
+            device=device,
         )
         mcmc_integrator = MarkovChainMonteCarlo(
-            f=sharp_integrands, f_dim=3, bounds=bounds, batch_size=batch_size, nburnin=n_therm,device=device
+            f=sharp_integrands,
+            f_dim=3,
+            bounds=bounds,
+            batch_size=batch_size,
+            nburnin=n_therm,
+            device=device,
         )
 
         print("Sharp Peak Integration Results:")
@@ -79,9 +98,16 @@ def run_mcmc(rank, world_size):
         print("MCMC:", mcmc_integrator(n_eval, mix_rate=0.5))
 
         # Train VEGAS map
-        vegas_map.adaptive_training(batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=2.0)
+        vegas_map.adaptive_training(
+            batch_size, sharp_integrands, f_dim=3, epoch=10, alpha=alpha
+        )
         vegas_integrator = MonteCarlo(
-            bounds, f=sharp_integrands, f_dim=3, maps=vegas_map, batch_size=batch_size,device=device
+            bounds,
+            f=sharp_integrands,
+            f_dim=3,
+            maps=vegas_map,
+            batch_size=batch_size,
+            device=device,
         )
         vegasmcmc_integrator = MarkovChainMonteCarlo(
             bounds,
@@ -90,12 +116,11 @@ def run_mcmc(rank, world_size):
             maps=vegas_map,
             batch_size=batch_size,
             nburnin=n_therm,
-            device=device
+            device=device,
         )
 
         print("VEGAS:", vegas_integrator(n_eval))
         print("VEGAS-MCMC:", vegasmcmc_integrator(n_eval, mix_rate=0.5))
-
 
     except Exception as e:
         print(f"Error in run_mcmc for rank {rank}: {e}")
@@ -118,6 +143,7 @@ def test_mcmc(world_size):
         )
     except Exception as e:
         print(f"Error in test_mcmc: {e}")
+
 
 if __name__ == "__main__":
     mp.set_start_method("spawn", force=True)

@@ -323,6 +323,7 @@ class Vegas(Map):
                 self.max_ninc, dtype=self.dtype, device=self.device)
 
         # avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
+        # print(self.ninc.shape, self.dim)
         for d in range(self.dim):
             ninc = self.ninc[d].item()
 
@@ -378,6 +379,8 @@ class Vegas(Map):
                     )
                     - 1
                 )  # Find the intervals in the original grid where the target weights fall
+                interval_indices.clamp_(0, ninc - 1)
+
                 # Extract the necessary values using the interval indices
                 grid_left = self.grid[d, interval_indices]
                 inc_relevant = self.inc[d, interval_indices]

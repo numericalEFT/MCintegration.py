@@ -16,10 +16,13 @@ n_therm = 10
 
 num_roots = [1, 2, 3, 4, 5, 6]
 order = 2
+rs = 2.0
 beta = 10.0
-feynfunc = init_feynfunc(order, beta, batch_size)
+mass2 = 0.5
+
+feynfunc = init_feynfunc(order, rs, beta, mass2, batch_size)
 feynfunc.to(device)
-f_dim = num_roots[order - 1]
+f_dim = num_roots[order]
 
 
 vegas_map = Vegas(feynfunc.ndims, ninc=1000, device=device)
