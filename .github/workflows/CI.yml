@@ -69,8 +69,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-data-${{ matrix.os }}-${{ matrix.arch }}
-          # 修复：简化路径，使用单个通配符匹配所有 .coverage 文件
-          path: .coverage*
+          # 确保匹配所有以点开头的覆盖率文件和配置文件
+          path: |
+            .coverage*
+            .coveragerc
+          # 移除了 match-dot-files: true，因为 actions/upload-artifact@v4 不支持此输入
           
   codecov:
     name: Codecov Merge & Upload
