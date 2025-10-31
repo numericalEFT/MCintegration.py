@@ -178,9 +178,8 @@ def singular_func(x, f):
     Integrand with singularity at x=0.
     The integral ∫₀¹ log(x)/√x dx = -4 (analytical result)
     """
-    f[:, 0] = torch.where(x[:, 0] < 1e-14, 
-                      0.0,
-                      torch.log(x[:, 0]) / torch.sqrt(x[:, 0]))
+    x_safe = torch.clamp(x[:, 0], min=1e-32)
+    f[:, 0] = torch.log(x_safe) / torch.sqrt(x_safe)
     return f[:, 0]
 
 # Integration parameters

@@ -9,7 +9,8 @@ from MCintegration.base import Uniform
 from MCintegration.utils import get_device
 import sys
 
-TINY = 10 ** (sys.float_info.min_10_exp + 50)  # Small but safe non-zero value
+# TINY = 10 ** (sys.float_info.min_10_exp + 50)  # Small but safe non-zero value
+TINY = 1e-45
 
 
 class Configuration:
@@ -38,14 +39,10 @@ class Configuration:
         self.f_dim = f_dim
         self.batch_size = batch_size
         # Initialize tensors for storing samples and results
-        self.u = torch.empty(
-            (batch_size, dim), dtype=dtype, device=self.device)
-        self.x = torch.empty(
-            (batch_size, dim), dtype=dtype, device=self.device)
-        self.fx = torch.empty((batch_size, f_dim),
-                              dtype=dtype, device=self.device)
-        self.weight = torch.empty(
-            (batch_size,), dtype=dtype, device=self.device)
+        self.u = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.x = torch.empty((batch_size, dim), dtype=dtype, device=self.device)
+        self.fx = torch.empty((batch_size, f_dim), dtype=dtype, device=self.device)
+        self.weight = torch.empty((batch_size,), dtype=dtype, device=self.device)
         self.detJ = torch.empty((batch_size,), dtype=dtype, device=self.device)
 
 
@@ -202,8 +199,7 @@ class Vegas(Map):
                 (self.dim,), ninc, dtype=torch.int32, device=self.device
             )
         elif isinstance(ninc, (list, np.ndarray)):
-            self.ninc = torch.tensor(
-                ninc, dtype=torch.int32, device=self.device)
+            self.ninc = torch.tensor(ninc, dtype=torch.int32, device=self.device)
         elif isinstance(ninc, torch.Tensor):
             self.ninc = ninc.to(dtype=torch.int32, device=self.device)
         else:
@@ -223,8 +219,9 @@ class Vegas(Map):
         self.sum_f = torch.zeros(
             self.dim, self.max_ninc, dtype=self.dtype, device=self.device
         )
-        self.n_f = torch.zeros(
-            self.dim, self.max_ninc, dtype=self.dtype, device=self.device
+        self.n_f = (
+            torch.zeros(self.dim, self.max_ninc, dtype=self.dtype, device=self.device)
+            + TINY
         )
         self.avg_f = torch.ones(
             (self.dim, self.max_ninc), dtype=self.dtype, device=self.device
@@ -308,10 +305,8 @@ class Vegas(Map):
         """
         # Aggregate training data across distributed processes if applicable
         if torch.distributed.is_initialized():
-            torch.distributed.all_reduce(
-                self.sum_f, op=torch.distributed.ReduceOp.SUM)
-            torch.distributed.all_reduce(
-                self.n_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(self.sum_f, op=torch.distributed.ReduceOp.SUM)
+            torch.distributed.all_reduce(self.n_f, op=torch.distributed.ReduceOp.SUM)
 
         # Initialize a new grid tensor
         new_grid = torch.empty(
@@ -319,8 +314,7 @@ class Vegas(Map):
         )
 
         if alpha > 0:
-            tmp_f = torch.empty(
-                self.max_ninc, dtype=self.dtype, device=self.device)
+            tmp_f = torch.empty(self.max_ninc, dtype=self.dtype, device=self.device)
 
         # avg_f = torch.ones(self.inc.shape[1], dtype=self.dtype, device=self.device)
         # print(self.ninc.shape, self.dim)
@@ -338,14 +332,12 @@ class Vegas(Map):
 
                 if alpha > 0:
                     # Smooth avg_f
-                    tmp_f[0] = (7.0 * avg_f[0] + avg_f[1]
-                                ).abs() / 8.0  # Shape: ()
+                    tmp_f[0] = (7.0 * avg_f[0] + avg_f[1]).abs() / 8.0  # Shape: ()
                     tmp_f[ninc - 1] = (
                         7.0 * avg_f[ninc - 1] + avg_f[ninc - 2]
                     ).abs() / 8.0  # Shape: ()
-                    tmp_f[1: ninc - 1] = (
-                        6.0 * avg_f[1: ninc - 1] +
-                        avg_f[: ninc - 2] + avg_f[2:ninc]
+                    tmp_f[1 : ninc - 1] = (
+                        6.0 * avg_f[1 : ninc - 1] + avg_f[: ninc - 2] + avg_f[2:ninc]
                     ).abs() / 8.0
 
                     # Normalize tmp_f to ensure the sum is 1
@@ -393,8 +385,7 @@ class Vegas(Map):
                 ) / avg_f_relevant
 
                 # Calculate the new grid points using vectorized operations
-                new_grid[d, 1:ninc] = grid_left + \
-                    fractional_positions * inc_relevant
+                new_grid[d, 1:ninc] = grid_left + fractional_positions * inc_relevant
             else:
                 # If alpha == 0 or no training data, retain the existing grid
                 new_grid[d, :] = self.grid[d, :]
@@ -407,8 +398,7 @@ class Vegas(Map):
         self.inc.zero_()  # Reset increments to zero
         for d in range(self.dim):
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1: self.ninc[d] + 1] -
-                self.grid[d, : self.ninc[d]]
+                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
             )
 
         # Clear accumulated training data for the next adaptation cycle
@@ -432,8 +422,7 @@ class Vegas(Map):
                 device=self.device,
             )
             self.inc[d, : self.ninc[d]] = (
-                self.grid[d, 1: self.ninc[d] + 1] -
-                self.grid[d, : self.ninc[d]]
+                self.grid[d, 1 : self.ninc[d] + 1] - self.grid[d, : self.ninc[d]]
             )
         self.clear()
 
@@ -459,8 +448,7 @@ class Vegas(Map):
 
         batch_size = u.size(0)
         # Clamp iu to [0, ninc-1] to handle out-of-bounds indices
-        min_tensor = torch.zeros(
-            (1, self.dim), dtype=iu.dtype, device=self.device)
+        min_tensor = torch.zeros((1, self.dim), dtype=iu.dtype, device=self.device)
         # Shape: (1, dim)
         max_tensor = (self.ninc - 1).unsqueeze(0).to(iu.dtype)
         iu_clamped = torch.clamp(iu, min=min_tensor, max=max_tensor)
@@ -471,8 +459,7 @@ class Vegas(Map):
         grid_gather = torch.gather(grid_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(
             2
         )  # Shape: (batch_size, dim)
-        inc_gather = torch.gather(
-            inc_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(2)
+        inc_gather = torch.gather(inc_expanded, 2, iu_clamped.unsqueeze(2)).squeeze(2)
 
         x = grid_gather + inc_gather * du_ninc
         log_detJ = (inc_gather * self.ninc).log_().sum(dim=1)
@@ -484,8 +471,7 @@ class Vegas(Map):
             # For each sample and dimension, set x to grid[d, ninc[d]]
             # and log_detJ += log(inc[d, ninc[d]-1] * ninc[d])
             boundary_grid = (
-                self.grid[torch.arange(
-                    self.dim, device=self.device), self.ninc]
+                self.grid[torch.arange(self.dim, device=self.device), self.ninc]
                 .unsqueeze(0)
                 .expand(batch_size, -1)
             )
@@ -493,8 +479,7 @@ class Vegas(Map):
             x[out_of_bounds] = boundary_grid[out_of_bounds]
 
             boundary_inc = (
-                self.inc[torch.arange(
-                    self.dim, device=self.device), self.ninc - 1]
+                self.inc[torch.arange(self.dim, device=self.device), self.ninc - 1]
                 .unsqueeze(0)
                 .expand(batch_size, -1)
             )
@@ -522,8 +507,7 @@ class Vegas(Map):
 
         # Initialize output tensors
         u = torch.empty_like(x)
-        log_detJ = torch.zeros(
-            batch_size, device=self.device, dtype=self.dtype)
+        log_detJ = torch.zeros(batch_size, device=self.device, dtype=self.dtype)
 
         # Loop over each dimension to perform inverse mapping
         for d in range(dim):
@@ -537,8 +521,7 @@ class Vegas(Map):
             # Perform searchsorted to find indices where x should be inserted to maintain order
             # torch.searchsorted returns indices in [0, max_ninc +1]
             iu = (
-                torch.searchsorted(
-                    grid_d, x[:, d].contiguous(), right=True) - 1
+                torch.searchsorted(grid_d, x[:, d].contiguous(), right=True) - 1
             )  # Shape: (batch_size,)
 
             # Clamp indices to [0, ninc_d - 1] to ensure they are within valid range
@@ -551,8 +534,7 @@ class Vegas(Map):
             inc_gather = inc_d[iu_clamped]  # Shape: (batch_size,)
 
             # Compute du: fractional part within the increment
-            du = (x[:, d] - grid_gather) / \
-                (inc_gather + TINY)  # Shape: (batch_size,)
+            du = (x[:, d] - grid_gather) / (inc_gather + TINY)  # Shape: (batch_size,)
 
             # Compute u for dimension d
             u[:, d] = (du + iu_clamped) / ninc_d  # Shape: (batch_size,)
