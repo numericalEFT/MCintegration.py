@@ -1,4 +1,7 @@
 # MCintegration: Monte Carlo Integration in Python
+[![alpha](https://img.shields.io/badge/docs-alpha-blue.svg)](https://numericaleft.github.io/MCintegration.py/)
+[![Build Status](https://github.com/numericalEFT/MCIntegration.py/workflows/CI/badge.svg)](https://github.com/numericalEFT/MCIntegration.py/actions)
+[![codecov](https://codecov.io/gh/numericalEFT/MCintegration.py/graph/badge.svg?token=851N2CNOTN)](https://codecov.io/gh/numericalEFT/MCintegration.py)
 
 ## Why Choose MCintegration?
 
@@ -309,18 +312,6 @@ As dimension increases:
 
 ---
 
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Add tests for new functionality
-4. Submit a pull request
-
-## License
-
-[Your license information here]
-
 ## Citation
 
 If you use MCintegration in your research, please cite:
@@ -328,9 +319,9 @@ If you use MCintegration in your research, please cite:
 ```bibtex
 @software{mcintegration,
   title = {MCintegration: Monte Carlo Integration in Python},
-  author = {[Your Name]},
+  author = {[Pengcheng Hou, Tao Wang, Caiyu Fan, Kun Chen]},
   year = {2024},
-  url = {https://github.com/your-repo/mcintegration}
+  url = {https://github.com/numericalEFT/MCintegration.py}
 }
 ```
 
