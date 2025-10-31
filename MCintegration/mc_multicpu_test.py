@@ -86,7 +86,7 @@ def test_mcmc_singlethread():
 
 def test_mcmc(world_size=2):
     # Use fewer processes than CPU cores to avoid resource contention
-    world_size = min(world_size, mp.cpu_count())
+    # world_size = min(world_size, mp.cpu_count())
     print(f"Starting with {world_size} processes")
 
     # Start processes with proper error handling
