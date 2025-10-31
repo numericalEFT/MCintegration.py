@@ -60,6 +60,10 @@ jobs:
           # 使用 coverage run 运行 pytest 以确保多进程/多核测试数据的收集
           coverage run -m pytest --ignore=examples
 
+      # 【调试步骤】列出所有 .coverage 文件，检查文件是否被正确生成
+      - name: Debug Coverage Files
+        run: ls -F .coverage*
+        
       # Updated to v4
       - name: Upload coverage data artifact
         uses: actions/upload-artifact@v4
