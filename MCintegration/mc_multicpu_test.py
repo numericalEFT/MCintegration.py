@@ -82,11 +82,7 @@ def run_mcmc(rank, world_size):
 def test_mcmc_singlethread():
     world_size = 1
     init_process(rank=0, world_size=world_size, fn=run_mcmc, backend=backend)
-
-def test_mcmc_multithread():
-    world_size = 2
-    init_process(rank=0, world_size=world_size, fn=run_mcmc, backend=backend)
-
+    
 def test_mcmc(world_size=2):
     # Use fewer processes than CPU cores to avoid resource contention
     world_size = min(world_size, mp.cpu_count())

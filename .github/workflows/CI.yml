@@ -49,10 +49,11 @@ jobs:
           export MASTER_ADDR=localhost
           export MASTER_PORT=12345
           export PYTHONPATH=MCintegration
-          pytest --cov --cov-report=xml --ignore=examples
+          pytest --cov --junitxml=junit.xml -o junit_family=legacy --ignore=examples
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
 
