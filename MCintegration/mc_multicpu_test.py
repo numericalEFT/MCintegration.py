@@ -79,6 +79,10 @@ def run_mcmc(rank, world_size):
         if dist.is_initialized():
             dist.destroy_process_group()
 
+def test_mcmc_singlethread():
+    # 直接在当前进程初始化并运行，避免 mp.spawn 启动子进程
+    world_size = 1
+    init_process(rank=0, world_size=world_size, fn=run_mcmc, backend=backend)
 
 def test_mcmc(world_size=2):
     # Use fewer processes than CPU cores to avoid resource contention
