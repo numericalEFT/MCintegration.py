@@ -69,10 +69,8 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-data-${{ matrix.os }}-${{ matrix.arch }}
-          # 修复：同时上传 .coverage (单进程默认) 和 .coverage.* (多进程并行) 文件
-          path: |
-            .coverage
-            .coverage.*
+          # 修复：简化路径，使用单个通配符匹配所有 .coverage 文件
+          path: .coverage*
           
   codecov:
     name: Codecov Merge & Upload
