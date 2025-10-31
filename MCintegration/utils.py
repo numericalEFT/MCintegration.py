@@ -11,8 +11,8 @@ import sys
 
 # Constants for numerical stability
 # Small but safe non-zero value
-MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
-MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)  # Large but safe value
+# MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
+MINVAL = 1e-45
 _VECTOR_TYPES = [np.ndarray, list]
 
 
@@ -83,8 +83,7 @@ class RAvg(gvar.GVar):
             self._wlist.append(1 / (res.var if res.var > MINVAL else MINVAL))
             var = 1.0 / np.sum(self._wlist)
             sdev = np.sqrt(var)
-            mean = np.sum(
-                [w * m for w, m in zip(self._wlist, self._mlist)]) * var
+            mean = np.sum([w * m for w, m in zip(self._wlist, self._mlist)]) * var
             super(RAvg, self).__init__(*gvar.gvar(mean, sdev).internaldata)
         else:
             # Simple average
@@ -93,8 +92,7 @@ class RAvg(gvar.GVar):
             self._count += 1
             mean = self._sum / self._count
             var = self._varsum / self._count**2
-            super(RAvg, self).__init__(
-                *gvar.gvar(mean, np.sqrt(var)).internaldata)
+            super(RAvg, self).__init__(*gvar.gvar(mean, np.sqrt(var)).internaldata)
 
     def extend(self, ravg):
         """

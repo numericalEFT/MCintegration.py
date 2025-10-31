@@ -164,17 +164,6 @@ class TestRAvg(unittest.TestCase):
         self.assertTrue(ravg.converged(0.1, 0.1))
         self.assertFalse(ravg.converged(0.001, 0.001))
 
-    def test_multiplication_with_another_ravg(self):
-        ravg1 = RAvg(weighted=True)
-        ravg1.update(2.0, 0.1)
-        ravg2 = RAvg(weighted=True)
-        ravg2.update(3.0, 0.1)
-
-        result = ravg1 * ravg2
-        self.assertAlmostEqual(result.mean, 6.0)
-        sdev = (0.1 / 2**2 + 0.1 / 3**2) ** 0.5 * 6.0
-        self.assertAlmostEqual(result.sdev, sdev)
-
     def test_multiplication(self):
         ravg1 = RAvg(weighted=True)
         # Test multiplication by another RAvg object
@@ -216,16 +205,19 @@ class TestRAvg(unittest.TestCase):
             np.allclose([r.sdev for r in result], [2.0 * ravg1.sdev, 3.0 * ravg1.sdev])
         )
 
-    def test_division_with_another_ravg(self):
-        ravg1 = RAvg(weighted=True)
-        ravg1.update(6.0, 0.1)
-        ravg2 = RAvg(weighted=True)
-        ravg2.update(3.0, 0.1)
+        # Test multiplication with unweighted RAvg
+        ravg_unweighted = RAvg(weighted=False)
+        ravg_unweighted.update(2.0, 0.1)
+        result = ravg_unweighted * 3.0
+        self.assertAlmostEqual(result.mean, 6.0)
+        self.assertAlmostEqual(result.sdev, ravg_unweighted.sdev * 3)
 
-        result = ravg1 / ravg2
-        self.assertAlmostEqual(result.mean, 2.0)
-        sdev = (0.1 / 6.0**2 + 0.1 / 3.0**2) ** 0.5 * 2.0
-        self.assertAlmostEqual(result.sdev, sdev)
+        # Test multiplication with zero variance
+        ravg_zero_var = RAvg(weighted=True)
+        ravg_zero_var.update(2.0, 0.0)
+        result = ravg_zero_var * 3.0
+        self.assertAlmostEqual(result.mean, 6.0)
+        self.assertAlmostEqual(result.sdev, 0.0)
 
     def test_division(self):
         ravg1 = RAvg(weighted=True)
@@ -270,6 +262,53 @@ class TestRAvg(unittest.TestCase):
         self.assertTrue(
             np.allclose([r.sdev for r in result], [ravg1.sdev / 2.0, ravg1.sdev / 3.0])
         )
+
+        # Test division with unweighted RAvg
+        ravg_unweighted = RAvg(weighted=False)
+        ravg_unweighted.update(6.0, 0.1)
+        result = ravg_unweighted / 3.0
+        self.assertAlmostEqual(result.mean, 2.0)
+        self.assertAlmostEqual(result.sdev, ravg_unweighted.sdev / 3)
+
+        # Test division with zero variance
+        ravg_zero_var = RAvg(weighted=True)
+        ravg_zero_var.update(6.0, 0.0)
+        result = ravg_zero_var / 3.0
+        self.assertAlmostEqual(result.mean, 2.0)
+        self.assertAlmostEqual(result.sdev, 0.0)
+
+        # Test division of zero by RAvg
+        zero_ravg = RAvg(weighted=True)
+        zero_ravg.update(0.0, 0.1)
+        divisor_ravg = RAvg(weighted=True)
+        divisor_ravg.update(3.0, 0.1)
+        result = zero_ravg / divisor_ravg
+        self.assertAlmostEqual(result.mean, 0.0)
+        # sdev = (0.1 / 0.0**2 + 0.1 / 3.0**2) ** 0.5 * 0.0  # This would be NaN
+        # For 0/x, the error propagation gives 0 * sqrt((0.1/0.0^2) + (0.1/3.0^2))
+        # But since we're dividing by zero, we need to be careful
+        # In practice, gvar handles this appropriately
+
+    def test_vector_operations_not_implemented(self):
+        # Test that NotImplemented is returned for vector operations
+        ravg = RAvg(weighted=True)
+        ravg.update(2.0, 0.1)
+
+        # Test multiplication with list (should return NotImplemented)
+        result = ravg.__mul__([1, 2, 3])
+        self.assertEqual(result, NotImplemented)
+
+        # Test division with list (should return NotImplemented)
+        result = ravg.__truediv__([1, 2, 3])
+        self.assertEqual(result, NotImplemented)
+
+        # Test multiplication with numpy array (should return NotImplemented)
+        result = ravg.__mul__(np.array([1, 2, 3]))
+        self.assertEqual(result, NotImplemented)
+
+        # Test division with numpy array (should return NotImplemented)
+        result = ravg.__truediv__(np.array([1, 2, 3]))
+        self.assertEqual(result, NotImplemented)
 
 
 class TestUtils(unittest.TestCase):

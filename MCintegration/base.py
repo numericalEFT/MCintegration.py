@@ -9,10 +9,8 @@ import sys
 from MCintegration.utils import get_device
 
 # Constants for numerical stability
-# Small but safe non-zero value
-MINVAL = 10 ** (sys.float_info.min_10_exp + 50)
-MAXVAL = 10 ** (sys.float_info.max_10_exp - 50)  # Large but safe value
 EPSILON = 1e-16  # Small value to ensure numerical stability
+# EPSILON = sys.float_info.epsilon * 1e4  # Small value to ensure numerical stability
 
 
 class BaseDistribution(nn.Module):
@@ -98,10 +96,8 @@ class Uniform(BaseDistribution):
             tuple: (uniform samples, log_det_jacobian=0)
         """
         # torch.manual_seed(0) # test seed
-        u = torch.rand((batch_size, self.dim),
-                       device=self.device, dtype=self.dtype)
-        log_detJ = torch.zeros(
-            batch_size, device=self.device, dtype=self.dtype)
+        u = torch.rand((batch_size, self.dim), device=self.device, dtype=self.dtype)
+        log_detJ = torch.zeros(batch_size, device=self.device, dtype=self.dtype)
         return u, log_detJ
 
 
@@ -133,16 +129,14 @@ class LinearMap(nn.Module):
         elif isinstance(A, torch.Tensor):
             self.A = A.to(dtype=self.dtype, device=self.device)
         else:
-            raise ValueError(
-                "'A' must be a list, numpy array, or torch tensor.")
+            raise ValueError("'A' must be a list, numpy array, or torch tensor.")
 
         if isinstance(b, (list, np.ndarray)):
             self.b = torch.tensor(b, dtype=self.dtype, device=self.device)
         elif isinstance(b, torch.Tensor):
             self.b = b.to(dtype=self.dtype, device=self.device)
         else:
-            raise ValueError(
-                "'b' must be a list, numpy array, or torch tensor.")
+            raise ValueError("'b' must be a list, numpy array, or torch tensor.")
 
         # Pre-compute determinant of Jacobian for efficiency
         self._detJ = torch.prod(self.A)
