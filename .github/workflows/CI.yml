@@ -28,6 +28,7 @@ jobs:
           - x86
 
     steps:
+      # Updated to v4
       - uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.version }}
@@ -64,7 +65,10 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-data-${{ matrix.os }}-${{ matrix.arch }}
-          path: .coverage.*
+          # 修复：同时上传 .coverage (单进程默认) 和 .coverage.* (多进程并行) 文件
+          path: |
+            .coverage
+            .coverage.*
           
   codecov:
     name: Codecov Merge & Upload
@@ -93,7 +97,8 @@ jobs:
       - name: Combine and Report
         run: |
           # 移动所有数据文件到根目录，以便 coverage combine 找到
-          find coverage-artifacts -name ".coverage.*" -exec mv {} . \;
+          # find 命令现在可以安全运行，因为 download-artifact 应该已创建目录
+          find coverage-artifacts -name ".coverage*" -exec mv {} . \;
           
           # 合并所有 .coverage.* 文件，解决跨 Job 和多进程数据丢失问题
           coverage combine
@@ -114,6 +119,7 @@ jobs:
     needs: codecov
 
     steps:
+      # Updated to v4
       - uses: actions/checkout@v4
 
       - name: Install dependencies
