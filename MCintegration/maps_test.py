@@ -1,9 +1,43 @@
 import unittest
 import torch
-
-# import numpy as np
+import numpy as np
 from maps import Map, CompositeMap, Vegas, Configuration
 from base import LinearMap
+
+
+class TestConfiguration(unittest.TestCase):
+    def setUp(self):
+        self.batch_size = 5
+        self.dim = 3
+        self.f_dim = 2
+        self.device = "cpu"
+        self.dtype = torch.float64
+
+    def test_configuration_initialization(self):
+        config = Configuration(
+            batch_size=self.batch_size,
+            dim=self.dim,
+            f_dim=self.f_dim,
+            device=self.device,
+            dtype=self.dtype,
+        )
+
+        self.assertEqual(config.batch_size, self.batch_size)
+        self.assertEqual(config.dim, self.dim)
+        self.assertEqual(config.f_dim, self.f_dim)
+        self.assertEqual(config.device, self.device)
+
+        self.assertEqual(config.u.shape, (self.batch_size, self.dim))
+        self.assertEqual(config.x.shape, (self.batch_size, self.dim))
+        self.assertEqual(config.fx.shape, (self.batch_size, self.f_dim))
+        self.assertEqual(config.weight.shape, (self.batch_size,))
+        self.assertEqual(config.detJ.shape, (self.batch_size,))
+
+        self.assertEqual(config.u.dtype, self.dtype)
+        self.assertEqual(config.x.dtype, self.dtype)
+        self.assertEqual(config.fx.dtype, self.dtype)
+        self.assertEqual(config.weight.dtype, self.dtype)
+        self.assertEqual(config.detJ.dtype, self.dtype)
 
 
 class TestMap(unittest.TestCase):
@@ -23,6 +57,35 @@ class TestMap(unittest.TestCase):
     def test_inverse_not_implemented(self):
         with self.assertRaises(NotImplementedError):
             self.map.inverse(torch.tensor([0.5, 0.5], dtype=self.dtype))
+
+    def test_forward_with_detJ(self):
+        # Create a simple linear map for testing: x = u * A + b
+        # With A=[1, 1] and b=[0, 0], we have x = u
+        linear_map = LinearMap([1, 1], [0, 0], device=self.device)
+
+        # Test forward_with_detJ method
+        u = torch.tensor([[0.5, 0.5]], dtype=torch.float64, device=self.device)
+        x, detJ = linear_map.forward_with_detJ(u)
+
+        # Since it's a linear map from [0,0] to [1,1], x should equal u
+        self.assertTrue(torch.allclose(x, u))
+
+        # Determinant of Jacobian should be 1 for linear map with slope 1
+        # forward_with_detJ returns actual determinant, not log
+        self.assertAlmostEqual(detJ.item(), 1.0)
+
+        # Test with a different linear map: x = u * [2, 3] + [1, 1]
+        # So u = [0.5, 0.5] should give x = [0.5*2+1, 0.5*3+1] = [2, 2.5]
+        linear_map2 = LinearMap([2, 3], [1, 1], device=self.device)
+        u2 = torch.tensor([[0.5, 0.5]], dtype=torch.float64, device=self.device)
+        x2, detJ2 = linear_map2.forward_with_detJ(u2)
+        expected_x2 = torch.tensor(
+            [[2.0, 2.5]], dtype=torch.float64, device=self.device
+        )
+        self.assertTrue(torch.allclose(x2, expected_x2))
+
+        # Determinant should be 2 * 3 = 6
+        self.assertAlmostEqual(detJ2.item(), 6.0)
 
 
 class TestCompositeMap(unittest.TestCase):
@@ -99,6 +162,32 @@ class TestVegas(unittest.TestCase):
         self.assertTrue(torch.equal(self.vegas.grid, self.init_grid))
         self.assertEqual(self.vegas.inc.shape, (2, self.ninc))
 
+    def test_ninc_initialization_types(self):
+        # Test ninc initialization with int
+        vegas_int = Vegas(self.dim, ninc=5)
+        self.assertEqual(vegas_int.ninc.tolist(), [5, 5])
+
+        # Test ninc initialization with list
+        vegas_list = Vegas(self.dim, ninc=[5, 10])
+        self.assertEqual(vegas_list.ninc.tolist(), [5, 10])
+
+        # Test ninc initialization with numpy array
+        vegas_np = Vegas(self.dim, ninc=np.array([3, 7]))
+        self.assertEqual(vegas_np.ninc.tolist(), [3, 7])
+
+        # Test ninc initialization with torch tensor
+        vegas_tensor = Vegas(self.dim, ninc=torch.tensor([4, 6]))
+        self.assertEqual(vegas_tensor.ninc.tolist(), [4, 6])
+
+        # Test ninc initialization with invalid type
+        with self.assertRaises(ValueError):
+            Vegas(self.dim, ninc="invalid")
+
+    def test_ninc_shape_validation(self):
+        # Test ninc shape validation
+        with self.assertRaises(ValueError):
+            Vegas(self.dim, ninc=[1, 2, 3])  # Wrong length
+
     def test_add_training_data(self):
         # Test adding training data
         self.vegas.add_training_data(self.sample)
@@ -136,6 +225,16 @@ class TestVegas(unittest.TestCase):
         x, log_jac = self.vegas.forward(u)
         self.assertEqual(x.shape, u.shape)
         self.assertEqual(log_jac.shape, (u.shape[0],))
+
+    def test_forward_with_detJ(self):
+        # Test forward_with_detJ transformation
+        u = torch.tensor([[0.1, 0.2], [0.3, 0.4]], dtype=torch.float64)
+        x, det_jac = self.vegas.forward_with_detJ(u)
+        self.assertEqual(x.shape, u.shape)
+        self.assertEqual(det_jac.shape, (u.shape[0],))
+
+        # Determinant should be positive
+        self.assertTrue(torch.all(det_jac > 0))
 
     def test_forward_out_of_bounds(self):
         # Test forward transformation with out-of-bounds u values
