@@ -8,5 +8,3 @@ coverage:
     project:
       default:
         target: 95%
-fixes:
-  - "MCintegration.py/MCintegration.py/::MCintegration.py/"

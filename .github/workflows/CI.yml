@@ -10,10 +10,11 @@ on:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   test:
-    name: Python ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Python ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -27,10 +28,10 @@ jobs:
           - x64
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Set up Python ${{ matrix.version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.version }}
 
@@ -40,8 +41,13 @@ jobs:
           pip install coverage
           pip install pytest pytest-cov
           pip install -r requirements.txt
-
-      - name: Run tests
+          
+      - name: Configure Coverage Parallel Mode
+        run: |
+          echo '[run]' > .coveragerc
+          echo 'parallel = True' >> .coveragerc
+          
+      - name: Run tests (Parallel Data Collection)
         run: |
           export RANK=0
           export LOCAL_RANK=0
@@ -49,20 +55,65 @@ jobs:
           export MASTER_ADDR=localhost
           export MASTER_PORT=12345
           export PYTHONPATH=MCintegration
-          pytest --cov --cov-report=xml --ignore=examples
+          
+          # 使用 coverage run 运行 pytest 以确保多进程/多核测试数据的收集
+          coverage run -m pytest --ignore=examples
 
+      # 上传每个 Job 收集到的原始覆盖率数据文件
+      - name: Upload coverage data artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage-data-${{ matrix.os }}-${{ matrix.arch }}
+          path: .coverage.*
+          
+  codecov:
+    name: Codecov Merge & Upload
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Install coverage (for combining)
+        run: pip install coverage
+
+      # 下载所有 Job 收集到的覆盖率数据文件
+      - name: Download all coverage data artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: coverage-artifacts
+
+      # 合并所有数据文件并生成最终 XML 报告
+      - name: Combine and Report
+        run: |
+          # 移动所有数据文件到根目录，以便 coverage combine 找到
+          find coverage-artifacts -name ".coverage.*" -exec mv {} . \;
+          
+          # 合并所有 .coverage.* 文件，解决跨 Job 和多进程数据丢失问题
+          coverage combine
+          
+          # 生成最终的 XML 报告
+          coverage xml
+
+      # 上传最终的合并报告
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-
+          files: ./coverage.xml
+          
   docs:
     name: Documentation
     runs-on: ubuntu-latest
-    needs: test
+    needs: codecov # 修改依赖，确保在 coverage 报告上传后才构建文档
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3 # 升级 checkout action
 
       - name: Install dependencies
         run: |
