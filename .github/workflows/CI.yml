@@ -51,7 +51,10 @@ jobs:
           export MASTER_ADDR=localhost
           export MASTER_PORT=12345
           export PYTHONPATH=MCintegration
-          pytest -n auto --cov --cov-report=xml --ignore=examples
+          export COVERAGE_PROCESS_START=.coveragerc
+          pytest --cov --cov-report=xml --ignore=examples
+          coverage combine
+          coverage xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
