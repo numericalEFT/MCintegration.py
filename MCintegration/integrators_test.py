@@ -416,102 +416,26 @@ class TestDistributedFunctionality(unittest.TestCase):
         integrator = Integrator(bounds=bounds, f=f)
         self.assertEqual(integrator.rank, 0)
         self.assertEqual(integrator.world_size, 1)
+    @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
+    def test_multi_gpu_consistency(self):
+        if torch.cuda.device_count() >= 2:
+            bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
+            f = lambda x, fx: torch.ones_like(x)
 
-    def test_statistics_worldsize_gt1(self):
-        """Mock 分布式 gather 测试 world_size > 1 分支覆盖"""
+            # Create two integrators on different devices
+            integrator1 = Integrator(bounds=bounds, f=f, device="cuda:0")
+            integrator2 = Integrator(bounds=bounds, f=f, device="cuda:1")
 
-        bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
-        f = lambda x, fx: fx.copy_(x)  # 不重要，只是占位
-        integrator = Integrator(bounds=bounds, f=f)
-        integrator.world_size = 2
-        integrator.rank = 0
+            # Results should be consistent across devices
+            result1 = integrator1(neval=10000)
+            result2 = integrator2(neval=10000)
 
-        means = torch.ones((2, 1))
-        vars = torch.ones((2, 1)) * 0.5
+            if hasattr(result1, "mean"):
+                value1, value2 = result1.mean, result2.mean
+            else:
+                value1, value2 = result1, result2
 
-        # ---- 构造假的 dist 模块 ----
-        class DummyDist:
-            def gather(self, tensor, gather_list=None, dst=0):
-                # 模拟 rank 0 收到两份数据
-                if gather_list is not None:
-                    gather_list[0].copy_(tensor)
-                    gather_list[1].copy_(tensor * 2)
-
-            def get_rank(self):
-                return integrator.rank
-
-            def get_world_size(self):
-                return integrator.world_size
-
-            def is_initialized(self):
-                return True
-
-        import MCintegration.integrators as integrators_module
-        orig_dist = integrators_module.dist
-        integrators_module.dist = DummyDist()
-
-        try:
-            result = integrator.statistics(means, vars, neval=100)
-            self.assertIsNotNone(result)
-            self.assertTrue(hasattr(result, "__len__"))
-        finally:
-            # 恢复原 dist
-            integrators_module.dist = orig_dist
-
-    def test_statistics_worldsize_gt1_rank1(self):
-        """Mock 分布式测试 rank != 0 分支覆盖"""
-
-        bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
-        f = lambda x, fx: fx.copy_(x)
-        integrator = Integrator(bounds=bounds, f=f)
-        integrator.world_size = 2
-        integrator.rank = 1
-
-        means = torch.ones((2, 1))
-        vars = torch.ones((2, 1)) * 0.5
-
-        class DummyDist:
-            def gather(self, tensor, gather_list=None, dst=0):
-                pass  # rank!=0 的情况
-
-            def get_rank(self):
-                return integrator.rank
-
-            def get_world_size(self):
-                return integrator.world_size
-
-            def is_initialized(self):
-                return True
-
-        import MCintegration.integrators as integrators_module
-        orig_dist = integrators_module.dist
-        integrators_module.dist = DummyDist()
-
-        try:
-            result = integrator.statistics(means, vars, neval=100)
-            self.assertIsNone(result)
-        finally:
-            integrators_module.dist = orig_dist
-    # @unittest.skipIf(not torch.distributed.is_available(), "Distributed not available")
-    # def test_multi_gpu_consistency(self):
-    #     if torch.cuda.device_count() >= 2:
-    #         bounds = torch.tensor([[0.0, 1.0]], dtype=torch.float64)
-    #         f = lambda x, fx: torch.ones_like(x)
-
-    #         # Create two integrators on different devices
-    #         integrator1 = Integrator(bounds=bounds, f=f, device="cuda:0")
-    #         integrator2 = Integrator(bounds=bounds, f=f, device="cuda:1")
-
-    #         # Results should be consistent across devices
-    #         result1 = integrator1(neval=10000)
-    #         result2 = integrator2(neval=10000)
-
-    #         if hasattr(result1, "mean"):
-    #             value1, value2 = result1.mean, result2.mean
-    #         else:
-    #             value1, value2 = result1, result2
-
-    #         self.assertAlmostEqual(float(value1), float(value2), places=1)
+            self.assertAlmostEqual(float(value1), float(value2), places=1)
 
 
 if __name__ == "__main__":
